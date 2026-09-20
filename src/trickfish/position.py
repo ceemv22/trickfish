@@ -1,8 +1,8 @@
-"""Chess position representation and Forsyth-Edwards Notation parsing."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from .move import Move
 
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 PIECES = frozenset("prnbqkPRNBQK")
@@ -11,13 +11,11 @@ RANKS = "12345678"
 
 
 class FenError(ValueError):
-    """Raised when a FEN string does not describe a valid board state."""
+    pass
 
 
 @dataclass(frozen=True)
 class Position:
-    """An immutable chess position, before move generation is added."""
-
     board: tuple[str | None, ...]
     side_to_move: str
     castling: str
@@ -90,6 +88,29 @@ class Position:
                 str(self.fullmove_number),
             ]
         )
+
+    def pseudo_legal_knight_moves(self) -> tuple[Move, ...]:
+        knight = "N" if self.side_to_move == "w" else "n"
+        offsets = ((-2, -1), (-2, 1), (-1, -2), (-1, 2),
+                   (1, -2), (1, 2), (2, -1), (2, 1))
+        moves: list[Move] = []
+        for source, piece in enumerate(self.board):
+            if piece != knight:
+                continue
+            rank, file = divmod(source, 8)
+            for rank_offset, file_offset in offsets:
+                target_rank = rank + rank_offset
+                target_file = file + file_offset
+                if not (0 <= target_rank < 8 and 0 <= target_file < 8):
+                    continue
+                target = target_rank * 8 + target_file
+                occupant = self.board[target]
+                if occupant is not None and (
+                    occupant.isupper() == knight.isupper() or occupant.lower() == "k"
+                ):
+                    continue
+                moves.append(Move(source, target))
+        return tuple(moves)
 
     def render(self) -> str:
         lines = []

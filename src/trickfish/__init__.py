@@ -1,5 +1,4 @@
-"""Core modules for the Trickfish chess engine."""
-
+from .move import Move
 from .position import Position, STARTING_FEN
 
-__all__ = ["Position", "STARTING_FEN"]
+__all__ = ["Move", "Position", "STARTING_FEN"]

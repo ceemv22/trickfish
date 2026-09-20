@@ -1,5 +1,3 @@
-"""Command-line entry point for position inspection."""
-
 from __future__ import annotations
 
 import argparse
