@@ -161,6 +161,7 @@ class Position:
     def pseudo_legal_pawn_moves(self) -> tuple[Move, ...]:
         pawn = "P" if self.side_to_move == "w" else "p"
         rank_step = -1 if self.side_to_move == "w" else 1
+        starting_rank = 6 if self.side_to_move == "w" else 1
         moves: list[Move] = []
         for source, piece in enumerate(self.board):
             if piece != pawn:
@@ -172,6 +173,11 @@ class Position:
             forward = target_rank * 8 + file
             if self.board[forward] is None:
                 moves.append(Move(source, forward))
+                if rank == starting_rank:
+                    double_target_rank = rank + 2 * rank_step
+                    double_target = double_target_rank * 8 + file
+                    if self.board[double_target] is None:
+                        moves.append(Move(source, double_target))
             for file_offset in (-1, 1):
                 target_file = file + file_offset
                 if not 0 <= target_file < 8:

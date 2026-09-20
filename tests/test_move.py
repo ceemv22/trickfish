@@ -259,6 +259,14 @@ class PawnMovesTest(unittest.TestCase):
         self.assert_moves("7k/8/8/8/3P4/8/8/K7 w - - 0 1", {"d4d5"})
         self.assert_moves("7k/8/8/3p4/8/8/K7/8 b - - 0 1", {"d5d4"})
 
+    def test_white_and_black_starting_double_steps(self) -> None:
+        self.assert_moves("7k/8/8/8/8/8/3P4/K7 w - - 0 1", {"d2d3", "d2d4"})
+        self.assert_moves("7k/3p4/8/8/8/8/K7/8 b - - 0 1", {"d7d6", "d7d5"})
+
+    def test_double_step_requires_two_empty_squares(self) -> None:
+        self.assert_moves("7k/8/8/8/3n4/8/3P4/K7 w - - 0 1", {"d2d3"})
+        self.assert_moves("7k/3p4/8/3N4/8/8/K7/8 b - - 0 1", {"d7d6"})
+
     def test_white_blocking_and_captures(self) -> None:
         self.assert_moves(
             "7k/8/8/2pNp3/3P4/8/8/K7 w - - 0 1",
