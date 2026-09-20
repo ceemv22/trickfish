@@ -1,81 +1,101 @@
-﻿<p align="center">
-  <img src="assets/trickfish-logo.png" alt="Trickfish — a fish caught in a steel trap" width="280">
+<p align="center">
+  <img src="assets/trickfish-logo.png" alt="Trickfish logo" width="280">
 </p>
 
 <h1 align="center">Trickfish</h1>
 
----
+Trickfish is a chess-engine research project. Its long-term problem is narrow: after search identifies several moves that preserve the position, determine which move creates the highest practical cost for the opponent without accepting an unjustified loss in objective evaluation.
 
-## Overview
+## Current implementation
 
-Trickfish is a chess engine project intended to select moves using both position evaluation and estimates of likely opponent replies.
+The repository contains an early Python position prototype. It is not yet a playable engine and has no strength or Elo claim.
 
-The planned selection policy compares moves within a configurable evaluation-loss limit, then favors candidates that create tactical threats or require precise defense. Candidate moves must also be checked against the strongest replies found by search.
+| Area | Current state |
+| --- | --- |
+| FEN | Parse, validate, render, and serialize |
+| Board state | Immutable 64-square tuple |
+| Move representation | Immutable UCI-coordinate move value |
+| Pseudo-legal moves | Knight, bishop, rook, queen, king, and basic pawn moves |
+| Pawn support | Single step and ordinary diagonal captures |
+| CLI | Position display and move listing |
+| Tests | FEN, move values, CLI, and piece-specific move generation |
 
-## Project status
+`moves` currently reports pseudo-legal moves. It does not reject moves that expose the moving side's king, and it does not yet implement castling, a pawn double step, promotion, or en passant.
 
-The first position module is implemented. It parses FEN, validates its board and state fields, renders a board in the terminal, and serializes the position back to FEN. Legal move generation, evaluation, and search have not been implemented yet.
+## Running the prototype
 
-## Design principles
+PowerShell:
 
-- Reject attractive traps when a verified reply exceeds the configured risk tolerance.
-- Account for tactical volatility, evaluation uncertainty, and the game situation when setting the acceptable loss of objective value.
-- Estimate which replies an opponent is likely to consider; a losing reply that nobody would play has little practical value.
-- Preserve candidate evaluations, search limits, configuration, and selection reasons for analysis.
-- Validate strength and practical behavior separately rather than treating a distinctive style as proof of improvement.
+```powershell
+cd "$env:USERPROFILE\Desktop\trickfish"
+$env:PYTHONPATH="src"
 
-## Planned architecture
+python -m trickfish.cli
+python -m trickfish.cli moves
+python -m trickfish.cli moves "8/7k/8/8/3Q4/8/K7/8 w - - 0 1"
+python -m unittest discover -s tests -v
+```
 
-| Component | Responsibility |
-| :--- | :--- |
-| Position core | Board state, legal move generation, make/unmake, repetition, and game termination |
-| Search | Iterative deepening, alpha-beta search, quiescence, move ordering, and transposition storage |
-| Evaluation | Material, activity, king safety, pawn structure, and positional assessment |
-| Candidate verification | Re-examine promising moves and reject tactically unsound alternatives |
-| Opponent model | Estimate plausible replies and defensive difficulty for a specified playing profile |
-| Selection policy | Rank eligible candidates by objective value and estimated practical opportunity |
-| Interfaces | Terminal analysis and UCI integration for compatible chess software |
-| Test framework | Move-generation checks, tactical regression suites, and controlled match experiments |
+## Engine direction
 
-Opponent modeling should influence the choice among verified candidates while leaving legal move generation and search correctness independently testable.
+Trickfish is being designed around two separate measurements:
 
-## Move-selection model
+1. **Objective result:** the evaluation after the strongest defense found by search.
+2. **Practical result:** the difficulty and consequence of the opponent's plausible responses.
 
-The initial research direction uses a two-stage policy:
+The second measurement must never replace the first. It is only used after candidate moves survive a configurable objective-loss limit and deeper tactical verification.
 
-1. Search candidate moves and retain those within a position-dependent loss budget relative to the strongest evaluated candidate. Forced tactical outcomes require explicit handling.
-2. Rank eligible moves using their objective value, the estimated likelihood and cost of plausible mistakes, and the difficulty of finding adequate defense.
+For a candidate move `m`, the eventual selection stage will compare:
 
-The loss budget is a search-based estimate, not a guarantee of safety. Deeper analysis can overturn an evaluation. Verification effort and uncertainty handling are therefore part of the design, especially in sharp positions.
+```text
+objective value after best defense
+evaluation uncertainty
+number and quality of defensive resources
+cost of likely defensive mistakes
+time required to find adequate defense
+game context and configured risk budget
+```
 
-Human-like play is a modeling objective to test against data, not something established by choosing a lower-ranked move or adding randomness.
+This creates a testable distinction between a move that is objectively best, a move that is objectively acceptable but difficult to defend, and a speculative trap that fails against a clear response.
 
-## Validation strategy
+## Planned core
 
-Planned evaluation covers three separate questions:
+| Layer | Responsibilities |
+| --- | --- |
+| Position | Piece placement, side to move, castling, en passant, clocks, make/unmake, repetition state, Zobrist key |
+| Move generation | Pseudo-legal moves, attack maps, legal filtering, promotions, en passant, castling, perft |
+| Search | Iterative deepening, alpha-beta, quiescence, transposition table, move ordering, pruning, extensions, time control |
+| Evaluation | Material, pawn structure, mobility, king safety, threats, passed pawns, space, endgame scaling |
+| Candidate verification | Re-search of selected candidates, tactical stability checks, uncertainty tracking |
+| Practical selection | Candidate eligibility, defensive-resource analysis, opponent-response model, risk-budget policy |
+| Interfaces | UCI protocol, command-line analysis, structured analysis output |
+| Measurement | Perft suite, tactical regression suite, SPRT engine matches, fixed opening sets, reproducible hardware and time controls |
 
-- **Correctness:** perft positions, special-move cases, state restoration, repetition, and terminal positions.
-- **Strength:** tactical regressions and paired engine matches with fixed hardware, time controls, opening sets, and reported uncertainty.
-- **Practical effect:** comparison with an objective-only baseline, followed by tests against defined opponent profiles and held-out human play data where appropriate.
+## Development sequence
 
-Reports should include objective evaluation loss, defensive resources, trap conversion, and failure cases. No Elo estimate or claim of human resemblance will be treated as established without supporting experiments.
+- [x] FEN parsing, serialization, and board rendering
+- [x] Move value and UCI coordinates
+- [x] Pseudo-legal knight, bishop, rook, queen, king, and basic pawn moves
+- [ ] Pawn double step, promotion, and en passant
+- [ ] Castling and attack detection
+- [ ] Legal move filtering and perft baselines
+- [ ] Make/unmake and Zobrist hashing
+- [ ] First evaluation and alpha-beta search
+- [ ] UCI support and time management
+- [ ] Candidate verification
+- [ ] Practical move selection
+- [ ] Opponent-specific experiments and published benchmark methodology
 
-## Development milestones
+## Language plan
 
-- [ ] Correct position representation and legal move generation
-- [x] FEN parsing, serialization, and terminal board rendering
-- [ ] Baseline search and evaluation
-- [ ] CLI analysis and UCI support
-- [ ] Candidate verification and configurable risk budgets
-- [ ] Practical move selection and opponent modeling
-- [ ] Reproducible benchmarks and documented results
+The current Python code exists to establish rules, tests, and the decision model quickly. It is not intended to be the final high-performance search core.
 
-## Development and contributions
+The target architecture is a C++23 engine core for move generation, position updates, search, and evaluation, with Python retained for tooling, experiments, test fixtures, data preparation, and analysis. The move to C++ begins after the Python prototype has complete legal move generation and perft coverage; that gives the C++ implementation a precise behavioral reference instead of rewriting unfinished logic.
 
-Implementation language, build instructions, and executable examples will be documented when the initial engine lands. Early discussion is welcome through [issues](https://github.com/ceemv22/trickfish/issues), especially around search design, reproducible test positions, and evaluation methodology.
+## Verification standard
 
-For a proposed tactical test, include the FEN, candidate move, strongest known defense, and the analysis conditions needed to reproduce the result.
+Every chess rule added to the core requires focused tests before it becomes part of the aggregate move list. Legal move generation will be checked with established perft positions before search work starts. Playing-strength changes will be measured in controlled matches. Practical-selection work will be evaluated independently from raw engine strength.
 
 ## License
 
-A project license has not yet been selected. Licensing and third-party dependencies will be reviewed before the first release.
+No license has been selected.
