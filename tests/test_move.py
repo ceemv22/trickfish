@@ -274,6 +274,30 @@ class CastlingMovesTest(unittest.TestCase):
         self.assert_moves("4k3/8/8/8/8/8/8/R3KNR1 w KQ - 0 1", {"e1c1"})
         self.assert_moves("4k3/8/8/8/8/8/8/R2K3R w KQ - 0 1", set())
 
+    def test_legal_castling_rejects_attacked_king_squares(self) -> None:
+        cases = (
+            "k3r3/8/8/8/8/8/8/4K2R w K - 0 1",
+            "k4r2/8/8/8/8/8/8/4K2R w K - 0 1",
+            "k5r1/8/8/8/8/8/8/4K2R w K - 0 1",
+            "4k2r/8/8/8/8/8/8/4KR2 b k - 0 1",
+        )
+        for fen in cases:
+            with self.subTest(fen=fen):
+                position = Position.from_fen(fen)
+                self.assertEqual(position.legal_castling_moves(), tuple())
+
+    def test_legal_castling_is_included_with_king_moves(self) -> None:
+        position = Position.from_fen("4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1")
+        self.assertEqual(
+            {move.to_uci() for move in position.legal_castling_moves()},
+            {"e1c1", "e1g1"},
+        )
+        self.assertTrue(
+            {"e1c1", "e1g1"}.issubset(
+                {move.to_uci() for move in position.pseudo_legal_king_moves()}
+            )
+        )
+
 
 class AttackMapTest(unittest.TestCase):
     def square(self, name: str) -> int:

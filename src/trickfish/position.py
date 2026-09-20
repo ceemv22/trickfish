@@ -156,12 +156,24 @@ class Position:
                 ):
                     continue
                 moves.append(Move(source, target))
-        return tuple(moves) + self.pseudo_legal_castling_moves()
+        return tuple(moves) + self.legal_castling_moves()
 
     def pseudo_legal_castling_moves(self) -> tuple[Move, ...]:
         if self.side_to_move == "w":
             return self._pseudo_legal_castling_moves_for_white()
         return self._pseudo_legal_castling_moves_for_black()
+
+    def legal_castling_moves(self) -> tuple[Move, ...]:
+        opponent = "b" if self.side_to_move == "w" else "w"
+        moves: list[Move] = []
+        for move in self.pseudo_legal_castling_moves():
+            transit_square = move.from_square + (1 if move.to_square > move.from_square else -1)
+            if all(
+                not self.is_square_attacked(square, opponent)
+                for square in (move.from_square, transit_square, move.to_square)
+            ):
+                moves.append(move)
+        return tuple(moves)
 
     def is_square_attacked(self, square: int, by_side: str) -> bool:
         if not 0 <= square < 64:
