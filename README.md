@@ -14,7 +14,7 @@ The planned selection policy compares moves within a configurable evaluation-los
 
 ## Project status
 
-**Design stage.** This repository currently contains the project documentation and visual identity. The engine, interfaces, and evaluation framework described below are planned work. There is no playable release or measured playing-strength claim yet.
+The first position module is implemented. It parses FEN, validates its board and state fields, renders a board in the terminal, and serializes the position back to FEN. Legal move generation, evaluation, and search have not been implemented yet.
 
 ## Design principles
 
@@ -63,6 +63,7 @@ Reports should include objective evaluation loss, defensive resources, trap conv
 ## Development milestones
 
 - [ ] Correct position representation and legal move generation
+- [x] FEN parsing, serialization, and terminal board rendering
 - [ ] Baseline search and evaluation
 - [ ] CLI analysis and UCI support
 - [ ] Candidate verification and configurable risk budgets

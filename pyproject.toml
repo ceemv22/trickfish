@@ -1,0 +1,12 @@
+[project]
+name = "trickfish"
+version = "0.1.0"
+description = "Chess engine research project"
+requires-python = ">=3.11"
+
+[project.scripts]
+trickfish = "trickfish.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
