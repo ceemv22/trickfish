@@ -112,6 +112,38 @@ class Position:
                 moves.append(Move(source, target))
         return tuple(moves)
 
+    def pseudo_legal_bishop_moves(self) -> tuple[Move, ...]:
+        bishop = "B" if self.side_to_move == "w" else "b"
+        return self._pseudo_legal_sliding_moves(
+            bishop, ((-1, -1), (-1, 1), (1, -1), (1, 1))
+        )
+
+    def _pseudo_legal_sliding_moves(
+        self, piece: str, directions: tuple[tuple[int, int], ...]
+    ) -> tuple[Move, ...]:
+        moves: list[Move] = []
+        for source, occupant in enumerate(self.board):
+            if occupant != piece:
+                continue
+            rank, file = divmod(source, 8)
+            for rank_step, file_step in directions:
+                target_rank = rank + rank_step
+                target_file = file + file_step
+                while 0 <= target_rank < 8 and 0 <= target_file < 8:
+                    target = target_rank * 8 + target_file
+                    target_occupant = self.board[target]
+                    if target_occupant is not None:
+                        if (
+                            target_occupant.isupper() != piece.isupper()
+                            and target_occupant.lower() != "k"
+                        ):
+                            moves.append(Move(source, target))
+                        break
+                    moves.append(Move(source, target))
+                    target_rank += rank_step
+                    target_file += file_step
+        return tuple(moves)
+
     def render(self) -> str:
         lines = []
         for rank in range(8):

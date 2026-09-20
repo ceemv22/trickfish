@@ -69,3 +69,45 @@ class KnightMovesTest(unittest.TestCase):
 
     def test_no_knights(self) -> None:
         self.assert_moves("7k/8/8/8/8/8/8/K7 w - - 0 1", set())
+
+
+class BishopMovesTest(unittest.TestCase):
+    def assert_moves(self, fen: str, expected: set[str]) -> None:
+        position = Position.from_fen(fen)
+        moves = position.pseudo_legal_bishop_moves()
+        self.assertEqual({move.to_uci() for move in moves}, expected)
+        self.assertEqual(len(moves), len(expected))
+        self.assertEqual(position.to_fen(), fen)
+
+    def test_center(self) -> None:
+        self.assert_moves(
+            "8/7k/8/8/3B4/8/K7/8 w - - 0 1",
+            {
+                "d4a1", "d4a7", "d4b2", "d4b6", "d4c3", "d4c5",
+                "d4e3", "d4e5", "d4f2", "d4f6", "d4g1", "d4g7", "d4h8",
+            },
+        )
+
+    def test_blocking_and_captures(self) -> None:
+        self.assert_moves(
+            "8/7k/1p6/8/3B4/8/K4P2/8 w - - 0 1",
+            {
+                "d4a1", "d4b2", "d4b6", "d4c3", "d4c5",
+                "d4e3", "d4e5", "d4f6", "d4g7", "d4h8",
+            },
+        )
+
+    def test_enemy_king_cannot_be_captured(self) -> None:
+        self.assert_moves(
+            "8/8/8/8/3B4/2k5/K7/8 w - - 0 1",
+            {
+                "d4a7", "d4b6", "d4c5", "d4e3", "d4e5", "d4f2",
+                "d4f6", "d4g1", "d4g7", "d4h8",
+            },
+        )
+
+    def test_black_bishop(self) -> None:
+        self.assert_moves(
+            "7k/8/8/1B6/8/3b4/8/K7 b - - 0 1",
+            {"d3b1", "d3b5", "d3c2", "d3c4", "d3e2", "d3e4", "d3f1", "d3f5", "d3g6", "d3h7"},
+        )
