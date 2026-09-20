@@ -27,6 +27,7 @@ class CliTest(unittest.TestCase):
             {
                 "d4a1", "d4a7", "d4b2", "d4b6", "d4c3", "d4c5",
                 "d4e3", "d4e5", "d4f2", "d4f6", "d4g1", "d4g7", "d4h8",
+                "a2a1", "a2a3", "a2b1", "a2b2", "a2b3",
             },
         )
 

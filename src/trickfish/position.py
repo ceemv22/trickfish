@@ -134,12 +134,37 @@ class Position:
             ),
         )
 
+    def pseudo_legal_king_moves(self) -> tuple[Move, ...]:
+        king = "K" if self.side_to_move == "w" else "k"
+        moves: list[Move] = []
+        for source, piece in enumerate(self.board):
+            if piece != king:
+                continue
+            rank, file = divmod(source, 8)
+            for rank_offset, file_offset in (
+                (-1, -1), (-1, 0), (-1, 1), (0, -1),
+                (0, 1), (1, -1), (1, 0), (1, 1),
+            ):
+                target_rank = rank + rank_offset
+                target_file = file + file_offset
+                if not (0 <= target_rank < 8 and 0 <= target_file < 8):
+                    continue
+                target = target_rank * 8 + target_file
+                occupant = self.board[target]
+                if occupant is not None and (
+                    occupant.isupper() == king.isupper() or occupant.lower() == "k"
+                ):
+                    continue
+                moves.append(Move(source, target))
+        return tuple(moves)
+
     def pseudo_legal_moves(self) -> tuple[Move, ...]:
         return (
             self.pseudo_legal_knight_moves()
             + self.pseudo_legal_bishop_moves()
             + self.pseudo_legal_rook_moves()
             + self.pseudo_legal_queen_moves()
+            + self.pseudo_legal_king_moves()
         )
 
     def _pseudo_legal_sliding_moves(

@@ -209,3 +209,39 @@ class QueenMovesTest(unittest.TestCase):
                 "d3f3", "d3f5", "d3g3", "d3g6", "d3h3", "d3h7",
             },
         )
+
+
+class KingMovesTest(unittest.TestCase):
+    def assert_moves(self, fen: str, expected: set[str]) -> None:
+        position = Position.from_fen(fen)
+        moves = position.pseudo_legal_king_moves()
+        self.assertEqual({move.to_uci() for move in moves}, expected)
+        self.assertEqual(len(moves), len(expected))
+        self.assertEqual(position.to_fen(), fen)
+
+    def test_center(self) -> None:
+        self.assert_moves(
+            "8/7k/8/8/3K4/8/8/8 w - - 0 1",
+            {"d4c3", "d4c4", "d4c5", "d4d3", "d4d5", "d4e3", "d4e4", "d4e5"},
+        )
+
+    def test_corner_does_not_wrap(self) -> None:
+        self.assert_moves("7k/8/8/8/8/8/8/K7 w - - 0 1", {"a1a2", "a1b1", "a1b2"})
+
+    def test_blocking_and_captures(self) -> None:
+        self.assert_moves(
+            "8/7k/8/8/2pKp3/3P4/8/8 w - - 0 1",
+            {"d4c3", "d4c4", "d4c5", "d4d5", "d4e3", "d4e4", "d4e5"},
+        )
+
+    def test_enemy_king_cannot_be_captured(self) -> None:
+        self.assert_moves(
+            "8/8/8/8/3Kk3/8/8/8 w - - 0 1",
+            {"d4c3", "d4c4", "d4c5", "d4d3", "d4d5", "d4e3", "d4e5"},
+        )
+
+    def test_black_king(self) -> None:
+        self.assert_moves(
+            "8/8/8/8/3k4/8/7K/8 b - - 0 1",
+            {"d4c3", "d4c4", "d4c5", "d4d3", "d4d5", "d4e3", "d4e4", "d4e5"},
+        )
