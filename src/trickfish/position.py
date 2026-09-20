@@ -162,6 +162,9 @@ class Position:
         pawn = "P" if self.side_to_move == "w" else "p"
         rank_step = -1 if self.side_to_move == "w" else 1
         starting_rank = 6 if self.side_to_move == "w" else 1
+        en_passant_target = (
+            self._square_index(self.en_passant) if self.en_passant is not None else None
+        )
         moves: list[Move] = []
         for source, piece in enumerate(self.board):
             if piece != pawn:
@@ -190,6 +193,11 @@ class Position:
                     and occupant.lower() != "k"
                 ):
                     self._append_pawn_move(moves, source, target)
+                elif target == en_passant_target and occupant is None:
+                    captured_square = rank * 8 + target_file
+                    captured_pawn = "p" if pawn == "P" else "P"
+                    if self.board[captured_square] == captured_pawn:
+                        moves.append(Move(source, target, en_passant=True))
         return tuple(moves)
 
     def _append_pawn_move(self, moves: list[Move], source: int, target: int) -> None:
@@ -197,6 +205,9 @@ class Position:
             moves.extend(Move(source, target, promotion) for promotion in "qrbn")
         else:
             moves.append(Move(source, target))
+
+    def _square_index(self, square: str) -> int:
+        return (8 - int(square[1])) * 8 + FILES.index(square[0])
 
     def pseudo_legal_moves(self) -> tuple[Move, ...]:
         return (

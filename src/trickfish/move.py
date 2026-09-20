@@ -6,6 +6,7 @@ class Move:
     from_square: int
     to_square: int
     promotion: str | None = None
+    en_passant: bool = False
 
     def __post_init__(self) -> None:
         if not (0 <= self.from_square < 64 and 0 <= self.to_square < 64):

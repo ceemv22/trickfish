@@ -23,6 +23,7 @@ class MoveTest(unittest.TestCase):
     def test_immutable_value(self) -> None:
         move = Move(57, 42)
         self.assertEqual(move, Move(57, 42))
+        self.assertFalse(move.en_passant)
         with self.assertRaises(FrozenInstanceError):
             move.to_square = 40
 
@@ -308,3 +309,23 @@ class PawnMovesTest(unittest.TestCase):
                 "d7e8q", "d7e8r", "d7e8b", "d7e8n",
             },
         )
+
+    def test_white_and_black_en_passant(self) -> None:
+        white_position = Position.from_fen(
+            "7k/8/8/3pP3/8/8/8/K7 w - d6 0 1"
+        )
+        white_moves = white_position.pseudo_legal_pawn_moves()
+        self.assertEqual({move.to_uci() for move in white_moves}, {"e5d6", "e5e6"})
+        self.assertTrue(next(move for move in white_moves if move.to_uci() == "e5d6").en_passant)
+
+        black_position = Position.from_fen(
+            "7k/8/8/8/3Pp3/8/8/K7 b - d3 0 1"
+        )
+        black_moves = black_position.pseudo_legal_pawn_moves()
+        self.assertEqual({move.to_uci() for move in black_moves}, {"e4d3", "e4e3"})
+        self.assertTrue(next(move for move in black_moves if move.to_uci() == "e4d3").en_passant)
+
+    def test_en_passant_requires_the_captured_pawn(self) -> None:
+        position = Position.from_fen("7k/8/8/4P3/8/8/8/K7 w - d6 0 1")
+        moves = position.pseudo_legal_pawn_moves()
+        self.assertEqual({move.to_uci() for move in moves}, {"e5e6"})
