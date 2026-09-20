@@ -90,7 +90,7 @@ This creates a testable distinction between a move that is objectively best, a m
 
 The current Python code exists to establish rules, tests, and the decision model quickly. It is not intended to be the final high-performance search core.
 
-The target architecture is a C++23 engine core for move generation, position updates, search, and evaluation, with Python retained for tooling, experiments, test fixtures, data preparation, and analysis. The move to C++ begins after the Python prototype has complete legal move generation and perft coverage; that gives the C++ implementation a precise behavioral reference instead of rewriting unfinished logic.
+The target architecture is a C++26 engine core for move generation, position updates, search, and evaluation, with Python retained for tooling, experiments, test fixtures, data preparation, and analysis. Until C++26 compiler support is stable across the supported toolchains, the core will stay within a portable C++20/23 subset and avoid draft-only dependencies. The move to C++ begins after the Python prototype has complete legal move generation and perft coverage; that gives the C++ implementation a precise behavioral reference instead of rewriting unfinished logic.
 
 ## Verification standard
 
