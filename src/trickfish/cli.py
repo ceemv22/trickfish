@@ -5,20 +5,34 @@ import argparse
 from .position import FenError, Position, STARTING_FEN
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="trickfish")
     parser.add_argument(
-        "fen",
+        "command_or_fen",
         nargs="?",
-        default=STARTING_FEN,
-        help="FEN position to inspect; defaults to the initial chess position",
+        help="position, moves, or a FEN position",
     )
-    arguments = parser.parse_args()
+    parser.add_argument("fen", nargs="?", help="FEN position")
+    arguments = parser.parse_args(argv)
+
+    if arguments.command_or_fen in {"position", "moves"}:
+        command = arguments.command_or_fen
+        fen = arguments.fen or STARTING_FEN
+    elif arguments.fen is not None:
+        parser.error("a FEN must be quoted as one argument")
+    else:
+        command = "position"
+        fen = arguments.command_or_fen or STARTING_FEN
 
     try:
-        position = Position.from_fen(arguments.fen)
+        position = Position.from_fen(fen)
     except FenError as error:
         parser.error(str(error))
+
+    if command == "moves":
+        for move in position.pseudo_legal_moves():
+            print(move.to_uci())
+        return 0
 
     print(position.render())
     print()

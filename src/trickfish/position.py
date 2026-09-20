@@ -118,6 +118,9 @@ class Position:
             bishop, ((-1, -1), (-1, 1), (1, -1), (1, 1))
         )
 
+    def pseudo_legal_moves(self) -> tuple[Move, ...]:
+        return self.pseudo_legal_knight_moves() + self.pseudo_legal_bishop_moves()
+
     def _pseudo_legal_sliding_moves(
         self, piece: str, directions: tuple[tuple[int, int], ...]
     ) -> tuple[Move, ...]:
