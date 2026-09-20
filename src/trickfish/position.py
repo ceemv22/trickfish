@@ -118,8 +118,18 @@ class Position:
             bishop, ((-1, -1), (-1, 1), (1, -1), (1, 1))
         )
 
+    def pseudo_legal_rook_moves(self) -> tuple[Move, ...]:
+        rook = "R" if self.side_to_move == "w" else "r"
+        return self._pseudo_legal_sliding_moves(
+            rook, ((-1, 0), (0, -1), (0, 1), (1, 0))
+        )
+
     def pseudo_legal_moves(self) -> tuple[Move, ...]:
-        return self.pseudo_legal_knight_moves() + self.pseudo_legal_bishop_moves()
+        return (
+            self.pseudo_legal_knight_moves()
+            + self.pseudo_legal_bishop_moves()
+            + self.pseudo_legal_rook_moves()
+        )
 
     def _pseudo_legal_sliding_moves(
         self, piece: str, directions: tuple[tuple[int, int], ...]
