@@ -155,3 +155,57 @@ class RookMovesTest(unittest.TestCase):
                 "d3g3", "d3h3",
             },
         )
+
+
+class QueenMovesTest(unittest.TestCase):
+    def assert_moves(self, fen: str, expected: set[str]) -> None:
+        position = Position.from_fen(fen)
+        moves = position.pseudo_legal_queen_moves()
+        self.assertEqual({move.to_uci() for move in moves}, expected)
+        self.assertEqual(len(moves), len(expected))
+        self.assertEqual(position.to_fen(), fen)
+
+    def test_center(self) -> None:
+        self.assert_moves(
+            "8/7k/8/8/3Q4/8/K7/8 w - - 0 1",
+            {
+                "d4a1", "d4a4", "d4a7", "d4b2", "d4b4", "d4b6",
+                "d4c3", "d4c4", "d4c5", "d4d1", "d4d2", "d4d3",
+                "d4d5", "d4d6", "d4d7", "d4d8", "d4e3", "d4e4",
+                "d4e5", "d4f2", "d4f4", "d4f6", "d4g1", "d4g4",
+                "d4g7", "d4h4", "d4h8",
+            },
+        )
+
+    def test_blocking_and_captures(self) -> None:
+        self.assert_moves(
+            "8/7k/1p6/8/2pQ1P2/8/K7/8 w - - 0 1",
+            {
+                "d4a1", "d4b2", "d4b6", "d4c3", "d4c4",
+                "d4c5", "d4d1", "d4d2", "d4d3", "d4d5", "d4d6",
+                "d4d7", "d4d8", "d4e3", "d4e4", "d4e5", "d4f2",
+                "d4f6", "d4g1", "d4g7", "d4h8",
+            },
+        )
+
+    def test_enemy_king_cannot_be_captured(self) -> None:
+        self.assert_moves(
+            "8/8/8/8/3Qk3/8/K7/8 w - - 0 1",
+            {
+                "d4a1", "d4a4", "d4a7", "d4b2", "d4b4", "d4b6",
+                "d4c3", "d4c4", "d4c5", "d4d1", "d4d2", "d4d3",
+                "d4d5", "d4d6", "d4d7", "d4d8", "d4e3", "d4e5",
+                "d4f2", "d4f6", "d4g1", "d4g7", "d4h8",
+            },
+        )
+
+    def test_black_queen(self) -> None:
+        self.assert_moves(
+            "7k/8/8/1Q6/8/3q4/8/K7 b - - 0 1",
+            {
+                "d3a3", "d3b1", "d3b3", "d3b5", "d3c2", "d3c3",
+                "d3c4", "d3d1", "d3d2", "d3d4", "d3d5", "d3d6",
+                "d3d7", "d3d8", "d3e2", "d3e3", "d3e4", "d3f1",
+                "d3f3", "d3f5", "d3g3", "d3g6", "d3h3", "d3h7",
+            },
+        )

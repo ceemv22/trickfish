@@ -124,11 +124,22 @@ class Position:
             rook, ((-1, 0), (0, -1), (0, 1), (1, 0))
         )
 
+    def pseudo_legal_queen_moves(self) -> tuple[Move, ...]:
+        queen = "Q" if self.side_to_move == "w" else "q"
+        return self._pseudo_legal_sliding_moves(
+            queen,
+            (
+                (-1, -1), (-1, 0), (-1, 1), (0, -1),
+                (0, 1), (1, -1), (1, 0), (1, 1),
+            ),
+        )
+
     def pseudo_legal_moves(self) -> tuple[Move, ...]:
         return (
             self.pseudo_legal_knight_moves()
             + self.pseudo_legal_bishop_moves()
             + self.pseudo_legal_rook_moves()
+            + self.pseudo_legal_queen_moves()
         )
 
     def _pseudo_legal_sliding_moves(
