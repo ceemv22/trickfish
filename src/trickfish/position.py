@@ -163,6 +163,85 @@ class Position:
             return self._pseudo_legal_castling_moves_for_white()
         return self._pseudo_legal_castling_moves_for_black()
 
+    def is_square_attacked(self, square: int, by_side: str) -> bool:
+        if not 0 <= square < 64:
+            raise ValueError("square must be between 0 and 63")
+        if by_side not in {"w", "b"}:
+            raise ValueError("side must be 'w' or 'b'")
+
+        rank, file = divmod(square, 8)
+        pawn = "P" if by_side == "w" else "p"
+        pawn_rank = rank + 1 if by_side == "w" else rank - 1
+        if 0 <= pawn_rank < 8:
+            for pawn_file in (file - 1, file + 1):
+                if 0 <= pawn_file < 8 and self.board[pawn_rank * 8 + pawn_file] == pawn:
+                    return True
+
+        knight = "N" if by_side == "w" else "n"
+        for rank_offset, file_offset in (
+            (-2, -1), (-2, 1), (-1, -2), (-1, 2),
+            (1, -2), (1, 2), (2, -1), (2, 1),
+        ):
+            source_rank = rank + rank_offset
+            source_file = file + file_offset
+            if (
+                0 <= source_rank < 8
+                and 0 <= source_file < 8
+                and self.board[source_rank * 8 + source_file] == knight
+            ):
+                return True
+
+        king = "K" if by_side == "w" else "k"
+        for rank_offset, file_offset in (
+            (-1, -1), (-1, 0), (-1, 1), (0, -1),
+            (0, 1), (1, -1), (1, 0), (1, 1),
+        ):
+            source_rank = rank + rank_offset
+            source_file = file + file_offset
+            if (
+                0 <= source_rank < 8
+                and 0 <= source_file < 8
+                and self.board[source_rank * 8 + source_file] == king
+            ):
+                return True
+
+        bishop_or_queen = "BQ" if by_side == "w" else "bq"
+        if self._is_attacked_by_slider(
+            rank,
+            file,
+            ((-1, -1), (-1, 1), (1, -1), (1, 1)),
+            bishop_or_queen,
+        ):
+            return True
+
+        rook_or_queen = "RQ" if by_side == "w" else "rq"
+        return self._is_attacked_by_slider(
+            rank,
+            file,
+            ((-1, 0), (0, -1), (0, 1), (1, 0)),
+            rook_or_queen,
+        )
+
+    def _is_attacked_by_slider(
+        self,
+        rank: int,
+        file: int,
+        directions: tuple[tuple[int, int], ...],
+        attackers: str,
+    ) -> bool:
+        for rank_step, file_step in directions:
+            source_rank = rank + rank_step
+            source_file = file + file_step
+            while 0 <= source_rank < 8 and 0 <= source_file < 8:
+                occupant = self.board[source_rank * 8 + source_file]
+                if occupant is not None:
+                    if occupant in attackers:
+                        return True
+                    break
+                source_rank += rank_step
+                source_file += file_step
+        return False
+
     def _pseudo_legal_castling_moves_for_white(self) -> tuple[Move, ...]:
         moves: list[Move] = []
         if self.board[60] != "K":

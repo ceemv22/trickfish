@@ -18,10 +18,11 @@ The repository contains an early Python position prototype. It is not yet a play
 | Pseudo-legal moves | Knight, bishop, rook, queen, king, and basic pawn moves |
 | Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
 | Castling | Structural checks for rights, piece placement, and empty path |
+| Attack map | Detect attacks by either side without changing side to move |
 | CLI | Position display and move listing |
 | Tests | FEN, move values, CLI, and piece-specific move generation |
 
-`moves` currently reports pseudo-legal moves. It does not reject moves that expose the moving side's king. Castling is emitted only after structural checks; attack-map checks for the king's starting, transit, and destination squares have not been implemented yet.
+`moves` currently reports pseudo-legal moves. Attack detection is implemented, but moves that expose the moving side's king are not yet filtered. Castling is emitted after structural checks; attack-map checks for the king's starting, transit, and destination squares are the next step.
 
 ## Running the prototype
 

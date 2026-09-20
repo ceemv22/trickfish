@@ -275,6 +275,46 @@ class CastlingMovesTest(unittest.TestCase):
         self.assert_moves("4k3/8/8/8/8/8/8/R2K3R w KQ - 0 1", set())
 
 
+class AttackMapTest(unittest.TestCase):
+    def square(self, name: str) -> int:
+        return (8 - int(name[1])) * 8 + "abcdefgh".index(name[0])
+
+    def assert_attacked(self, fen: str, square: str, by_side: str) -> None:
+        position = Position.from_fen(fen)
+        self.assertTrue(position.is_square_attacked(self.square(square), by_side))
+
+    def assert_not_attacked(self, fen: str, square: str, by_side: str) -> None:
+        position = Position.from_fen(fen)
+        self.assertFalse(position.is_square_attacked(self.square(square), by_side))
+
+    def test_pawn_attacks_for_both_colors(self) -> None:
+        self.assert_attacked("7k/8/8/3P4/8/8/8/K7 w - - 0 1", "c6", "w")
+        self.assert_attacked("7k/8/8/3P4/8/8/8/K7 w - - 0 1", "e6", "w")
+        self.assert_not_attacked("7k/8/8/3P4/8/8/8/K7 w - - 0 1", "d6", "w")
+        self.assert_attacked("7k/8/8/3p4/8/8/8/K7 b - - 0 1", "c4", "b")
+        self.assert_attacked("7k/8/8/3p4/8/8/8/K7 b - - 0 1", "e4", "b")
+
+    def test_knight_and_king_attacks(self) -> None:
+        self.assert_attacked("7k/8/8/8/3N4/8/8/K7 w - - 0 1", "f5", "w")
+        self.assert_not_attacked("7k/8/8/8/3N4/8/8/K7 w - - 0 1", "d5", "w")
+        self.assert_attacked("7k/8/8/8/3K4/8/8/8 w - - 0 1", "e5", "w")
+
+    def test_sliding_attacks_stop_at_a_blocker(self) -> None:
+        self.assert_attacked("7k/8/8/8/3B4/8/8/K7 w - - 0 1", "h8", "w")
+        self.assert_attacked("7k/8/8/8/3R4/8/8/K7 w - - 0 1", "d8", "w")
+        self.assert_attacked("7k/8/8/8/3Q4/8/8/K7 w - - 0 1", "h4", "w")
+        self.assert_not_attacked("7k/8/8/8/3B4/8/5P2/K7 w - - 0 1", "g1", "w")
+        self.assert_not_attacked("7k/8/8/8/3R4/8/3P4/K7 w - - 0 1", "d1", "w")
+        self.assert_attacked("3R3k/3P4/8/8/1R6/8/8/K7 w - - 0 1", "d4", "w")
+
+    def test_invalid_attack_query(self) -> None:
+        position = Position.from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1")
+        with self.assertRaises(ValueError):
+            position.is_square_attacked(64, "w")
+        with self.assertRaises(ValueError):
+            position.is_square_attacked(0, "white")
+
+
 class PawnMovesTest(unittest.TestCase):
     def assert_moves(self, fen: str, expected: set[str]) -> None:
         position = Position.from_fen(fen)
