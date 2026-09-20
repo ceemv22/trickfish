@@ -15,7 +15,13 @@ class CliTest(unittest.TestCase):
     def test_moves_uses_the_starting_position_by_default(self) -> None:
         result, output = self.invoke(["moves"])
         self.assertEqual(result, 0)
-        self.assertEqual(output.splitlines(), ["b1a3", "b1c3", "g1f3", "g1h3"])
+        self.assertEqual(
+            output.splitlines(),
+            [
+                "b1a3", "b1c3", "g1f3", "g1h3", "a2a3", "b2b3",
+                "c2c3", "d2d3", "e2e3", "f2f3", "g2g3", "h2h3",
+            ],
+        )
 
     def test_moves_accepts_a_fen(self) -> None:
         result, output = self.invoke(

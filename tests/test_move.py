@@ -245,3 +245,37 @@ class KingMovesTest(unittest.TestCase):
             "8/8/8/8/3k4/8/7K/8 b - - 0 1",
             {"d4c3", "d4c4", "d4c5", "d4d3", "d4d5", "d4e3", "d4e4", "d4e5"},
         )
+
+
+class PawnMovesTest(unittest.TestCase):
+    def assert_moves(self, fen: str, expected: set[str]) -> None:
+        position = Position.from_fen(fen)
+        moves = position.pseudo_legal_pawn_moves()
+        self.assertEqual({move.to_uci() for move in moves}, expected)
+        self.assertEqual(len(moves), len(expected))
+        self.assertEqual(position.to_fen(), fen)
+
+    def test_white_and_black_single_steps(self) -> None:
+        self.assert_moves("7k/8/8/8/3P4/8/8/K7 w - - 0 1", {"d4d5"})
+        self.assert_moves("7k/8/8/3p4/8/8/K7/8 b - - 0 1", {"d5d4"})
+
+    def test_white_blocking_and_captures(self) -> None:
+        self.assert_moves(
+            "7k/8/8/2pNp3/3P4/8/8/K7 w - - 0 1",
+            {"d4c5", "d4e5"},
+        )
+
+    def test_black_blocking_and_captures(self) -> None:
+        self.assert_moves(
+            "7k/8/8/3p4/2NnN3/8/K7/8 b - - 0 1",
+            {"d5c4", "d5e4"},
+        )
+
+    def test_enemy_king_cannot_be_captured(self) -> None:
+        self.assert_moves(
+            "8/8/8/2k1n3/3P4/8/8/K7 w - - 0 1",
+            {"d4d5", "d4e5"},
+        )
+
+    def test_promotion_rank_waits_for_promotion_support(self) -> None:
+        self.assert_moves("7k/3P4/8/8/8/8/8/K7 w - - 0 1", set())
