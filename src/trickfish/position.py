@@ -156,6 +156,53 @@ class Position:
                 ):
                     continue
                 moves.append(Move(source, target))
+        return tuple(moves) + self.pseudo_legal_castling_moves()
+
+    def pseudo_legal_castling_moves(self) -> tuple[Move, ...]:
+        if self.side_to_move == "w":
+            return self._pseudo_legal_castling_moves_for_white()
+        return self._pseudo_legal_castling_moves_for_black()
+
+    def _pseudo_legal_castling_moves_for_white(self) -> tuple[Move, ...]:
+        moves: list[Move] = []
+        if self.board[60] != "K":
+            return tuple(moves)
+        if (
+            "K" in self.castling
+            and self.board[63] == "R"
+            and self.board[61] is None
+            and self.board[62] is None
+        ):
+            moves.append(Move(60, 62, castling=True))
+        if (
+            "Q" in self.castling
+            and self.board[56] == "R"
+            and self.board[57] is None
+            and self.board[58] is None
+            and self.board[59] is None
+        ):
+            moves.append(Move(60, 58, castling=True))
+        return tuple(moves)
+
+    def _pseudo_legal_castling_moves_for_black(self) -> tuple[Move, ...]:
+        moves: list[Move] = []
+        if self.board[4] != "k":
+            return tuple(moves)
+        if (
+            "k" in self.castling
+            and self.board[7] == "r"
+            and self.board[5] is None
+            and self.board[6] is None
+        ):
+            moves.append(Move(4, 6, castling=True))
+        if (
+            "q" in self.castling
+            and self.board[0] == "r"
+            and self.board[1] is None
+            and self.board[2] is None
+            and self.board[3] is None
+        ):
+            moves.append(Move(4, 2, castling=True))
         return tuple(moves)
 
     def pseudo_legal_pawn_moves(self) -> tuple[Move, ...]:

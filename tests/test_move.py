@@ -24,6 +24,7 @@ class MoveTest(unittest.TestCase):
         move = Move(57, 42)
         self.assertEqual(move, Move(57, 42))
         self.assertFalse(move.en_passant)
+        self.assertTrue(Move(60, 62, castling=True).castling)
         with self.assertRaises(FrozenInstanceError):
             move.to_square = 40
 
@@ -251,6 +252,27 @@ class KingMovesTest(unittest.TestCase):
             "8/8/8/8/3k4/8/7K/8 b - - 0 1",
             {"d4c3", "d4c4", "d4c5", "d4d3", "d4d5", "d4e3", "d4e4", "d4e5"},
         )
+
+
+class CastlingMovesTest(unittest.TestCase):
+    def assert_moves(self, fen: str, expected: set[str]) -> None:
+        position = Position.from_fen(fen)
+        moves = position.pseudo_legal_castling_moves()
+        self.assertEqual({move.to_uci() for move in moves}, expected)
+        self.assertTrue(all(move.castling for move in moves))
+        self.assertEqual(position.to_fen(), fen)
+
+    def test_white_short_and_long_castling(self) -> None:
+        self.assert_moves("4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1", {"e1c1", "e1g1"})
+
+    def test_black_short_and_long_castling(self) -> None:
+        self.assert_moves("r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1", {"e8c8", "e8g8"})
+
+    def test_castling_requires_rights_king_rook_and_empty_path(self) -> None:
+        self.assert_moves("4k3/8/8/8/8/8/8/R3K2R w - - 0 1", set())
+        self.assert_moves("4k3/8/8/8/8/8/8/4K3 w KQ - 0 1", set())
+        self.assert_moves("4k3/8/8/8/8/8/8/R3KNR1 w KQ - 0 1", {"e1c1"})
+        self.assert_moves("4k3/8/8/8/8/8/8/R2K3R w KQ - 0 1", set())
 
 
 class PawnMovesTest(unittest.TestCase):

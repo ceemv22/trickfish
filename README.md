@@ -16,11 +16,12 @@ The repository contains an early Python position prototype. It is not yet a play
 | Board state | Immutable 64-square tuple |
 | Move representation | Immutable UCI-coordinate move value |
 | Pseudo-legal moves | Knight, bishop, rook, queen, king, and basic pawn moves |
-| Pawn support | Single step and ordinary diagonal captures |
+| Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
+| Castling | Structural checks for rights, piece placement, and empty path |
 | CLI | Position display and move listing |
 | Tests | FEN, move values, CLI, and piece-specific move generation |
 
-`moves` currently reports pseudo-legal moves. It does not reject moves that expose the moving side's king, and it does not yet implement castling, a pawn double step, promotion, or en passant.
+`moves` currently reports pseudo-legal moves. It does not reject moves that expose the moving side's king. Castling is emitted only after structural checks; attack-map checks for the king's starting, transit, and destination squares have not been implemented yet.
 
 ## Running the prototype
 
