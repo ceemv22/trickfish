@@ -8,12 +8,17 @@ class MoveTest(unittest.TestCase):
     def test_uci_coordinates(self) -> None:
         self.assertEqual(Move(57, 42).to_uci(), "b1c3")
         self.assertEqual(Move(6, 23).to_uci(), "g8h6")
+        self.assertEqual(Move(11, 3, "q").to_uci(), "d7d8q")
 
     def test_invalid_squares(self) -> None:
         for source, target in ((-1, 0), (0, 64), (64, 0), (0, -1), (5, 5)):
             with self.subTest(source=source, target=target):
                 with self.assertRaises(ValueError):
                     Move(source, target)
+        for promotion in ("Q", "p", "x", "queen"):
+            with self.subTest(promotion=promotion):
+                with self.assertRaises(ValueError):
+                    Move(11, 3, promotion)
 
     def test_immutable_value(self) -> None:
         move = Move(57, 42)
@@ -285,5 +290,21 @@ class PawnMovesTest(unittest.TestCase):
             {"d4d5", "d4e5"},
         )
 
-    def test_promotion_rank_waits_for_promotion_support(self) -> None:
-        self.assert_moves("7k/3P4/8/8/8/8/8/K7 w - - 0 1", set())
+    def test_white_and_black_promotions(self) -> None:
+        self.assert_moves(
+            "7k/3P4/8/8/8/8/8/K7 w - - 0 1",
+            {"d7d8q", "d7d8r", "d7d8b", "d7d8n"},
+        )
+        self.assert_moves(
+            "7k/8/8/8/8/8/3p4/K7 b - - 0 1",
+            {"d2d1q", "d2d1r", "d2d1b", "d2d1n"},
+        )
+
+    def test_promotion_captures_and_enemy_king(self) -> None:
+        self.assert_moves(
+            "2k1n3/3P4/8/8/8/8/8/K7 w - - 0 1",
+            {
+                "d7d8q", "d7d8r", "d7d8b", "d7d8n",
+                "d7e8q", "d7e8r", "d7e8b", "d7e8n",
+            },
+        )

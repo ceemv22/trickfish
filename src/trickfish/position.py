@@ -168,11 +168,11 @@ class Position:
                 continue
             rank, file = divmod(source, 8)
             target_rank = rank + rank_step
-            if not 0 <= target_rank < 8 or target_rank in {0, 7}:
+            if not 0 <= target_rank < 8:
                 continue
             forward = target_rank * 8 + file
             if self.board[forward] is None:
-                moves.append(Move(source, forward))
+                self._append_pawn_move(moves, source, forward)
                 if rank == starting_rank:
                     double_target_rank = rank + 2 * rank_step
                     double_target = double_target_rank * 8 + file
@@ -189,8 +189,14 @@ class Position:
                     and occupant.isupper() != pawn.isupper()
                     and occupant.lower() != "k"
                 ):
-                    moves.append(Move(source, target))
+                    self._append_pawn_move(moves, source, target)
         return tuple(moves)
+
+    def _append_pawn_move(self, moves: list[Move], source: int, target: int) -> None:
+        if target // 8 in {0, 7}:
+            moves.extend(Move(source, target, promotion) for promotion in "qrbn")
+        else:
+            moves.append(Move(source, target))
 
     def pseudo_legal_moves(self) -> tuple[Move, ...]:
         return (
