@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 
 from .position import FenError, Position, STARTING_FEN
+from .evaluation import evaluate
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -10,13 +11,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "command_or_fen",
         nargs="?",
-        help="position, moves, pseudo-moves, status, perft, divide, or a FEN position",
+        help="position, moves, pseudo-moves, status, eval, perft, divide, or a FEN position",
     )
     parser.add_argument("argument", nargs="?", help="FEN position or perft depth")
     parser.add_argument("fen", nargs="?", help="FEN position for perft")
     arguments = parser.parse_args(argv)
 
-    if arguments.command_or_fen in {"position", "moves", "pseudo-moves", "status"}:
+    if arguments.command_or_fen in {"position", "moves", "pseudo-moves", "status", "eval"}:
         command = arguments.command_or_fen
         if arguments.fen is not None:
             parser.error("a FEN must be quoted as one argument")
@@ -60,6 +61,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "status":
         print(position.game_status())
+        return 0
+
+    if command == "eval":
+        print(evaluate(position))
         return 0
 
     if command in {"moves", "pseudo-moves"}:

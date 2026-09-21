@@ -69,6 +69,11 @@ class CliTest(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(output, "checkmate\n")
 
+    def test_eval_reports_white_perspective_centipawns(self) -> None:
+        result, output = self.invoke(["eval", "7k/8/8/8/8/8/8/KQ6 w - - 0 1"])
+        self.assertEqual(result, 0)
+        self.assertEqual(output, "900\n")
+
     def test_fen_without_a_command_still_renders_the_position(self) -> None:
         result, output = self.invoke(["8/8/8/8/8/8/K7/7k w - - 0 1"])
         self.assertEqual(result, 0)
