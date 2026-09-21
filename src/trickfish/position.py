@@ -374,6 +374,14 @@ class Position:
             return 1
         return sum(self.make_move(move).perft(depth - 1) for move in self.legal_moves())
 
+    def perft_divide(self, depth: int) -> tuple[tuple[Move, int], ...]:
+        if depth < 1:
+            raise ValueError("perft divide depth must be at least one")
+        return tuple(
+            (move, self.make_move(move).perft(depth - 1))
+            for move in self.legal_moves()
+        )
+
     def make_move(self, move: Move) -> "Position":
         piece = self.board[move.from_square]
         if piece is None:

@@ -20,13 +20,13 @@ The repository contains an early Python position prototype. It is not yet a play
 | Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
 | Attack map | Detect attacks by either side without changing side to move |
-| Perft | Recursive legal-node counter with starting-position baselines through depth 3 |
-| CLI | Position display, legal/pseudo-legal move listing, and perft |
+| Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
+| CLI | Position display, legal/pseudo-legal move listing, perft, and divide |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
 
-The current perft baseline is the standard initial position: depth 1 = 20, depth 2 = 400, depth 3 = 8902. These are only the first regression checks; a broader established perft suite is required before search begins.
+The perft suite covers the initial position plus standard positions that exercise castling, check-evasion, promotions, and move application. Each currently runs through depth 3. `divide` prints the node count below every legal root move so an incorrect branch can be isolated without inspecting the full tree.
 
 ## Running the prototype
 
@@ -41,6 +41,7 @@ python -m trickfish.cli moves
 python -m trickfish.cli pseudo-moves
 python -m trickfish.cli moves "8/7k/8/8/3Q4/8/K7/8 w - - 0 1"
 python -m trickfish.cli perft 3
+python -m trickfish.cli divide 3
 python -m unittest discover -s tests -v
 ```
 
@@ -88,7 +89,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Pawn double step, promotion, and en passant
 - [x] Castling and attack detection
 - [x] Legal move filtering and initial-position perft baselines through depth 3
-- [ ] Established multi-position perft suite and divide output
+- [x] Established multi-position perft suite and divide output
 - [ ] Make/unmake and Zobrist hashing
 - [ ] First evaluation and alpha-beta search
 - [ ] UCI support and time management

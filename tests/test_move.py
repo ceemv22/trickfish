@@ -368,10 +368,48 @@ class PerftTest(unittest.TestCase):
         self.assertEqual(position.perft(2), 400)
         self.assertEqual(position.perft(3), 8902)
 
+    def test_standard_perft_positions(self) -> None:
+        cases = (
+            (
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+                (48, 2039, 97862),
+            ),
+            (
+                "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+                (14, 191, 2812),
+            ),
+            (
+                "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+                (6, 264, 9467),
+            ),
+            (
+                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+                (44, 1486, 62379),
+            ),
+        )
+        for fen, expected in cases:
+            with self.subTest(fen=fen):
+                position = Position.from_fen(fen)
+                self.assertEqual(
+                    tuple(position.perft(depth) for depth in range(1, 4)), expected
+                )
+
+    def test_divide_sums_to_the_perft_count(self) -> None:
+        position = Position.from_fen(STARTING_FEN)
+        divide = position.perft_divide(2)
+        self.assertEqual(len(divide), 20)
+        self.assertEqual(sum(nodes for _, nodes in divide), 400)
+        self.assertTrue(all(nodes == 20 for _, nodes in divide))
+
     def test_negative_depth_is_rejected(self) -> None:
         position = Position.from_fen(STARTING_FEN)
         with self.assertRaises(ValueError):
             position.perft(-1)
+
+    def test_divide_rejects_depth_zero(self) -> None:
+        position = Position.from_fen(STARTING_FEN)
+        with self.assertRaises(ValueError):
+            position.perft_divide(0)
 
 
 class PawnMovesTest(unittest.TestCase):

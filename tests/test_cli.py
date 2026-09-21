@@ -51,6 +51,17 @@ class CliTest(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(output, "400\n")
 
+    def test_divide_reports_each_root_move(self) -> None:
+        result, output = self.invoke(["divide", "2"])
+        self.assertEqual(result, 0)
+        self.assertEqual(len(output.splitlines()), 20)
+        self.assertEqual(set(output.splitlines()), {
+            "a2a3: 20", "a2a4: 20", "b1a3: 20", "b1c3: 20", "b2b3: 20",
+            "b2b4: 20", "c2c3: 20", "c2c4: 20", "d2d3: 20", "d2d4: 20",
+            "e2e3: 20", "e2e4: 20", "f2f3: 20", "f2f4: 20", "g1f3: 20",
+            "g1h3: 20", "g2g3: 20", "g2g4: 20", "h2h3: 20", "h2h4: 20",
+        })
+
     def test_fen_without_a_command_still_renders_the_position(self) -> None:
         result, output = self.invoke(["8/8/8/8/8/8/K7/7k w - - 0 1"])
         self.assertEqual(result, 0)
