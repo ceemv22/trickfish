@@ -367,6 +367,13 @@ class Position:
                 moves.append(move)
         return tuple(moves)
 
+    def perft(self, depth: int) -> int:
+        if depth < 0:
+            raise ValueError("perft depth must not be negative")
+        if depth == 0:
+            return 1
+        return sum(self.make_move(move).perft(depth - 1) for move in self.legal_moves())
+
     def make_move(self, move: Move) -> "Position":
         piece = self.board[move.from_square]
         if piece is None:

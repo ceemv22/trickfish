@@ -46,6 +46,11 @@ class CliTest(unittest.TestCase):
         self.assertNotIn("e2c1", legal_output.splitlines())
         self.assertIn("e2c1", pseudo_output.splitlines())
 
+    def test_perft_reports_the_node_count(self) -> None:
+        result, output = self.invoke(["perft", "2"])
+        self.assertEqual(result, 0)
+        self.assertEqual(output, "400\n")
+
     def test_fen_without_a_command_still_renders_the_position(self) -> None:
         result, output = self.invoke(["8/8/8/8/8/8/K7/7k w - - 0 1"])
         self.assertEqual(result, 0)

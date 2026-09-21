@@ -10,24 +10,44 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "command_or_fen",
         nargs="?",
-        help="position, moves, pseudo-moves, or a FEN position",
+        help="position, moves, pseudo-moves, perft, or a FEN position",
     )
-    parser.add_argument("fen", nargs="?", help="FEN position")
+    parser.add_argument("argument", nargs="?", help="FEN position or perft depth")
+    parser.add_argument("fen", nargs="?", help="FEN position for perft")
     arguments = parser.parse_args(argv)
 
     if arguments.command_or_fen in {"position", "moves", "pseudo-moves"}:
         command = arguments.command_or_fen
+        if arguments.fen is not None:
+            parser.error("a FEN must be quoted as one argument")
+        fen = arguments.argument or STARTING_FEN
+        depth = None
+    elif arguments.command_or_fen == "perft":
+        command = "perft"
+        if arguments.argument is None:
+            parser.error("perft requires a depth")
+        try:
+            depth = int(arguments.argument)
+        except ValueError:
+            parser.error("perft depth must be an integer")
+        if depth < 0:
+            parser.error("perft depth must not be negative")
         fen = arguments.fen or STARTING_FEN
-    elif arguments.fen is not None:
+    elif arguments.argument is not None:
         parser.error("a FEN must be quoted as one argument")
     else:
         command = "position"
         fen = arguments.command_or_fen or STARTING_FEN
+        depth = None
 
     try:
         position = Position.from_fen(fen)
     except FenError as error:
         parser.error(str(error))
+
+    if command == "perft":
+        print(position.perft(depth))
+        return 0
 
     if command in {"moves", "pseudo-moves"}:
         moves = position.legal_moves() if command == "moves" else position.pseudo_legal_moves()

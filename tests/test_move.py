@@ -360,6 +360,20 @@ class LegalMovesTest(unittest.TestCase):
         self.assertNotIn("e5d6", {move.to_uci() for move in position.legal_moves()})
 
 
+class PerftTest(unittest.TestCase):
+    def test_starting_position_counts(self) -> None:
+        position = Position.from_fen(STARTING_FEN)
+        self.assertEqual(position.perft(0), 1)
+        self.assertEqual(position.perft(1), 20)
+        self.assertEqual(position.perft(2), 400)
+        self.assertEqual(position.perft(3), 8902)
+
+    def test_negative_depth_is_rejected(self) -> None:
+        position = Position.from_fen(STARTING_FEN)
+        with self.assertRaises(ValueError):
+            position.perft(-1)
+
+
 class PawnMovesTest(unittest.TestCase):
     def assert_moves(self, fen: str, expected: set[str]) -> None:
         position = Position.from_fen(fen)

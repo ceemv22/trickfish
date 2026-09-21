@@ -20,7 +20,8 @@ The repository contains an early Python position prototype. It is not yet a play
 | Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
 | Attack map | Detect attacks by either side without changing side to move |
-| CLI | Position display, legal move listing, and pseudo-legal debug listing |
+| Perft | Recursive legal-node counter with starting-position baselines through depth 3 |
+| CLI | Position display, legal/pseudo-legal move listing, and perft |
 | Tests | FEN, move values, CLI, and piece-specific move generation |
 
 `moves` reports legal moves. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
@@ -37,6 +38,7 @@ python -m trickfish.cli
 python -m trickfish.cli moves
 python -m trickfish.cli pseudo-moves
 python -m trickfish.cli moves "8/7k/8/8/3Q4/8/K7/8 w - - 0 1"
+python -m trickfish.cli perft 3
 python -m unittest discover -s tests -v
 ```
 
@@ -82,9 +84,9 @@ This creates a testable distinction between a move that is objectively best, a m
 - [x] Pseudo-legal knight, bishop, rook, queen, king, and basic pawn moves
 - [x] Immutable successor position for every supported move type
 - [x] Legal move filtering through the attack map
-- [ ] Pawn double step, promotion, and en passant
-- [ ] Castling and attack detection
-- [ ] Legal move filtering and perft baselines
+- [x] Pawn double step, promotion, and en passant
+- [x] Castling and attack detection
+- [x] Legal move filtering and starting-position perft baselines through depth 3
 - [ ] Make/unmake and Zobrist hashing
 - [ ] First evaluation and alpha-beta search
 - [ ] UCI support and time management
