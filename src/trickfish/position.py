@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .move import Move
+from .zobrist import calculate_key
 
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 PIECES = frozenset("prnbqkPRNBQK")
@@ -382,6 +383,15 @@ class Position:
             for move in self.legal_moves()
         )
 
+    @property
+    def zobrist_key(self) -> int:
+        return calculate_key(
+            self.board,
+            self.side_to_move,
+            self.castling,
+            self._repetition_en_passant_file(),
+        )
+
     def make_move(self, move: Move) -> "Position":
         piece = self.board[move.from_square]
         if piece is None:
@@ -503,6 +513,19 @@ class Position:
 
     def _king_square(self, side: str) -> int:
         return self.board.index("K" if side == "w" else "k")
+
+    def _repetition_en_passant_file(self) -> str | None:
+        if self.en_passant is None:
+            return None
+        opponent = "b" if self.side_to_move == "w" else "w"
+        for move in self.pseudo_legal_pawn_moves():
+            if not move.en_passant:
+                continue
+            next_position = self.make_move(move)
+            king_square = next_position._king_square(self.side_to_move)
+            if not next_position.is_square_attacked(king_square, opponent):
+                return self.en_passant[0]
+        return None
 
     def _pseudo_legal_sliding_moves(
         self, piece: str, directions: tuple[tuple[int, int], ...]

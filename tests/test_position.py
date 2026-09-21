@@ -78,6 +78,37 @@ class PositionTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             king_position.make_move(Move(36, 7))
 
+    def test_zobrist_key_ignores_move_counters(self) -> None:
+        first = Position.from_fen(STARTING_FEN)
+        second = Position.from_fen(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 37 91"
+        )
+        self.assertEqual(first.zobrist_key, second.zobrist_key)
+
+    def test_zobrist_key_tracks_board_side_and_castling(self) -> None:
+        starting = Position.from_fen(STARTING_FEN)
+        self.assertNotEqual(
+            starting.zobrist_key,
+            Position.from_fen(STARTING_FEN.replace(" w ", " b ")).zobrist_key,
+        )
+        self.assertNotEqual(
+            starting.zobrist_key,
+            Position.from_fen(STARTING_FEN.replace(" KQkq ", " - ")).zobrist_key,
+        )
+        self.assertNotEqual(starting.zobrist_key, starting.make_move(Move(52, 36)).zobrist_key)
+
+    def test_zobrist_key_uses_en_passant_only_when_legal(self) -> None:
+        uncapturable = Position.from_fen(
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+        )
+        without_target = Position.from_fen(
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+        )
+        capturable = Position.from_fen("7k/8/8/3pP3/8/8/8/K7 w - d6 0 1")
+        without_capturable_target = Position.from_fen("7k/8/8/3pP3/8/8/8/K7 w - - 0 1")
+        self.assertEqual(uncapturable.zobrist_key, without_target.zobrist_key)
+        self.assertNotEqual(capturable.zobrist_key, without_capturable_target.zobrist_key)
+
 
 if __name__ == "__main__":
     unittest.main()

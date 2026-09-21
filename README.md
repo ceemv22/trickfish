@@ -20,6 +20,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
 | Attack map | Detect attacks by either side without changing side to move |
+| Position key | Deterministic 64-bit Zobrist key for board, side, castling, and legal en passant state |
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, legal/pseudo-legal move listing, perft, and divide |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
@@ -90,7 +91,9 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Castling and attack detection
 - [x] Legal move filtering and initial-position perft baselines through depth 3
 - [x] Established multi-position perft suite and divide output
-- [ ] Make/unmake and Zobrist hashing
+- [x] Deterministic Zobrist position key with legal en passant treatment
+- [ ] Repetition history and draw adjudication
+- [ ] Mutable make/unmake for the C++ search core
 - [ ] First evaluation and alpha-beta search
 - [ ] UCI support and time management
 - [ ] Candidate verification
