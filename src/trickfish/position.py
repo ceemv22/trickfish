@@ -357,6 +357,125 @@ class Position:
             + self.pseudo_legal_pawn_moves()
         )
 
+    def make_move(self, move: Move) -> "Position":
+        piece = self.board[move.from_square]
+        if piece is None:
+            raise ValueError("source square is empty")
+        if piece.isupper() != (self.side_to_move == "w"):
+            raise ValueError("move must use the side to move")
+        if move.en_passant and move.castling:
+            raise ValueError("move cannot be en passant and castling")
+
+        board = list(self.board)
+        captured_piece = board[move.to_square]
+        if captured_piece is not None and captured_piece.isupper() == piece.isupper():
+            raise ValueError("destination contains a friendly piece")
+        if captured_piece is not None and captured_piece.lower() == "k":
+            raise ValueError("a king cannot be captured")
+        if move.castling and move not in self.legal_castling_moves():
+            raise ValueError("castling move is not legal")
+
+        board[move.from_square] = None
+        if move.en_passant:
+            if piece.lower() != "p" or self.en_passant is None:
+                raise ValueError("en passant move is not available")
+            if move.to_square != self._square_index(self.en_passant):
+                raise ValueError("en passant target does not match the position")
+            if captured_piece is not None:
+                raise ValueError("en passant target must be empty")
+            captured_square = move.to_square + (8 if piece == "P" else -8)
+            captured_piece = board[captured_square]
+            expected_pawn = "p" if piece == "P" else "P"
+            if captured_piece != expected_pawn:
+                raise ValueError("en passant captured pawn is missing")
+            board[captured_square] = None
+
+        board[move.to_square] = piece
+        if move.promotion is not None:
+            if piece.lower() != "p" or move.to_square // 8 not in {0, 7}:
+                raise ValueError("promotion must move a pawn to the final rank")
+            board[move.to_square] = (
+                move.promotion.upper() if piece.isupper() else move.promotion
+            )
+        elif piece.lower() == "p" and move.to_square // 8 in {0, 7}:
+            raise ValueError("pawn move to the final rank requires promotion")
+
+        if move.castling:
+            rook_source, rook_target = self._castling_rook_squares(move)
+            rook = board[rook_source]
+            if rook != ("R" if piece == "K" else "r"):
+                raise ValueError("castling rook is missing")
+            board[rook_source] = None
+            board[rook_target] = rook
+
+        castling = self._updated_castling_rights(move, piece, captured_piece)
+        en_passant = None
+        if piece.lower() == "p" and abs(move.to_square - move.from_square) == 16:
+            en_passant = self._square_name((move.to_square + move.from_square) // 2)
+        halfmove_clock = (
+            0 if piece.lower() == "p" or captured_piece is not None else self.halfmove_clock + 1
+        )
+        fullmove_number = self.fullmove_number + (1 if self.side_to_move == "b" else 0)
+
+        return Position(
+            tuple(board),
+            "b" if self.side_to_move == "w" else "w",
+            castling,
+            en_passant,
+            halfmove_clock,
+            fullmove_number,
+        )
+
+    def _castling_rook_squares(self, move: Move) -> tuple[int, int]:
+        pairs = {
+            (60, 62): (63, 61),
+            (60, 58): (56, 59),
+            (4, 6): (7, 5),
+            (4, 2): (0, 3),
+        }
+        try:
+            return pairs[(move.from_square, move.to_square)]
+        except KeyError as error:
+            raise ValueError("invalid castling destination") from error
+
+    def _updated_castling_rights(
+        self, move: Move, piece: str, captured_piece: str | None
+    ) -> str:
+        removed: set[str] = set()
+        if piece == "K":
+            removed.update("KQ")
+        elif piece == "k":
+            removed.update("kq")
+        elif piece == "R":
+            if move.from_square == 63:
+                removed.add("K")
+            elif move.from_square == 56:
+                removed.add("Q")
+        elif piece == "r":
+            if move.from_square == 7:
+                removed.add("k")
+            elif move.from_square == 0:
+                removed.add("q")
+
+        if captured_piece == "R":
+            if move.to_square == 63:
+                removed.add("K")
+            elif move.to_square == 56:
+                removed.add("Q")
+        elif captured_piece == "r":
+            if move.to_square == 7:
+                removed.add("k")
+            elif move.to_square == 0:
+                removed.add("q")
+
+        remaining = "".join(
+            right for right in "KQkq" if right in self.castling and right not in removed
+        )
+        return remaining or "-"
+
+    def _square_name(self, square: int) -> str:
+        return f"{FILES[square % 8]}{8 - square // 8}"
+
     def _pseudo_legal_sliding_moves(
         self, piece: str, directions: tuple[tuple[int, int], ...]
     ) -> tuple[Move, ...]:

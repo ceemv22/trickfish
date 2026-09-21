@@ -15,6 +15,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | FEN | Parse, validate, render, and serialize |
 | Board state | Immutable 64-square tuple |
 | Move representation | Immutable UCI-coordinate move value |
+| Move application | Immutable successor position with clocks, rights, en passant, promotion, and castling updates |
 | Pseudo-legal moves | Knight, bishop, rook, queen, king, and basic pawn moves |
 | Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
@@ -78,6 +79,7 @@ This creates a testable distinction between a move that is objectively best, a m
 - [x] FEN parsing, serialization, and board rendering
 - [x] Move value and UCI coordinates
 - [x] Pseudo-legal knight, bishop, rook, queen, king, and basic pawn moves
+- [x] Immutable successor position for every supported move type
 - [ ] Pawn double step, promotion, and en passant
 - [ ] Castling and attack detection
 - [ ] Legal move filtering and perft baselines
