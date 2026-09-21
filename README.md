@@ -20,11 +20,12 @@ The repository contains an early Python position prototype. It is not yet a play
 | Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
 | Attack map | Detect attacks by either side without changing side to move |
+| Game state | Check, checkmate, stalemate, and ongoing-position status |
 | Position key | Deterministic 64-bit Zobrist key for board, side, castling, and legal en passant state |
 | Game history | Immutable position sequence with threefold-repetition counting |
 | Draw rules | Threefold repetition, 50/75-move thresholds, and insufficient-material detection |
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
-| CLI | Position display, legal/pseudo-legal move listing, perft, and divide |
+| CLI | Position display, game status, legal/pseudo-legal move listing, perft, and divide |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
@@ -42,6 +43,7 @@ $env:PYTHONPATH="src"
 python -m trickfish.cli
 python -m trickfish.cli moves
 python -m trickfish.cli pseudo-moves
+python -m trickfish.cli status "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"
 python -m trickfish.cli moves "8/7k/8/8/3Q4/8/K7/8 w - - 0 1"
 python -m trickfish.cli perft 3
 python -m trickfish.cli divide 3
@@ -92,6 +94,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Pawn double step, promotion, and en passant
 - [x] Castling and attack detection
 - [x] Legal move filtering and initial-position perft baselines through depth 3
+- [x] Check, checkmate, stalemate, and game-state status
 - [x] Established multi-position perft suite and divide output
 - [x] Deterministic Zobrist position key with legal en passant treatment
 - [x] Repetition history and threefold-repetition counting

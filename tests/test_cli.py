@@ -62,6 +62,13 @@ class CliTest(unittest.TestCase):
             "g1h3: 20", "g2g3: 20", "g2g4: 20", "h2h3: 20", "h2h4: 20",
         })
 
+    def test_status_reports_checkmate(self) -> None:
+        result, output = self.invoke(
+            ["status", "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"]
+        )
+        self.assertEqual(result, 0)
+        self.assertEqual(output, "checkmate\n")
+
     def test_fen_without_a_command_still_renders_the_position(self) -> None:
         result, output = self.invoke(["8/8/8/8/8/8/K7/7k w - - 0 1"])
         self.assertEqual(result, 0)

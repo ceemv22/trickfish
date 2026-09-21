@@ -109,6 +109,22 @@ class PositionTest(unittest.TestCase):
         self.assertEqual(uncapturable.zobrist_key, without_target.zobrist_key)
         self.assertNotEqual(capturable.zobrist_key, without_capturable_target.zobrist_key)
 
+    def test_check_statuses(self) -> None:
+        checked = Position.from_fen("6k1/8/8/8/8/8/8/K5R1 b - - 0 1")
+        checkmate = Position.from_fen("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1")
+        stalemate = Position.from_fen("7k/5Q2/7K/8/8/8/8/8 b - - 0 1")
+        self.assertTrue(checked.is_in_check())
+        self.assertEqual(checked.game_status(), "check")
+        self.assertEqual(checkmate.game_status(), "checkmate")
+        self.assertEqual(stalemate.game_status(), "stalemate")
+
+    def test_in_check_can_query_either_side(self) -> None:
+        position = Position.from_fen("6k1/8/8/8/8/8/8/K5R1 b - - 0 1")
+        self.assertTrue(position.is_in_check("b"))
+        self.assertFalse(position.is_in_check("w"))
+        with self.assertRaises(ValueError):
+            position.is_in_check("white")
+
 
 if __name__ == "__main__":
     unittest.main()

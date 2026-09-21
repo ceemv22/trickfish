@@ -368,6 +368,18 @@ class Position:
                 moves.append(move)
         return tuple(moves)
 
+    def is_in_check(self, side: str | None = None) -> bool:
+        checked_side = side or self.side_to_move
+        if checked_side not in {"w", "b"}:
+            raise ValueError("side must be 'w' or 'b'")
+        opponent = "b" if checked_side == "w" else "w"
+        return self.is_square_attacked(self._king_square(checked_side), opponent)
+
+    def game_status(self) -> str:
+        if self.legal_moves():
+            return "check" if self.is_in_check() else "ongoing"
+        return "checkmate" if self.is_in_check() else "stalemate"
+
     def perft(self, depth: int) -> int:
         if depth < 0:
             raise ValueError("perft depth must not be negative")
