@@ -25,3 +25,12 @@ class GameHistory:
 
     def can_claim_threefold_repetition(self) -> bool:
         return self.repetition_count() >= 3
+
+    def can_claim_fifty_move_draw(self) -> bool:
+        return self.current.halfmove_clock >= 100
+
+    def is_automatic_seventy_five_move_draw(self) -> bool:
+        return self.current.halfmove_clock >= 150
+
+    def is_draw_by_insufficient_material(self) -> bool:
+        return self.current.is_insufficient_material()

@@ -22,6 +22,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Attack map | Detect attacks by either side without changing side to move |
 | Position key | Deterministic 64-bit Zobrist key for board, side, castling, and legal en passant state |
 | Game history | Immutable position sequence with threefold-repetition counting |
+| Draw rules | Threefold repetition, 50/75-move thresholds, and insufficient-material detection |
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, legal/pseudo-legal move listing, perft, and divide |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
@@ -94,7 +95,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Established multi-position perft suite and divide output
 - [x] Deterministic Zobrist position key with legal en passant treatment
 - [x] Repetition history and threefold-repetition counting
-- [ ] Fifty-move rule and insufficient-material adjudication
+- [x] Fifty-move claim, automatic 75-move draw, and insufficient-material detection
 - [ ] Mutable make/unmake for the C++ search core
 - [ ] First evaluation and alpha-beta search
 - [ ] UCI support and time management

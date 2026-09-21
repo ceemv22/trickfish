@@ -527,6 +527,21 @@ class Position:
                 return self.en_passant[0]
         return None
 
+    def is_insufficient_material(self) -> bool:
+        pieces = [piece for piece in self.board if piece is not None and piece.lower() != "k"]
+        if not pieces:
+            return True
+        if len(pieces) == 1 and pieces[0].lower() in {"b", "n"}:
+            return True
+        if any(piece.lower() != "b" for piece in pieces):
+            return False
+        colors = {
+            (square // 8 + square % 8) % 2
+            for square, piece in enumerate(self.board)
+            if piece is not None and piece.lower() == "b"
+        }
+        return len(colors) == 1
+
     def _pseudo_legal_sliding_moves(
         self, piece: str, directions: tuple[tuple[int, int], ...]
     ) -> tuple[Move, ...]:
