@@ -24,6 +24,12 @@ class SearchTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             search(position, -1)
 
+    def test_quiescence_rejects_a_defended_capture(self) -> None:
+        position = Position.from_fen("3q2k1/8/8/8/8/8/3r4/K2Q4 w - - 0 1")
+        result = search(position, 1)
+        self.assertNotEqual(result.best_move.to_uci(), "d1d2")
+        self.assertEqual(result.score, -500)
+
 
 if __name__ == "__main__":
     unittest.main()
