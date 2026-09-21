@@ -22,11 +22,12 @@ The repository contains an early Python position prototype. It is not yet a play
 | Attack map | Detect attacks by either side without changing side to move |
 | Game state | Check, checkmate, stalemate, and ongoing-position status |
 | Evaluation | Material-only centipawn score, white-positive, with mate and dead-position handling |
+| Search | Depth-limited negamax with alpha-beta bounds, principal variation, and node count |
 | Position key | Deterministic 64-bit Zobrist key for board, side, castling, and legal en passant state |
 | Game history | Immutable position sequence with threefold-repetition counting |
 | Draw rules | Threefold repetition, 50/75-move thresholds, and insufficient-material detection |
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
-| CLI | Position display, status, material evaluation, legal/pseudo-legal move listing, perft, and divide |
+| CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
@@ -46,6 +47,7 @@ python -m trickfish.cli moves
 python -m trickfish.cli pseudo-moves
 python -m trickfish.cli status "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"
 python -m trickfish.cli eval "7k/8/8/8/8/8/8/KQ6 w - - 0 1"
+python -m trickfish.cli search 3
 python -m trickfish.cli moves "8/7k/8/8/3Q4/8/K7/8 w - - 0 1"
 python -m trickfish.cli perft 3
 python -m trickfish.cli divide 3
@@ -103,7 +105,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Fifty-move claim, automatic 75-move draw, and insufficient-material detection
 - [ ] Mutable make/unmake for the C++ search core
 - [x] First material evaluator with mate and dead-position handling
-- [ ] Positional evaluation and alpha-beta search
+- [x] Depth-limited alpha-beta search with principal variation
+- [ ] Positional evaluation, move ordering, and quiescence search
 - [ ] UCI support and time management
 - [ ] Candidate verification
 - [ ] Practical move selection

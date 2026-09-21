@@ -74,6 +74,14 @@ class CliTest(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(output, "900\n")
 
+    def test_search_reports_best_move_and_principal_variation(self) -> None:
+        result, output = self.invoke(["search", "1", "6k1/8/8/8/8/8/3r4/K2Q4 w - - 0 1"])
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            output.splitlines(),
+            ["bestmove d1d2", "score 900", "nodes 16", "pv d1d2"],
+        )
+
     def test_fen_without_a_command_still_renders_the_position(self) -> None:
         result, output = self.invoke(["8/8/8/8/8/8/K7/7k w - - 0 1"])
         self.assertEqual(result, 0)

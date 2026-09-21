@@ -4,6 +4,7 @@ import argparse
 
 from .position import FenError, Position, STARTING_FEN
 from .evaluation import evaluate
+from .search import search
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -11,7 +12,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "command_or_fen",
         nargs="?",
-        help="position, moves, pseudo-moves, status, eval, perft, divide, or a FEN position",
+        help="position, moves, pseudo-moves, status, eval, perft, divide, search, or a FEN position",
     )
     parser.add_argument("argument", nargs="?", help="FEN position or perft depth")
     parser.add_argument("fen", nargs="?", help="FEN position for perft")
@@ -23,7 +24,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("a FEN must be quoted as one argument")
         fen = arguments.argument or STARTING_FEN
         depth = None
-    elif arguments.command_or_fen in {"perft", "divide"}:
+    elif arguments.command_or_fen in {"perft", "divide", "search"}:
         command = arguments.command_or_fen
         if arguments.argument is None:
             parser.error(f"{command} requires a depth")
@@ -35,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(
                 "divide depth must be at least one"
                 if command == "divide"
-                else "perft depth must not be negative"
+                else f"{command} depth must not be negative"
             )
         fen = arguments.fen or STARTING_FEN
     elif arguments.argument is not None:
@@ -65,6 +66,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "eval":
         print(evaluate(position))
+        return 0
+
+    if command == "search":
+        result = search(position, depth)
+        print(f"bestmove {result.best_move.to_uci() if result.best_move else '(none)'}")
+        print(f"score {result.score}")
+        print(f"nodes {result.nodes}")
+        print("pv " + " ".join(move.to_uci() for move in result.principal_variation))
         return 0
 
     if command in {"moves", "pseudo-moves"}:
