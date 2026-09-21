@@ -4,7 +4,7 @@
 
 <h1 align="center">Trickfish</h1>
 
-Trickfish is a chess-engine research project. Its long-term problem is narrow: after search identifies several moves that preserve the position, determine which move creates the highest practical cost for the opponent without accepting an unjustified loss in objective evaluation.
+Trickfish is a chess-engine research project. Its long-term problem is to choose, from moves that survive objective search, the move whose correct defense is hardest to find and execute. A difficult move is still rejected when deeper search finds an adequate refutation or when its evaluation loss exceeds the configured limit.
 
 ## Current implementation
 
@@ -16,15 +16,17 @@ The repository contains an early Python position prototype. It is not yet a play
 | Board state | Immutable 64-square tuple |
 | Move representation | Immutable UCI-coordinate move value |
 | Move application | Immutable successor position with clocks, rights, en passant, promotion, and castling updates |
-| Pseudo-legal moves | Knight, bishop, rook, queen, king, and basic pawn moves |
+| Pseudo-legal moves | Knight, bishop, rook, queen, king, and pawn moves |
 | Pawn support | Single step, double step, ordinary captures, promotion, and en passant |
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
 | Attack map | Detect attacks by either side without changing side to move |
 | Perft | Recursive legal-node counter with starting-position baselines through depth 3 |
 | CLI | Position display, legal/pseudo-legal move listing, and perft |
-| Tests | FEN, move values, CLI, and piece-specific move generation |
+| Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
-`moves` reports legal moves. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
+`moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
+
+The current perft baseline is the standard initial position: depth 1 = 20, depth 2 = 400, depth 3 = 8902. These are only the first regression checks; a broader established perft suite is required before search begins.
 
 ## Running the prototype
 
@@ -49,7 +51,7 @@ Trickfish is being designed around two separate measurements:
 1. **Objective result:** the evaluation after the strongest defense found by search.
 2. **Practical result:** the difficulty and consequence of the opponent's plausible responses.
 
-The second measurement must never replace the first. It is only used after candidate moves survive a configurable objective-loss limit and deeper tactical verification.
+The practical measurement is a selection constraint, not a substitute for evaluation. It is applied only after candidate moves pass an objective-loss limit and tactical re-search.
 
 For a candidate move `m`, the eventual selection stage will compare:
 
@@ -62,7 +64,7 @@ time required to find adequate defense
 game context and configured risk budget
 ```
 
-This creates a testable distinction between a move that is objectively best, a move that is objectively acceptable but difficult to defend, and a speculative trap that fails against a clear response.
+The relevant failure case is a trap that works only when the opponent misses one obvious response. Candidate verification must identify and reject that case.
 
 ## Planned core
 
@@ -81,12 +83,12 @@ This creates a testable distinction between a move that is objectively best, a m
 
 - [x] FEN parsing, serialization, and board rendering
 - [x] Move value and UCI coordinates
-- [x] Pseudo-legal knight, bishop, rook, queen, king, and basic pawn moves
-- [x] Immutable successor position for every supported move type
-- [x] Legal move filtering through the attack map
+- [x] Pseudo-legal generation for all pieces
+- [x] Immutable successor position with clocks, rights, promotion, en passant, and castling updates
 - [x] Pawn double step, promotion, and en passant
 - [x] Castling and attack detection
-- [x] Legal move filtering and starting-position perft baselines through depth 3
+- [x] Legal move filtering and initial-position perft baselines through depth 3
+- [ ] Established multi-position perft suite and divide output
 - [ ] Make/unmake and Zobrist hashing
 - [ ] First evaluation and alpha-beta search
 - [ ] UCI support and time management
