@@ -10,12 +10,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "command_or_fen",
         nargs="?",
-        help="position, moves, or a FEN position",
+        help="position, moves, pseudo-moves, or a FEN position",
     )
     parser.add_argument("fen", nargs="?", help="FEN position")
     arguments = parser.parse_args(argv)
 
-    if arguments.command_or_fen in {"position", "moves"}:
+    if arguments.command_or_fen in {"position", "moves", "pseudo-moves"}:
         command = arguments.command_or_fen
         fen = arguments.fen or STARTING_FEN
     elif arguments.fen is not None:
@@ -29,8 +29,9 @@ def main(argv: list[str] | None = None) -> int:
     except FenError as error:
         parser.error(str(error))
 
-    if command == "moves":
-        for move in position.pseudo_legal_moves():
+    if command in {"moves", "pseudo-moves"}:
+        moves = position.legal_moves() if command == "moves" else position.pseudo_legal_moves()
+        for move in moves:
             print(move.to_uci())
         return 0
 

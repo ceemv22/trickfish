@@ -357,6 +357,16 @@ class Position:
             + self.pseudo_legal_pawn_moves()
         )
 
+    def legal_moves(self) -> tuple[Move, ...]:
+        opponent = "b" if self.side_to_move == "w" else "w"
+        moves: list[Move] = []
+        for move in self.pseudo_legal_moves():
+            next_position = self.make_move(move)
+            king_square = next_position._king_square(self.side_to_move)
+            if not next_position.is_square_attacked(king_square, opponent):
+                moves.append(move)
+        return tuple(moves)
+
     def make_move(self, move: Move) -> "Position":
         piece = self.board[move.from_square]
         if piece is None:
@@ -475,6 +485,9 @@ class Position:
 
     def _square_name(self, square: int) -> str:
         return f"{FILES[square % 8]}{8 - square // 8}"
+
+    def _king_square(self, side: str) -> int:
+        return self.board.index("K" if side == "w" else "k")
 
     def _pseudo_legal_sliding_moves(
         self, piece: str, directions: tuple[tuple[int, int], ...]

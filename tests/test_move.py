@@ -339,6 +339,27 @@ class AttackMapTest(unittest.TestCase):
             position.is_square_attacked(0, "white")
 
 
+class LegalMovesTest(unittest.TestCase):
+    def test_starting_position_has_twenty_legal_moves(self) -> None:
+        position = Position.from_fen(STARTING_FEN)
+        self.assertEqual(len(position.legal_moves()), 20)
+
+    def test_pinned_knight_is_filtered(self) -> None:
+        position = Position.from_fen("k3r3/8/8/8/8/8/4N3/4K3 w - - 0 1")
+        self.assertTrue(any(move.from_square == 52 for move in position.pseudo_legal_moves()))
+        self.assertFalse(any(move.from_square == 52 for move in position.legal_moves()))
+
+    def test_king_cannot_move_into_attack(self) -> None:
+        position = Position.from_fen("4r2k/8/8/8/8/8/8/4K3 w - - 0 1")
+        self.assertIn("e1e2", {move.to_uci() for move in position.pseudo_legal_moves()})
+        self.assertNotIn("e1e2", {move.to_uci() for move in position.legal_moves()})
+
+    def test_en_passant_that_exposes_king_is_filtered(self) -> None:
+        position = Position.from_fen("k7/8/8/K2pP2r/8/8/8/8 w - d6 0 1")
+        self.assertIn("e5d6", {move.to_uci() for move in position.pseudo_legal_moves()})
+        self.assertNotIn("e5d6", {move.to_uci() for move in position.legal_moves()})
+
+
 class PawnMovesTest(unittest.TestCase):
     def assert_moves(self, fen: str, expected: set[str]) -> None:
         position = Position.from_fen(fen)
