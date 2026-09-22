@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from time import perf_counter
 
 from .evaluation import MATE_SCORE, PIECE_VALUES, evaluate_for_side_to_move
 from .move import Move
@@ -23,12 +24,37 @@ class SearchResult:
     principal_variation: tuple[Move, ...]
     transposition_hits: int
     completed_depth: int
+    elapsed_ms: int
 
 
-def search(position: Position, depth: int) -> SearchResult:
+class SearchTimeout(Exception):
+    pass
+
+
+@dataclass
+class SearchContext:
+    table: TranspositionTable
+    deadline: float | None
+    nodes: int = 0
+
+    def visit(self) -> None:
+        if self.deadline is not None and perf_counter() >= self.deadline:
+            raise SearchTimeout
+        self.nodes += 1
+
+
+def search(
+    position: Position,
+    depth: int,
+    time_limit_ms: int | None = None,
+) -> SearchResult:
     if depth < 0:
         raise ValueError("search depth must not be negative")
-    if not position.legal_moves():
+    if time_limit_ms is not None and time_limit_ms < 0:
+        raise ValueError("search time limit must not be negative")
+    started = perf_counter()
+    legal_moves = position.legal_moves()
+    if not legal_moves:
         return SearchResult(
             None,
             evaluate_for_side_to_move(position),
@@ -36,25 +62,33 @@ def search(position: Position, depth: int) -> SearchResult:
             tuple(),
             0,
             depth,
+            int((perf_counter() - started) * 1000),
         )
     table = TranspositionTable()
+    deadline = None if time_limit_ms is None else started + time_limit_ms / 1000
+    context = SearchContext(table, deadline)
     score = evaluate_for_side_to_move(position)
-    nodes = 0
-    principal_variation: tuple[Move, ...] = tuple()
+    principal_variation = (_ordered_moves(position, legal_moves)[0],)
+    completed_depth = 0
     depths = (0,) if depth == 0 else range(1, depth + 1)
     for current_depth in depths:
-        score, iteration_nodes, principal_variation = _negamax(
-            position, current_depth, -INFINITY, INFINITY, table
-        )
-        nodes += iteration_nodes
+        try:
+            score, _, iteration_line = _negamax(
+                position, current_depth, -INFINITY, INFINITY, context
+            )
+        except SearchTimeout:
+            break
+        principal_variation = iteration_line
+        completed_depth = current_depth
     best_move = principal_variation[0] if principal_variation else None
     return SearchResult(
         best_move,
         score,
-        nodes,
+        context.nodes,
         principal_variation,
         table.hits,
-        depth,
+        completed_depth,
+        int((perf_counter() - started) * 1000),
     )
 
 
@@ -63,12 +97,13 @@ def _negamax(
     depth: int,
     alpha: int,
     beta: int,
-    table: TranspositionTable,
+    context: SearchContext,
 ) -> tuple[int, int, tuple[Move, ...]]:
+    context.visit()
     original_alpha = alpha
     original_beta = beta
     key = position.zobrist_key
-    entry = table.probe(key)
+    entry = context.table.probe(key)
     preferred_move = entry.best_move if entry is not None else None
     if entry is not None and entry.depth >= depth:
         if entry.bound == EXACT:
@@ -85,17 +120,17 @@ def _negamax(
     legal_moves = position.legal_moves()
     if not legal_moves:
         score = evaluate_for_side_to_move(position)
-        table.store(key, TranspositionEntry(depth, score, EXACT, None))
+        context.table.store(key, TranspositionEntry(depth, score, EXACT, None))
         return score, 1, tuple()
     if depth == 0:
-        return _quiescence(position, -INFINITY, INFINITY, 0)
+        return _quiescence(position, -INFINITY, INFINITY, 0, context)
 
     best_score = -INFINITY
     best_line: tuple[Move, ...] = tuple()
     nodes = 1
     for move in _ordered_moves(position, legal_moves, preferred_move):
         child_score, child_nodes, child_line = _negamax(
-            position.make_move(move), depth - 1, -beta, -alpha, table
+            position.make_move(move), depth - 1, -beta, -alpha, context
         )
         score = -child_score
         nodes += child_nodes
@@ -111,7 +146,7 @@ def _negamax(
         bound = LOWER_BOUND
     else:
         bound = EXACT
-    table.store(key, TranspositionEntry(depth, best_score, bound, best_line[0]))
+    context.table.store(key, TranspositionEntry(depth, best_score, bound, best_line[0]))
     return best_score, nodes, best_line
 
 
@@ -120,7 +155,9 @@ def _quiescence(
     alpha: int,
     beta: int,
     depth: int,
+    context: SearchContext,
 ) -> tuple[int, int, tuple[Move, ...]]:
+    context.visit()
     legal_moves = position.legal_moves()
     if not legal_moves or depth == MAX_QUIESCENCE_DEPTH:
         return evaluate_for_side_to_move(position), 1, tuple()
@@ -141,7 +178,7 @@ def _quiescence(
     nodes = 1
     for move in _ordered_moves(position, moves):
         child_score, child_nodes, child_line = _quiescence(
-            position.make_move(move), -beta, -alpha, depth + 1
+            position.make_move(move), -beta, -alpha, depth + 1, context
         )
         score = -child_score
         nodes += child_nodes

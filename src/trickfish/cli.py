@@ -12,11 +12,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "command_or_fen",
         nargs="?",
-        help="position, moves, pseudo-moves, status, eval, eval-detail, perft, divide, search, or a FEN position",
+        help="position, moves, pseudo-moves, status, eval, eval-detail, perft, divide, search, search-time, or a FEN position",
     )
     parser.add_argument("argument", nargs="?", help="FEN position or perft depth")
     parser.add_argument("fen", nargs="?", help="FEN position for perft")
     arguments = parser.parse_args(argv)
+    time_limit_ms = None
 
     if arguments.command_or_fen in {
         "position", "moves", "pseudo-moves", "status", "eval", "eval-detail"
@@ -26,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("a FEN must be quoted as one argument")
         fen = arguments.argument or STARTING_FEN
         depth = None
-    elif arguments.command_or_fen in {"perft", "divide", "search"}:
+    elif arguments.command_or_fen in {"perft", "divide", "search", "search-time"}:
         command = arguments.command_or_fen
         if arguments.argument is None:
             parser.error(f"{command} requires a depth")
@@ -34,6 +35,11 @@ def main(argv: list[str] | None = None) -> int:
             depth = int(arguments.argument)
         except ValueError:
             parser.error(f"{command} depth must be an integer")
+        if command == "search-time":
+            time_limit_ms = depth
+            depth = 64
+        if time_limit_ms is not None and time_limit_ms < 1:
+            parser.error("search-time requires at least one millisecond")
         if depth < (1 if command == "divide" else 0):
             parser.error(
                 "divide depth must be at least one"
@@ -81,11 +87,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"total {breakdown.total}")
         return 0
 
-    if command == "search":
-        result = search(position, depth)
+    if command in {"search", "search-time"}:
+        result = search(position, depth, time_limit_ms)
         print(f"bestmove {result.best_move.to_uci() if result.best_move else '(none)'}")
         print(f"score {result.score}")
+        if command == "search-time":
+            print(f"depth {result.completed_depth}")
         print(f"nodes {result.nodes}")
+        if command == "search-time":
+            print(f"time {result.elapsed_ms}")
+            print(f"tthits {result.transposition_hits}")
         print("pv " + " ".join(move.to_uci() for move in result.principal_variation))
         return 0
 
