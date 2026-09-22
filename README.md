@@ -22,7 +22,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Attack map | Detect attacks by either side without changing side to move |
 | Game state | Check, checkmate, stalemate, and ongoing-position status |
 | Evaluation | Material-only centipawn score, white-positive, with mate and dead-position handling |
-| Search | Depth-limited negamax with alpha-beta, capture-first ordering, quiescence, principal variation, and node count |
+| Search | Negamax with alpha-beta, capture-first ordering, quiescence, Zobrist transposition table, principal variation, and node count |
 | Position key | Deterministic 64-bit Zobrist key for board, side, castling, and legal en passant state |
 | Game history | Immutable position sequence with threefold-repetition counting |
 | Draw rules | Threefold repetition, 50/75-move thresholds, and insufficient-material detection |
@@ -107,7 +107,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] First material evaluator with mate and dead-position handling
 - [x] Depth-limited alpha-beta search with principal variation
 - [x] Capture-first move ordering and quiescence search
-- [ ] Positional evaluation and transposition table
+- [x] Zobrist transposition table with exact, lower, and upper bounds
+- [ ] Positional evaluation and iterative deepening
 - [ ] UCI support and time management
 - [ ] Candidate verification
 - [ ] Practical move selection
