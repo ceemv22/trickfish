@@ -22,17 +22,40 @@ class SearchResult:
     nodes: int
     principal_variation: tuple[Move, ...]
     transposition_hits: int
+    completed_depth: int
 
 
 def search(position: Position, depth: int) -> SearchResult:
     if depth < 0:
         raise ValueError("search depth must not be negative")
+    if not position.legal_moves():
+        return SearchResult(
+            None,
+            evaluate_for_side_to_move(position),
+            1,
+            tuple(),
+            0,
+            depth,
+        )
     table = TranspositionTable()
-    score, nodes, principal_variation = _negamax(
-        position, depth, -INFINITY, INFINITY, table
-    )
+    score = evaluate_for_side_to_move(position)
+    nodes = 0
+    principal_variation: tuple[Move, ...] = tuple()
+    depths = (0,) if depth == 0 else range(1, depth + 1)
+    for current_depth in depths:
+        score, iteration_nodes, principal_variation = _negamax(
+            position, current_depth, -INFINITY, INFINITY, table
+        )
+        nodes += iteration_nodes
     best_move = principal_variation[0] if principal_variation else None
-    return SearchResult(best_move, score, nodes, principal_variation, table.hits)
+    return SearchResult(
+        best_move,
+        score,
+        nodes,
+        principal_variation,
+        table.hits,
+        depth,
+    )
 
 
 def _negamax(
