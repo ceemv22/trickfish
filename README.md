@@ -21,7 +21,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
 | Attack map | Detect attacks by either side without changing side to move |
 | Game state | Check, checkmate, stalemate, and ongoing-position status |
-| Evaluation | Material-only centipawn score, white-positive, with mate and dead-position handling |
+| Evaluation | White-positive centipawn score with material, activity, pawn structure, bishop pair, rook-file, king-safety, mate, and dead-position terms |
 | Search | Iterative deepening, negamax, alpha-beta, capture-first ordering, quiescence, Zobrist transposition table, principal variation, and node count |
 | Position key | Deterministic 64-bit Zobrist key for board, side, castling, and legal en passant state |
 | Game history | Immutable position sequence with threefold-repetition counting |
@@ -47,6 +47,7 @@ python -m trickfish.cli moves
 python -m trickfish.cli pseudo-moves
 python -m trickfish.cli status "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"
 python -m trickfish.cli eval "7k/8/8/8/8/8/8/KQ6 w - - 0 1"
+python -m trickfish.cli eval-detail
 python -m trickfish.cli search 3
 python -m trickfish.cli moves "8/7k/8/8/3Q4/8/K7/8 w - - 0 1"
 python -m trickfish.cli perft 3
@@ -109,7 +110,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Capture-first move ordering and quiescence search
 - [x] Zobrist transposition table with exact, lower, and upper bounds
 - [x] Iterative deepening with a shared transposition table
-- [ ] Positional evaluation and search time control
+- [x] Explainable positional evaluation breakdown
+- [ ] Search time control and phase-aware evaluation
 - [ ] UCI support and time management
 - [ ] Candidate verification
 - [ ] Practical move selection

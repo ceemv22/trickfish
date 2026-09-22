@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from .position import FenError, Position, STARTING_FEN
-from .evaluation import evaluate
+from .evaluation import evaluate, evaluate_breakdown
 from .search import search
 
 
@@ -12,13 +12,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "command_or_fen",
         nargs="?",
-        help="position, moves, pseudo-moves, status, eval, perft, divide, search, or a FEN position",
+        help="position, moves, pseudo-moves, status, eval, eval-detail, perft, divide, search, or a FEN position",
     )
     parser.add_argument("argument", nargs="?", help="FEN position or perft depth")
     parser.add_argument("fen", nargs="?", help="FEN position for perft")
     arguments = parser.parse_args(argv)
 
-    if arguments.command_or_fen in {"position", "moves", "pseudo-moves", "status", "eval"}:
+    if arguments.command_or_fen in {
+        "position", "moves", "pseudo-moves", "status", "eval", "eval-detail"
+    }:
         command = arguments.command_or_fen
         if arguments.fen is not None:
             parser.error("a FEN must be quoted as one argument")
@@ -66,6 +68,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "eval":
         print(evaluate(position))
+        return 0
+
+    if command == "eval-detail":
+        breakdown = evaluate_breakdown(position)
+        print(f"material {breakdown.material}")
+        print(f"activity {breakdown.piece_activity}")
+        print(f"pawns {breakdown.pawn_structure}")
+        print(f"bishop-pair {breakdown.bishop_pair}")
+        print(f"rook-files {breakdown.rook_files}")
+        print(f"king-safety {breakdown.king_safety}")
+        print(f"total {breakdown.total}")
         return 0
 
     if command == "search":
