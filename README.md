@@ -28,6 +28,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Draw rules | Threefold repetition, 50/75-move thresholds, and insufficient-material detection |
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
+| UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
@@ -53,6 +54,7 @@ python -m trickfish.cli search-time 1000
 python -m trickfish.cli moves "8/7k/8/8/3Q4/8/K7/8 w - - 0 1"
 python -m trickfish.cli perft 3
 python -m trickfish.cli divide 3
+python -m trickfish.uci
 python -m unittest discover -s tests -v
 ```
 
@@ -113,8 +115,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Iterative deepening with a shared transposition table
 - [x] Explainable positional evaluation breakdown
 - [x] Deadline-based search with completed-depth reporting
-- [ ] Phase-aware evaluation and UCI clock allocation
-- [ ] UCI support and time management
+- [x] UCI protocol with depth, movetime, clock allocation, and stop
+- [ ] Phase-aware evaluation and advanced time management
 - [ ] Candidate verification
 - [ ] Practical move selection
 - [ ] Opponent-specific experiments and published benchmark methodology

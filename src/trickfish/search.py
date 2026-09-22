@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from time import perf_counter
+from typing import Callable
 
 from .evaluation import MATE_SCORE, PIECE_VALUES, evaluate_for_side_to_move
 from .move import Move
@@ -35,10 +36,14 @@ class SearchTimeout(Exception):
 class SearchContext:
     table: TranspositionTable
     deadline: float | None
+    stop_requested: Callable[[], bool] | None
     nodes: int = 0
 
     def visit(self) -> None:
-        if self.deadline is not None and perf_counter() >= self.deadline:
+        if (
+            (self.deadline is not None and perf_counter() >= self.deadline)
+            or (self.stop_requested is not None and self.stop_requested())
+        ):
             raise SearchTimeout
         self.nodes += 1
 
@@ -47,6 +52,7 @@ def search(
     position: Position,
     depth: int,
     time_limit_ms: int | None = None,
+    stop_requested: Callable[[], bool] | None = None,
 ) -> SearchResult:
     if depth < 0:
         raise ValueError("search depth must not be negative")
@@ -66,7 +72,7 @@ def search(
         )
     table = TranspositionTable()
     deadline = None if time_limit_ms is None else started + time_limit_ms / 1000
-    context = SearchContext(table, deadline)
+    context = SearchContext(table, deadline, stop_requested)
     score = evaluate_for_side_to_move(position)
     principal_variation = (_ordered_moves(position, legal_moves)[0],)
     completed_depth = 0
