@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bit>
 #include <cstdint>
 #include <stdexcept>
 
@@ -12,6 +13,15 @@ inline constexpr Bitboard square_bit(std::uint8_t square) {
         throw std::invalid_argument("square must be between 0 and 63");
     }
     return Bitboard{1} << square;
+}
+
+inline constexpr std::uint8_t pop_lsb(Bitboard& bitboard) {
+    if (bitboard == 0) {
+        throw std::invalid_argument("cannot pop an empty bitboard");
+    }
+    const auto square = static_cast<std::uint8_t>(std::countr_zero(bitboard));
+    bitboard &= bitboard - 1;
+    return square;
 }
 
 }

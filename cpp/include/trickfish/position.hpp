@@ -19,6 +19,8 @@ public:
     [[nodiscard]] Bitboard pieces(Color color, PieceType type) const;
     [[nodiscard]] Bitboard occupancy(Color color) const;
     [[nodiscard]] Bitboard occupancy() const;
+    [[nodiscard]] Bitboard attacks_by(Color color) const;
+    [[nodiscard]] bool in_check(Color color) const;
     [[nodiscard]] Color side_to_move() const;
     [[nodiscard]] std::uint8_t castling_rights() const;
     [[nodiscard]] std::int8_t en_passant_square() const;

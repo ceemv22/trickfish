@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "trickfish/attacks.hpp"
 #include "trickfish/square.hpp"
 
 namespace trickfish {
@@ -175,6 +176,29 @@ Bitboard Position::occupancy(Color color) const {
 }
 
 Bitboard Position::occupancy() const { return occupancy(Color::white) | occupancy(Color::black); }
+
+Bitboard Position::attacks_by(Color color) const {
+    const auto occupied = occupancy();
+    Bitboard attacks = 0;
+    Bitboard pawns = pieces(color, PieceType::pawn);
+    Bitboard knights = pieces(color, PieceType::knight);
+    Bitboard bishops = pieces(color, PieceType::bishop);
+    Bitboard rooks = pieces(color, PieceType::rook);
+    Bitboard queens = pieces(color, PieceType::queen);
+    Bitboard kings = pieces(color, PieceType::king);
+    while (pawns != 0) attacks |= pawn_attacks(color, pop_lsb(pawns));
+    while (knights != 0) attacks |= knight_attacks(pop_lsb(knights));
+    while (bishops != 0) attacks |= bishop_attacks(pop_lsb(bishops), occupied);
+    while (rooks != 0) attacks |= rook_attacks(pop_lsb(rooks), occupied);
+    while (queens != 0) attacks |= queen_attacks(pop_lsb(queens), occupied);
+    while (kings != 0) attacks |= king_attacks(pop_lsb(kings));
+    return attacks;
+}
+
+bool Position::in_check(Color color) const {
+    return (pieces(color, PieceType::king) & attacks_by(opposite(color))) != 0;
+}
+
 Color Position::side_to_move() const { return side_to_move_; }
 std::uint8_t Position::castling_rights() const { return castling_rights_; }
 std::int8_t Position::en_passant_square() const { return en_passant_square_; }
