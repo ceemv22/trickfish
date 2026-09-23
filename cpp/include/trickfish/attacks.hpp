@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "trickfish/bitboard.hpp"
+#include "trickfish/piece.hpp"
 
 namespace trickfish {
 namespace detail {
@@ -53,8 +54,30 @@ consteval std::array<Bitboard, 64> make_king_attack_table() {
     return table;
 }
 
+consteval std::array<Bitboard, 64> make_pawn_attack_table(Color color) {
+    std::array<Bitboard, 64> table{};
+    const int rank_offset = color == Color::white ? -1 : 1;
+    for (std::uint8_t square = 0; square < 64; ++square) {
+        const int rank = square / 8;
+        const int file = square % 8;
+        const int target_rank = rank + rank_offset;
+        if (target_rank < 0 || target_rank >= 8) {
+            continue;
+        }
+        if (file > 0) {
+            table[square] |= Bitboard{1} << (target_rank * 8 + file - 1);
+        }
+        if (file < 7) {
+            table[square] |= Bitboard{1} << (target_rank * 8 + file + 1);
+        }
+    }
+    return table;
+}
+
 inline constexpr auto knight_attack_table = make_knight_attack_table();
 inline constexpr auto king_attack_table = make_king_attack_table();
+inline constexpr auto white_pawn_attack_table = make_pawn_attack_table(Color::white);
+inline constexpr auto black_pawn_attack_table = make_pawn_attack_table(Color::black);
 
 }
 
@@ -70,6 +93,15 @@ inline constexpr Bitboard king_attacks(std::uint8_t square) {
         throw std::invalid_argument("square must be between 0 and 63");
     }
     return detail::king_attack_table[square];
+}
+
+inline constexpr Bitboard pawn_attacks(Color color, std::uint8_t square) {
+    if (square >= 64) {
+        throw std::invalid_argument("square must be between 0 and 63");
+    }
+    return color == Color::white
+        ? detail::white_pawn_attack_table[square]
+        : detail::black_pawn_attack_table[square];
 }
 
 }
