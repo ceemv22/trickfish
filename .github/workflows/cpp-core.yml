@@ -60,3 +60,7 @@ jobs:
           if ($actual -ne $fen) {
             throw "FEN round-trip mismatch: $actual"
           }
+          $nodes = & $binary --perft 3
+          if ($nodes -ne "8902") {
+            throw "Initial-position perft(3) mismatch: $nodes"
+          }
