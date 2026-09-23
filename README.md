@@ -8,7 +8,7 @@ Trickfish is a chess-engine research project. Its long-term problem is to choose
 
 ## Current implementation
 
-The repository contains an early Python position prototype. It is not yet a playable engine and has no strength or Elo claim.
+The repository contains a Python reference engine and an in-progress C++ search core. The Python implementation provides the current UCI path, evaluation, search, and rule reference. The C++ implementation is replacing its performance-critical position and move-generation layers. No playing-strength or Elo claim has been established.
 
 | Area | Current state |
 | --- | --- |
@@ -30,12 +30,12 @@ The repository contains an early Python position prototype. It is not yet a play
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
 | C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, complete legal move generation, reversible make/unmake, attack maps, check detection, and recursive perft |
-| Continuous integration | GCC/Linux and MSVC/Windows configure, compile, exact FEN round-trip, and multi-position perft verification |
+| Continuous integration | GCC/Linux and MSVC/Windows builds; FEN round-trip and initial-position perft pass on both, while the expanded perft suite has an unresolved mismatch |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
 
-The perft suite covers the initial position plus standard positions that exercise castling, check-evasion, promotions, and move application. Each currently runs through depth 3. `divide` prints the node count below every legal root move so an incorrect branch can be isolated without inspecting the full tree.
+The Python perft suite covers the initial position plus standard positions that exercise castling, check-evasion, promotions, and move application through depth 3. The C++ core matches the initial-position depth-3 value of 8,902 on GCC and MSVC. Its expanded castling, endgame, and promotion suite is configured in CI but is not accepted as passing until the current mismatch is isolated. `divide` prints the node count below every legal root move so an incorrect branch can be located without inspecting the full tree.
 
 ## Running the prototype
 
@@ -119,7 +119,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] C++ en passant generation with target and captured-pawn validation
 - [x] C++ kingside and queenside castling generation with path safety checks
 - [x] C++ legal filtering through reversible move application and king-safety validation
-- [x] Recursive C++ perft with initial, castling, endgame, and promotion depth-3 CI baselines
+- [x] Recursive C++ perft with an initial-position depth-3 CI baseline
+- [ ] Resolve the expanded C++ castling, endgame, and promotion perft mismatch
 - [x] First material evaluator with mate and dead-position handling
 - [x] Depth-limited alpha-beta search with principal variation
 - [x] Capture-first move ordering and quiescence search
@@ -140,7 +141,7 @@ The current Python code exists to establish rules, tests, and the decision model
 
 The target architecture is a C++26 engine core for move generation, position updates, search, and evaluation, with Python retained for tooling, experiments, test fixtures, data preparation, and analysis. Until C++26 compiler support is stable across the supported toolchains, the core will stay within a portable C++20/23 subset and avoid draft-only dependencies. The move to C++ begins after the Python prototype has complete legal move generation and perft coverage; that gives the C++ implementation a precise behavioral reference instead of rewriting unfinished logic.
 
-The C++ bootstrap is under `cpp/` and builds through the root `CMakeLists.txt`. The current host has no local CMake or C++ compiler, so compilation is handled by GitHub Actions. GCC on Linux and MSVC on Windows both compile the core and require an exact initial-position FEN round-trip. Perft parity with the Python implementation remains the next acceptance boundary.
+The C++ core is under `cpp/` and builds through the root `CMakeLists.txt`. The current host has no local CMake or C++ compiler, so compilation is handled by GitHub Actions. GCC on Linux and MSVC on Windows compile the core, preserve the initial FEN exactly, and match initial-position perft through depth 3. Multi-position perft parity with the Python implementation is the current acceptance boundary.
 
 ```powershell
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
