@@ -32,8 +32,25 @@ jobs:
       - name: Configure Windows
         if: runner.os == 'Windows'
         run: cmake -S . -B build -A x64 -T ClangCL
-      - name: Build
+      - name: Build Linux
+        if: runner.os == 'Linux'
         run: cmake --build build --config Release
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = & cmake --build build --config Release 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | ForEach-Object { Write-Output $_ }
+          if ($exitCode -ne 0) {
+            $message = $output | Out-String
+            if ($message.Length -gt 12000) {
+              $message = $message.Substring($message.Length - 12000)
+            }
+            $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows compiler output::$message"
+            exit $exitCode
+          }
       - name: Verify FEN round-trip
         shell: pwsh
         run: |
