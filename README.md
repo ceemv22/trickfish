@@ -29,7 +29,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
-| C++26 core | CMake target, square/move types, and FEN Position bootstrap; Windows/Linux CI awaits its first pushed run |
+| C++26 core | CMake target, square/move/piece types, twelve piece bitboards, occupancy queries, and FEN Position bootstrap |
 | Continuous integration | C++ configure, compile, and exact FEN round-trip verification on Windows and Linux |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 

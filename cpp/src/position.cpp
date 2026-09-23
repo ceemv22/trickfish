@@ -1,6 +1,6 @@
 #include "trickfish/position.hpp"
 
-#include <algorithm>
+#include <bit>
 #include <charconv>
 #include <sstream>
 #include <stdexcept>
@@ -15,7 +15,7 @@ constexpr std::uint8_t white_kingside = 1;
 constexpr std::uint8_t white_queenside = 2;
 constexpr std::uint8_t black_kingside = 4;
 constexpr std::uint8_t black_queenside = 8;
-constexpr std::string_view pieces = "prnbqkPRNBQK";
+constexpr std::string_view valid_piece_symbols = "prnbqkPRNBQK";
 
 int parse_integer(std::string_view text, std::string_view field) {
     int value = 0;
@@ -42,7 +42,6 @@ Position Position::from_fen(std::string_view fen) {
     }
 
     Position position;
-    position.board_.fill('.');
     int square = 0;
     int ranks = 1;
     int rank_squares = 0;
@@ -57,11 +56,12 @@ Position Position::from_fen(std::string_view fen) {
             const int empty = symbol - '0';
             square += empty;
             rank_squares += empty;
-        } else if (pieces.find(symbol) != std::string_view::npos) {
+        } else if (valid_piece_symbols.find(symbol) != std::string_view::npos) {
             if (square >= 64) {
                 throw std::invalid_argument("piece placement exceeds the board");
             }
-            position.board_[square++] = symbol;
+            position.pieces_[piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol))] |=
+                square_bit(static_cast<std::uint8_t>(square++));
             ++rank_squares;
         } else {
             throw std::invalid_argument("invalid piece symbol");
@@ -73,15 +73,15 @@ Position Position::from_fen(std::string_view fen) {
     if (ranks != 8 || rank_squares != 8 || square != 64) {
         throw std::invalid_argument("piece placement must describe eight ranks");
     }
-    if (std::count(position.board_.begin(), position.board_.end(), 'K') != 1 ||
-        std::count(position.board_.begin(), position.board_.end(), 'k') != 1) {
+    if (!std::has_single_bit(position.pieces(Color::white, PieceType::king)) ||
+        !std::has_single_bit(position.pieces(Color::black, PieceType::king))) {
         throw std::invalid_argument("position must contain exactly one king of each color");
     }
 
     if (active != "w" && active != "b") {
         throw std::invalid_argument("active color must be w or b");
     }
-    position.side_to_move_ = active[0];
+    position.side_to_move_ = active == "w" ? Color::white : Color::black;
 
     if (castling != "-") {
         for (char right : castling) {
@@ -118,7 +118,7 @@ std::string Position::to_fen() const {
     for (int rank = 0; rank < 8; ++rank) {
         int empty = 0;
         for (int file = 0; file < 8; ++file) {
-            const char piece = board_[rank * 8 + file];
+            const char piece = piece_at(static_cast<std::uint8_t>(rank * 8 + file));
             if (piece == '.') {
                 ++empty;
             } else {
@@ -147,12 +147,35 @@ std::string Position::to_fen() const {
     const auto en_passant = en_passant_square_ < 0
         ? std::string("-")
         : square_name(static_cast<std::uint8_t>(en_passant_square_));
-    return placement + " " + side_to_move_ + " " + castling + " " + en_passant + " " +
+    return placement + " " + (side_to_move_ == Color::white ? "w" : "b") + " " + castling + " " + en_passant + " " +
         std::to_string(halfmove_clock_) + " " + std::to_string(fullmove_number_);
 }
 
-const std::array<char, 64>& Position::board() const { return board_; }
-char Position::side_to_move() const { return side_to_move_; }
+char Position::piece_at(std::uint8_t square) const {
+    const auto target = square_bit(square);
+    for (std::size_t color = 0; color < 2; ++color) {
+        for (std::size_t type = 0; type < 6; ++type) {
+            const auto piece = piece_index(static_cast<Color>(color), static_cast<PieceType>(type));
+            if ((pieces_[piece] & target) != 0) {
+                return piece_symbol(static_cast<Color>(color), static_cast<PieceType>(type));
+            }
+        }
+    }
+    return '.';
+}
+
+Bitboard Position::pieces(Color color, PieceType type) const { return pieces_[piece_index(color, type)]; }
+
+Bitboard Position::occupancy(Color color) const {
+    Bitboard occupied = 0;
+    for (std::size_t type = 0; type < 6; ++type) {
+        occupied |= pieces_[piece_index(color, static_cast<PieceType>(type))];
+    }
+    return occupied;
+}
+
+Bitboard Position::occupancy() const { return occupancy(Color::white) | occupancy(Color::black); }
+Color Position::side_to_move() const { return side_to_move_; }
 std::uint8_t Position::castling_rights() const { return castling_rights_; }
 std::int8_t Position::en_passant_square() const { return en_passant_square_; }
 int Position::halfmove_clock() const { return halfmove_clock_; }
