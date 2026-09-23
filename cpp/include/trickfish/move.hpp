@@ -9,11 +9,13 @@
 namespace trickfish {
 
 struct Move {
-    std::uint8_t from;
-    std::uint8_t to;
+    std::uint8_t from = 0;
+    std::uint8_t to = 0;
     char promotion = '\0';
     bool en_passant = false;
     bool castling = false;
+
+    Move() = default;
 
     Move(
         std::uint8_t from_square,

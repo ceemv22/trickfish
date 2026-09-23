@@ -29,7 +29,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
-| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, occupancy and side attack maps, check detection, precomputed leaper attacks, blocker-aware sliding attacks, and FEN Position bootstrap |
+| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, occupancy and side attack maps, check detection, precomputed leaper attacks, blocker-aware sliding attacks, and FEN Position bootstrap |
 | Continuous integration | GCC/Linux and MSVC/Windows configure, compile, and exact FEN round-trip verification |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
@@ -113,6 +113,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] C++ piece bitboards and compile-time pawn/knight/king attack tables
 - [x] C++ blocker-aware bishop, rook, and queen attack generation
 - [x] C++ aggregate side attack maps and check detection
+- [x] Fixed-capacity C++ move list without heap allocation
 - [x] First material evaluator with mate and dead-position handling
 - [x] Depth-limited alpha-beta search with principal variation
 - [x] Capture-first move ordering and quiescence search
