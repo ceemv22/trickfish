@@ -29,7 +29,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
-| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with square/move/piece types, twelve piece bitboards, occupancy queries, and FEN Position bootstrap |
+| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with square/move/piece types, twelve piece bitboards, occupancy queries, compile-time knight/king attack tables, and FEN Position bootstrap |
 | Continuous integration | GCC/Linux and MSVC/Windows configure, compile, and exact FEN round-trip verification |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
@@ -110,6 +110,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Repetition history and threefold-repetition counting
 - [x] Fifty-move claim, automatic 75-move draw, and insufficient-material detection
 - [ ] Mutable make/unmake for the C++ search core
+- [x] C++ piece bitboards and compile-time knight/king attack tables
 - [x] First material evaluator with mate and dead-position handling
 - [x] Depth-limited alpha-beta search with principal variation
 - [x] Capture-first move ordering and quiescence search
@@ -130,7 +131,7 @@ The current Python code exists to establish rules, tests, and the decision model
 
 The target architecture is a C++26 engine core for move generation, position updates, search, and evaluation, with Python retained for tooling, experiments, test fixtures, data preparation, and analysis. Until C++26 compiler support is stable across the supported toolchains, the core will stay within a portable C++20/23 subset and avoid draft-only dependencies. The move to C++ begins after the Python prototype has complete legal move generation and perft coverage; that gives the C++ implementation a precise behavioral reference instead of rewriting unfinished logic.
 
-The C++ bootstrap is under `cpp/` and builds through the root `CMakeLists.txt`. The current host has no CMake or C++ compiler installed, so this source has not yet passed a local compile. The GitHub Actions workflow configures and compiles it on Windows and Linux, then requires an exact initial-position FEN round-trip. Its first result will be available after this commit is pushed. Perft parity with the Python implementation remains the next acceptance boundary.
+The C++ bootstrap is under `cpp/` and builds through the root `CMakeLists.txt`. The current host has no local CMake or C++ compiler, so compilation is handled by GitHub Actions. GCC on Linux and MSVC on Windows both compile the core and require an exact initial-position FEN round-trip. Perft parity with the Python implementation remains the next acceptance boundary.
 
 ```powershell
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

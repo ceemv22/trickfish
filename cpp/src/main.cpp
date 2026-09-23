@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 
+#include "trickfish/attacks.hpp"
 #include "trickfish/position.hpp"
 
 int main(int argc, char** argv) {
