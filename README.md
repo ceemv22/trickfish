@@ -30,7 +30,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
 | C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, complete legal move generation, reversible make/unmake, attack maps, check detection, and recursive perft |
-| Continuous integration | GCC/Linux and MSVC/Windows configure, compile, exact FEN round-trip, and initial-position perft verification |
+| Continuous integration | GCC/Linux and MSVC/Windows configure, compile, exact FEN round-trip, and multi-position perft verification |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
@@ -119,7 +119,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] C++ en passant generation with target and captured-pawn validation
 - [x] C++ kingside and queenside castling generation with path safety checks
 - [x] C++ legal filtering through reversible move application and king-safety validation
-- [x] Recursive C++ perft with initial-position depth-3 CI baseline
+- [x] Recursive C++ perft with initial, castling, endgame, and promotion depth-3 CI baselines
 - [x] First material evaluator with mate and dead-position handling
 - [x] Depth-limited alpha-beta search with principal variation
 - [x] Capture-first move ordering and quiescence search
