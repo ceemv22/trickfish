@@ -29,6 +29,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
+| C++26 core | CMake target, square/move types, and FEN Position bootstrap; compilation pending a local C++ toolchain |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
@@ -127,6 +128,13 @@ The relevant failure case is a trap that works only when the opponent misses one
 The current Python code exists to establish rules, tests, and the decision model quickly. It is not intended to be the final high-performance search core.
 
 The target architecture is a C++26 engine core for move generation, position updates, search, and evaluation, with Python retained for tooling, experiments, test fixtures, data preparation, and analysis. Until C++26 compiler support is stable across the supported toolchains, the core will stay within a portable C++20/23 subset and avoid draft-only dependencies. The move to C++ begins after the Python prototype has complete legal move generation and perft coverage; that gives the C++ implementation a precise behavioral reference instead of rewriting unfinished logic.
+
+The C++ bootstrap is under `cpp/` and builds through the root `CMakeLists.txt`. The current host has no CMake or C++ compiler installed, so this source has not yet passed a local compile. Once a C++26-capable toolchain is available, the first acceptance check is exact FEN round-tripping followed by parity with the Python perft suite.
+
+```powershell
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
 
 ## Verification standard
 
