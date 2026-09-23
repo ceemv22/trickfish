@@ -81,6 +81,7 @@ void append_pawn_moves(MoveList& moves, const Position& position) {
     const int push = color == Color::white ? -8 : 8;
     const int start_rank = color == Color::white ? 6 : 1;
     const int promotion_rank = color == Color::white ? 0 : 7;
+    const int en_passant = position.en_passant_square();
     Bitboard pawns = position.pieces(color, PieceType::pawn);
 
     while (pawns != 0) {
@@ -100,6 +101,19 @@ void append_pawn_moves(MoveList& moves, const Position& position) {
         while (captures != 0) {
             const auto to = pop_lsb(captures);
             append_pawn_move(moves, from, to, to / 8 == promotion_rank);
+        }
+
+        if (en_passant >= 0) {
+            const auto target = static_cast<std::uint8_t>(en_passant);
+            const int captured_square = en_passant - push;
+            const bool target_is_empty = (occupied & square_bit(target)) == 0;
+            const bool target_is_attacked = (pawn_attacks(color, from) & square_bit(target)) != 0;
+            const bool captured_pawn_exists = captured_square >= 0 && captured_square < 64 &&
+                (position.pieces(opposite(color), PieceType::pawn) &
+                    square_bit(static_cast<std::uint8_t>(captured_square))) != 0;
+            if (target_is_empty && target_is_attacked && captured_pawn_exists) {
+                moves.push(Move(from, target, '\0', true));
+            }
         }
     }
 }

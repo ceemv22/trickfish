@@ -29,7 +29,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
-| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, ordinary pseudo-legal generation including pawn pushes/captures/promotions, side attack maps, check detection, precomputed leaper attacks, blocker-aware sliding attacks, and FEN Position bootstrap |
+| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, pseudo-legal generation including pawn pushes/captures/promotions/en passant, side attack maps, check detection, precomputed leaper attacks, blocker-aware sliding attacks, and FEN Position bootstrap |
 | Continuous integration | GCC/Linux and MSVC/Windows configure, compile, and exact FEN round-trip verification |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
@@ -116,6 +116,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Fixed-capacity C++ move list without heap allocation
 - [x] C++ pseudo-legal generation for knights, bishops, rooks, queens, and ordinary king moves
 - [x] C++ pawn pushes, double pushes, captures, and four-way promotions
+- [x] C++ en passant generation with target and captured-pawn validation
 - [x] First material evaluator with mate and dead-position handling
 - [x] Depth-limited alpha-beta search with principal variation
 - [x] Capture-first move ordering and quiescence search
