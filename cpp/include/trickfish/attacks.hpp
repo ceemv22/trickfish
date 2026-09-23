@@ -30,6 +30,32 @@ consteval Bitboard jump_attacks_for(
     return attacks;
 }
 
+template<std::size_t Size>
+constexpr Bitboard sliding_attacks_for(
+    std::uint8_t square,
+    Bitboard occupancy,
+    const std::array<std::pair<int, int>, Size>& directions
+) {
+    const int rank = square / 8;
+    const int file = square % 8;
+    Bitboard attacks = 0;
+    for (const auto [rank_step, file_step] : directions) {
+        int target_rank = rank + rank_step;
+        int target_file = file + file_step;
+        while (target_rank >= 0 && target_rank < 8 && target_file >= 0 && target_file < 8) {
+            const auto target = static_cast<std::uint8_t>(target_rank * 8 + target_file);
+            const auto target_bit = square_bit(target);
+            attacks |= target_bit;
+            if ((occupancy & target_bit) != 0) {
+                break;
+            }
+            target_rank += rank_step;
+            target_file += file_step;
+        }
+    }
+    return attacks;
+}
+
 consteval std::array<Bitboard, 64> make_knight_attack_table() {
     constexpr std::array offsets = {
         std::pair{-2, -1}, std::pair{-2, 1}, std::pair{-1, -2}, std::pair{-1, 2},
@@ -78,6 +104,12 @@ inline constexpr auto knight_attack_table = make_knight_attack_table();
 inline constexpr auto king_attack_table = make_king_attack_table();
 inline constexpr auto white_pawn_attack_table = make_pawn_attack_table(Color::white);
 inline constexpr auto black_pawn_attack_table = make_pawn_attack_table(Color::black);
+inline constexpr std::array bishop_directions = {
+    std::pair{-1, -1}, std::pair{-1, 1}, std::pair{1, -1}, std::pair{1, 1}
+};
+inline constexpr std::array rook_directions = {
+    std::pair{-1, 0}, std::pair{1, 0}, std::pair{0, -1}, std::pair{0, 1}
+};
 
 }
 
@@ -102,6 +134,24 @@ inline constexpr Bitboard pawn_attacks(Color color, std::uint8_t square) {
     return color == Color::white
         ? detail::white_pawn_attack_table[square]
         : detail::black_pawn_attack_table[square];
+}
+
+inline constexpr Bitboard bishop_attacks(std::uint8_t square, Bitboard occupancy) {
+    if (square >= 64) {
+        throw std::invalid_argument("square must be between 0 and 63");
+    }
+    return detail::sliding_attacks_for(square, occupancy, detail::bishop_directions);
+}
+
+inline constexpr Bitboard rook_attacks(std::uint8_t square, Bitboard occupancy) {
+    if (square >= 64) {
+        throw std::invalid_argument("square must be between 0 and 63");
+    }
+    return detail::sliding_attacks_for(square, occupancy, detail::rook_directions);
+}
+
+inline constexpr Bitboard queen_attacks(std::uint8_t square, Bitboard occupancy) {
+    return bishop_attacks(square, occupancy) | rook_attacks(square, occupancy);
 }
 
 }
