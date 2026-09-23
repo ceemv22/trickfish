@@ -37,6 +37,42 @@ void append_pawn_move(MoveList& moves, std::uint8_t from, std::uint8_t to, bool 
     }
 }
 
+void append_castling_moves(MoveList& moves, const Position& position) {
+    const auto color = position.side_to_move();
+    const auto enemy_attacks = position.attacks_by(opposite(color));
+    const auto occupied = position.occupancy();
+    const std::uint8_t king_square = color == Color::white ? 60 : 4;
+    const std::uint8_t kingside_rook = color == Color::white ? 63 : 7;
+    const std::uint8_t queenside_rook = color == Color::white ? 56 : 0;
+    const auto king = position.pieces(color, PieceType::king);
+    const auto rooks = position.pieces(color, PieceType::rook);
+
+    if ((king & square_bit(king_square)) == 0 || (enemy_attacks & square_bit(king_square)) != 0) {
+        return;
+    }
+
+    const auto kingside_path = square_bit(static_cast<std::uint8_t>(king_square + 1)) |
+        square_bit(static_cast<std::uint8_t>(king_square + 2));
+    if (position.has_castling_right(color, true) &&
+        (rooks & square_bit(kingside_rook)) != 0 &&
+        (occupied & kingside_path) == 0 &&
+        (enemy_attacks & kingside_path) == 0) {
+        moves.push(Move(king_square, static_cast<std::uint8_t>(king_square + 2), '\0', false, true));
+    }
+
+    const auto queenside_empty = square_bit(static_cast<std::uint8_t>(king_square - 1)) |
+        square_bit(static_cast<std::uint8_t>(king_square - 2)) |
+        square_bit(static_cast<std::uint8_t>(king_square - 3));
+    const auto queenside_king_path = square_bit(static_cast<std::uint8_t>(king_square - 1)) |
+        square_bit(static_cast<std::uint8_t>(king_square - 2));
+    if (position.has_castling_right(color, false) &&
+        (rooks & square_bit(queenside_rook)) != 0 &&
+        (occupied & queenside_empty) == 0 &&
+        (enemy_attacks & queenside_king_path) == 0) {
+        moves.push(Move(king_square, static_cast<std::uint8_t>(king_square - 2), '\0', false, true));
+    }
+}
+
 void append_non_pawn_moves(MoveList& moves, const Position& position) {
     const auto color = position.side_to_move();
     const auto own_occupancy = position.occupancy(color);
@@ -72,6 +108,7 @@ void append_non_pawn_moves(MoveList& moves, const Position& position) {
         own_occupancy,
         [](std::uint8_t square) { return king_attacks(square); }
     );
+    append_castling_moves(moves, position);
 }
 
 void append_pawn_moves(MoveList& moves, const Position& position) {

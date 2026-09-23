@@ -23,6 +23,7 @@ public:
     [[nodiscard]] bool in_check(Color color) const;
     [[nodiscard]] Color side_to_move() const;
     [[nodiscard]] std::uint8_t castling_rights() const;
+    [[nodiscard]] bool has_castling_right(Color color, bool kingside) const;
     [[nodiscard]] std::int8_t en_passant_square() const;
     [[nodiscard]] int halfmove_clock() const;
     [[nodiscard]] int fullmove_number() const;

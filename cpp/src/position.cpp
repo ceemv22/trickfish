@@ -201,6 +201,14 @@ bool Position::in_check(Color color) const {
 
 Color Position::side_to_move() const { return side_to_move_; }
 std::uint8_t Position::castling_rights() const { return castling_rights_; }
+
+bool Position::has_castling_right(Color color, bool kingside) const {
+    const std::uint8_t right = color == Color::white
+        ? (kingside ? white_kingside : white_queenside)
+        : (kingside ? black_kingside : black_queenside);
+    return (castling_rights_ & right) != 0;
+}
+
 std::int8_t Position::en_passant_square() const { return en_passant_square_; }
 int Position::halfmove_clock() const { return halfmove_clock_; }
 int Position::fullmove_number() const { return fullmove_number_; }
