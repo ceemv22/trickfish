@@ -21,7 +21,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Castling | Rights, piece placement, empty path, and attack checks for the king's route |
 | Attack map | Detect attacks by either side without changing side to move |
 | Game state | Check, checkmate, stalemate, and ongoing-position status |
-| Evaluation | White-positive centipawn score with material, activity, pawn structure, bishop pair, rook-file, king-safety, mate, and dead-position terms |
+| Evaluation | Phase-aware white-positive score with material, activity, pawn structure, bishop pair, rook files, king safety/activity, mate, and dead-position terms |
 | Search | Iterative deepening, deadline control, negamax, alpha-beta, capture-first ordering, quiescence, Zobrist transposition table, principal variation, and node count |
 | Position key | Deterministic 64-bit Zobrist key for board, side, castling, and legal en passant state |
 | Game history | Immutable position sequence with threefold-repetition counting |
@@ -116,7 +116,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Explainable positional evaluation breakdown
 - [x] Deadline-based search with completed-depth reporting
 - [x] UCI protocol with depth, movetime, clock allocation, and stop
-- [ ] Phase-aware evaluation and advanced time management
+- [x] Phase-aware king safety, king activity, and passed-pawn scaling
+- [ ] Advanced time management and evaluation tuning
 - [ ] Candidate verification
 - [ ] Practical move selection
 - [ ] Opponent-specific experiments and published benchmark methodology

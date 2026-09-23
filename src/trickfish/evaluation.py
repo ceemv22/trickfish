@@ -11,16 +11,25 @@ PIECE_VALUES = {
     "q": 900,
     "k": 0,
 }
+PHASE_WEIGHTS = {
+    "n": 1,
+    "b": 1,
+    "r": 2,
+    "q": 4,
+}
+MAX_PHASE = 24
 
 
 @dataclass(frozen=True)
 class EvaluationBreakdown:
+    phase: int
     material: int
     piece_activity: int
     pawn_structure: int
     bishop_pair: int
     rook_files: int
     king_safety: int
+    king_activity: int
 
     @property
     def total(self) -> int:
@@ -31,6 +40,7 @@ class EvaluationBreakdown:
             + self.bishop_pair
             + self.rook_files
             + self.king_safety
+            + self.king_activity
         )
 
 
@@ -44,13 +54,16 @@ def evaluate(position: Position) -> int:
 
 
 def evaluate_breakdown(position: Position) -> EvaluationBreakdown:
+    phase = _game_phase(position)
     return EvaluationBreakdown(
+        phase,
         _material(position),
         _piece_activity(position),
-        _pawn_structure(position, True) - _pawn_structure(position, False),
+        _pawn_structure(position, True, phase) - _pawn_structure(position, False, phase),
         _bishop_pair(position),
         _rook_files(position),
-        _king_safety(position),
+        _king_safety(position, phase),
+        _king_activity(position, phase),
     )
 
 
@@ -94,7 +107,7 @@ def _piece_activity(position: Position) -> int:
     return score
 
 
-def _pawn_structure(position: Position, white: bool) -> int:
+def _pawn_structure(position: Position, white: bool, phase: int) -> int:
     pawn = "P" if white else "p"
     enemy = "p" if white else "P"
     pawns = [square for square, piece in enumerate(position.board) if piece == pawn]
@@ -118,7 +131,8 @@ def _pawn_structure(position: Position, white: bool) -> int:
                 break
         if passed:
             advance = 6 - rank if white else rank - 1
-            score += 8 + 8 * advance
+            endgame_bonus = (MAX_PHASE - phase) * 2 * advance // MAX_PHASE
+            score += 8 + 8 * advance + endgame_bonus
     return score
 
 
@@ -146,7 +160,7 @@ def _rook_files(position: Position) -> int:
     return score
 
 
-def _king_safety(position: Position) -> int:
+def _king_safety(position: Position, phase: int) -> int:
     score = 0
     for square, piece in enumerate(position.board):
         if piece not in {"K", "k"}:
@@ -159,8 +173,32 @@ def _king_safety(position: Position) -> int:
         for shield_file in (file - 1, file, file + 1):
             if 0 <= shield_file < 8 and position.board[pawn_rank * 8 + shield_file] == pawn:
                 bonus += 8
+        score += _signed(piece, bonus * phase // MAX_PHASE)
+    return score
+
+
+def _king_activity(position: Position, phase: int) -> int:
+    if any(piece in position.board for piece in "QqRr"):
+        return 0
+    score = 0
+    endgame_weight = MAX_PHASE - phase
+    for square, piece in enumerate(position.board):
+        if piece not in {"K", "k"}:
+            continue
+        rank, file = divmod(square, 8)
+        distance = abs(2 * file - 7) + abs(2 * rank - 7)
+        bonus = max(0, 14 - distance) * endgame_weight // MAX_PHASE
         score += _signed(piece, bonus)
     return score
+
+
+def _game_phase(position: Position) -> int:
+    phase = sum(
+        PHASE_WEIGHTS.get(piece.lower(), 0)
+        for piece in position.board
+        if piece is not None
+    )
+    return min(MAX_PHASE, phase)
 
 
 def _signed(piece: str, value: int) -> int:

@@ -78,12 +78,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "eval-detail":
         breakdown = evaluate_breakdown(position)
+        print(f"phase {breakdown.phase}/{24}")
         print(f"material {breakdown.material}")
         print(f"activity {breakdown.piece_activity}")
         print(f"pawns {breakdown.pawn_structure}")
         print(f"bishop-pair {breakdown.bishop_pair}")
         print(f"rook-files {breakdown.rook_files}")
         print(f"king-safety {breakdown.king_safety}")
+        print(f"king-activity {breakdown.king_activity}")
         print(f"total {breakdown.total}")
         return 0
 
