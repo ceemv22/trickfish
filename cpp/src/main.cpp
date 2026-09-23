@@ -4,6 +4,7 @@
 
 #include "trickfish/attacks.hpp"
 #include "trickfish/move_list.hpp"
+#include "trickfish/movegen.hpp"
 #include "trickfish/position.hpp"
 
 int main(int argc, char** argv) {

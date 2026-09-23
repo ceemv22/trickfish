@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(trickfish LANGUAGES CXX)
 
 add_library(trickfish_core
+    cpp/src/movegen.cpp
     cpp/src/position.cpp
 )
 
