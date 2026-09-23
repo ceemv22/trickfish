@@ -213,4 +213,115 @@ std::int8_t Position::en_passant_square() const { return en_passant_square_; }
 int Position::halfmove_clock() const { return halfmove_clock_; }
 int Position::fullmove_number() const { return fullmove_number_; }
 
+void Position::add_piece(char symbol, std::uint8_t square) {
+    pieces_[piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol))] |= square_bit(square);
+}
+
+void Position::remove_piece(char symbol, std::uint8_t square) {
+    pieces_[piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol))] &= ~square_bit(square);
+}
+
+UndoState Position::make_move(const Move& move) {
+    const char moving_piece = piece_at(move.from);
+    if (moving_piece == '.' || color_from_symbol(moving_piece) != side_to_move_) {
+        throw std::invalid_argument("move source does not contain a side-to-move piece");
+    }
+
+    UndoState undo{
+        castling_rights_,
+        en_passant_square_,
+        halfmove_clock_,
+        fullmove_number_,
+        '.',
+        move.to
+    };
+    const auto color = side_to_move_;
+    const auto moving_type = piece_type_from_symbol(moving_piece);
+    const int push = color == Color::white ? -8 : 8;
+    if (move.en_passant) {
+        undo.captured_square = static_cast<std::uint8_t>(static_cast<int>(move.to) - push);
+    }
+    undo.captured_piece = piece_at(undo.captured_square);
+
+    remove_piece(moving_piece, move.from);
+    if (undo.captured_piece != '.') {
+        remove_piece(undo.captured_piece, undo.captured_square);
+    }
+
+    char placed_piece = moving_piece;
+    if (move.promotion != '\0') {
+        placed_piece = color == Color::white
+            ? static_cast<char>(move.promotion - 'a' + 'A')
+            : move.promotion;
+    }
+    add_piece(placed_piece, move.to);
+
+    if (move.castling) {
+        const bool kingside = move.to > move.from;
+        const std::uint8_t rook_from = static_cast<std::uint8_t>(kingside ? move.from + 3 : move.from - 4);
+        const std::uint8_t rook_to = static_cast<std::uint8_t>(kingside ? move.from + 1 : move.from - 1);
+        const char rook = piece_symbol(color, PieceType::rook);
+        remove_piece(rook, rook_from);
+        add_piece(rook, rook_to);
+    }
+
+    if (moving_type == PieceType::king) {
+        castling_rights_ &= color == Color::white ? static_cast<std::uint8_t>(~3) : static_cast<std::uint8_t>(~12);
+    }
+    if (moving_type == PieceType::rook) {
+        if (move.from == 63) castling_rights_ &= static_cast<std::uint8_t>(~white_kingside);
+        if (move.from == 56) castling_rights_ &= static_cast<std::uint8_t>(~white_queenside);
+        if (move.from == 7) castling_rights_ &= static_cast<std::uint8_t>(~black_kingside);
+        if (move.from == 0) castling_rights_ &= static_cast<std::uint8_t>(~black_queenside);
+    }
+    if (undo.captured_piece == 'R' || undo.captured_piece == 'r') {
+        if (undo.captured_square == 63) castling_rights_ &= static_cast<std::uint8_t>(~white_kingside);
+        if (undo.captured_square == 56) castling_rights_ &= static_cast<std::uint8_t>(~white_queenside);
+        if (undo.captured_square == 7) castling_rights_ &= static_cast<std::uint8_t>(~black_kingside);
+        if (undo.captured_square == 0) castling_rights_ &= static_cast<std::uint8_t>(~black_queenside);
+    }
+
+    en_passant_square_ = moving_type == PieceType::pawn &&
+        (static_cast<int>(move.to) - static_cast<int>(move.from) == 2 * push)
+        ? static_cast<std::int8_t>(static_cast<int>(move.from) + push)
+        : -1;
+    halfmove_clock_ = moving_type == PieceType::pawn || undo.captured_piece != '.' ? 0 : halfmove_clock_ + 1;
+    if (color == Color::black) {
+        ++fullmove_number_;
+    }
+    side_to_move_ = opposite(side_to_move_);
+    return undo;
+}
+
+void Position::unmake_move(const Move& move, const UndoState& undo) {
+    side_to_move_ = opposite(side_to_move_);
+    const auto color = side_to_move_;
+    const char placed_piece = piece_at(move.to);
+    if (placed_piece == '.') {
+        throw std::invalid_argument("move target does not contain the moved piece");
+    }
+    remove_piece(placed_piece, move.to);
+    const char original_piece = move.promotion != '\0'
+        ? piece_symbol(color, PieceType::pawn)
+        : placed_piece;
+    add_piece(original_piece, move.from);
+
+    if (move.castling) {
+        const bool kingside = move.to > move.from;
+        const std::uint8_t rook_from = static_cast<std::uint8_t>(kingside ? move.from + 3 : move.from - 4);
+        const std::uint8_t rook_to = static_cast<std::uint8_t>(kingside ? move.from + 1 : move.from - 1);
+        const char rook = piece_symbol(color, PieceType::rook);
+        remove_piece(rook, rook_to);
+        add_piece(rook, rook_from);
+    }
+
+    if (undo.captured_piece != '.') {
+        add_piece(undo.captured_piece, undo.captured_square);
+    }
+    castling_rights_ = undo.castling_rights;
+    en_passant_square_ = undo.en_passant_square;
+    halfmove_clock_ = undo.halfmove_clock;
+    fullmove_number_ = undo.fullmove_number;
+}
+
 }

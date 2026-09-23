@@ -29,7 +29,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
-| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, complete pseudo-legal generation including promotions, en passant, and castling, side attack maps, check detection, precomputed leaper attacks, blocker-aware sliding attacks, and FEN Position bootstrap |
+| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, complete pseudo-legal generation, reversible make/unmake with compact undo state, side attack maps, check detection, and FEN Position bootstrap |
 | Continuous integration | GCC/Linux and MSVC/Windows configure, compile, and exact FEN round-trip verification |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
@@ -109,7 +109,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Deterministic Zobrist position key with legal en passant treatment
 - [x] Repetition history and threefold-repetition counting
 - [x] Fifty-move claim, automatic 75-move draw, and insufficient-material detection
-- [ ] Mutable make/unmake for the C++ search core
+- [x] Mutable C++ make/unmake for ordinary moves, captures, promotion, en passant, and castling
 - [x] C++ piece bitboards and compile-time pawn/knight/king attack tables
 - [x] C++ blocker-aware bishop, rook, and queen attack generation
 - [x] C++ aggregate side attack maps and check detection
