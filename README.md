@@ -30,7 +30,7 @@ The repository contains an early Python position prototype. It is not yet a play
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
 | C++ core | C++26 target architecture compiled against a portable C++23 baseline, with square/move/piece types, twelve piece bitboards, occupancy queries, and FEN Position bootstrap |
-| Continuous integration | GCC/Linux and ClangCL/Windows configure, compile, and exact FEN round-trip verification |
+| Continuous integration | GCC/Linux and MSVC/Windows configure, compile, and exact FEN round-trip verification |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.

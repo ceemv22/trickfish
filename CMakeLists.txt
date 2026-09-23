@@ -7,7 +7,8 @@ add_library(trickfish_core
 )
 
 target_include_directories(trickfish_core PUBLIC cpp/include)
-set_target_properties(trickfish_core PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+target_compile_features(trickfish_core PUBLIC cxx_std_23)
+set_target_properties(trickfish_core PROPERTIES CXX_EXTENSIONS NO)
 
 add_executable(trickfish_cpp cpp/src/main.cpp)
 target_link_libraries(trickfish_cpp PRIVATE trickfish_core)
