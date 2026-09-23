@@ -176,4 +176,19 @@ MoveList generate_pseudo_legal_moves(const Position& position) {
     return moves;
 }
 
+MoveList generate_legal_moves(Position& position) {
+    MoveList legal_moves;
+    const auto moving_color = position.side_to_move();
+    const auto pseudo_legal_moves = generate_pseudo_legal_moves(position);
+    for (const auto& move : pseudo_legal_moves) {
+        const auto undo = position.make_move(move);
+        const bool legal = !position.in_check(moving_color);
+        position.unmake_move(move, undo);
+        if (legal) {
+            legal_moves.push(move);
+        }
+    }
+    return legal_moves;
+}
+
 }
