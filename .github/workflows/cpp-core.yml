@@ -1,0 +1,41 @@
+name: C++ Core
+
+on:
+  push:
+    paths:
+      - CMakeLists.txt
+      - cpp/**
+      - .github/workflows/cpp-core.yml
+  pull_request:
+    paths:
+      - CMakeLists.txt
+      - cpp/**
+      - .github/workflows/cpp-core.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Verify FEN round-trip
+        shell: pwsh
+        run: |
+          $fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $actual = & $binary $fen
+          if ($actual -ne $fen) {
+            throw "FEN round-trip mismatch: $actual"
+          }
