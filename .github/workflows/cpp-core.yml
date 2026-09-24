@@ -62,12 +62,13 @@ jobs:
           }
           $nodes = & $binary --perft 3
           if ($nodes -ne "8902") {
+            Write-Output "::error title=Initial position perft mismatch::Expected 8902, got $nodes"
             throw "Initial-position perft(3) mismatch: $nodes"
           }
           $cases = @(
             @{
               Name = "Kiwipete"
-              Fen = "r3k2r/p1ppqpb1/bn2pnp1/2pP4/1p2P3/2N2N2/PPQBBPPP/R3K2R w KQkq - 0 1"
+              Fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
               Depth = 3
               Expected = "97862"
             },
@@ -87,6 +88,7 @@ jobs:
           foreach ($case in $cases) {
             $actualNodes = & $binary --perft $case.Depth $case.Fen
             if ($actualNodes -ne $case.Expected) {
+              Write-Output "::error title=$($case.Name) perft mismatch::Expected $($case.Expected), got $actualNodes"
               throw "$($case.Name) perft($($case.Depth)) mismatch: $actualNodes"
             }
           }
