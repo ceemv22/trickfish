@@ -8,6 +8,7 @@
 
 #include "trickfish/attacks.hpp"
 #include "trickfish/square.hpp"
+#include "trickfish/zobrist.hpp"
 
 namespace trickfish {
 namespace {
@@ -111,6 +112,7 @@ Position Position::from_fen(std::string_view fen) {
     if (position.halfmove_clock_ < 0 || position.fullmove_number_ < 1) {
         throw std::invalid_argument("invalid move counters");
     }
+    position.key_ = position.compute_key();
     return position;
 }
 
@@ -212,6 +214,24 @@ bool Position::has_castling_right(Color color, bool kingside) const {
 std::int8_t Position::en_passant_square() const { return en_passant_square_; }
 int Position::halfmove_clock() const { return halfmove_clock_; }
 int Position::fullmove_number() const { return fullmove_number_; }
+std::uint64_t Position::key() const { return key_; }
+
+std::uint64_t Position::compute_key() const {
+    std::uint64_t key = zobrist::keys.castling[castling_rights_];
+    if (side_to_move_ == Color::black) {
+        key ^= zobrist::keys.side;
+    }
+    if (en_passant_square_ >= 0) {
+        key ^= zobrist::keys.en_passant_file[static_cast<std::uint8_t>(en_passant_square_) % 8];
+    }
+    for (std::size_t piece = 0; piece < pieces_.size(); ++piece) {
+        Bitboard squares = pieces_[piece];
+        while (squares != 0) {
+            key ^= zobrist::keys.pieces[piece][pop_lsb(squares)];
+        }
+    }
+    return key;
+}
 
 void Position::add_piece(char symbol, std::uint8_t square) {
     pieces_[piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol))] |= square_bit(square);
@@ -232,6 +252,7 @@ UndoState Position::make_move(const Move& move) {
         en_passant_square_,
         halfmove_clock_,
         fullmove_number_,
+        key_,
         '.',
         move.to
     };
@@ -290,6 +311,7 @@ UndoState Position::make_move(const Move& move) {
         ++fullmove_number_;
     }
     side_to_move_ = opposite(side_to_move_);
+    key_ = compute_key();
     return undo;
 }
 
@@ -322,6 +344,7 @@ void Position::unmake_move(const Move& move, const UndoState& undo) {
     en_passant_square_ = undo.en_passant_square;
     halfmove_clock_ = undo.halfmove_clock;
     fullmove_number_ = undo.fullmove_number;
+    key_ = undo.position_key;
 }
 
 }

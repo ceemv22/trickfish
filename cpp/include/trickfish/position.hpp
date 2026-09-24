@@ -16,6 +16,7 @@ struct UndoState {
     std::int8_t en_passant_square = -1;
     int halfmove_clock = 0;
     int fullmove_number = 1;
+    std::uint64_t position_key = 0;
     char captured_piece = '.';
     std::uint8_t captured_square = 64;
 };
@@ -37,12 +38,14 @@ public:
     [[nodiscard]] std::int8_t en_passant_square() const;
     [[nodiscard]] int halfmove_clock() const;
     [[nodiscard]] int fullmove_number() const;
+    [[nodiscard]] std::uint64_t key() const;
     [[nodiscard]] UndoState make_move(const Move& move);
     void unmake_move(const Move& move, const UndoState& undo);
 
 private:
     void add_piece(char symbol, std::uint8_t square);
     void remove_piece(char symbol, std::uint8_t square);
+    [[nodiscard]] std::uint64_t compute_key() const;
 
     std::array<Bitboard, 12> pieces_{};
     Color side_to_move_ = Color::white;
@@ -50,6 +53,7 @@ private:
     std::int8_t en_passant_square_ = -1;
     int halfmove_clock_ = 0;
     int fullmove_number_ = 1;
+    std::uint64_t key_ = 0;
 };
 
 }

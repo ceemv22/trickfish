@@ -29,13 +29,13 @@ The repository contains a Python reference engine and an in-progress C++ search 
 | Perft | Recursive legal-node counter with standard positions through depth 3 and root divide |
 | CLI | Position display, status, evaluation, depth-limited search, legal/pseudo-legal move listing, perft, and divide |
 | UCI | Handshake, readiness, new game, startpos/FEN with moves, depth/movetime/clock search, stop, bestmove, and quit |
-| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, complete legal move generation, reversible make/unmake, attack maps, check detection, and recursive perft |
-| Continuous integration | GCC/Linux and MSVC/Windows builds; FEN round-trip and initial-position perft pass on both, with corrected multi-position perft fixtures awaiting the next run |
+| C++ core | C++26 target architecture compiled against a portable C++23 baseline, with twelve piece bitboards, fixed-capacity move storage, complete legal move generation, reversible make/unmake, deterministic Zobrist keys, attack maps, check detection, and recursive perft |
+| Continuous integration | GCC/Linux and MSVC/Windows builds with passing FEN round-trip and four-position depth-3 perft verification |
 | Tests | FEN, move values, legal filtering, move application, CLI, and perft |
 
 `moves` reports legal moves after applying each candidate and checking the moving side's king. `pseudo-moves` exposes the raw generator for debugging. Castling checks the king's starting, transit, and destination squares against the attack map.
 
-The Python perft suite covers the initial position plus standard positions that exercise castling, check-evasion, promotions, and move application through depth 3. The C++ core matches the initial-position depth-3 value of 8,902 on GCC and MSVC. The first expanded CI run paired the Kiwipete node count with a different FEN. The workflow now uses the exact Kiwipete fixture already validated by the Python reference suite and awaits confirmation on both C++ runners. `divide` prints the node count below every legal root move so an incorrect branch can be located without inspecting the full tree.
+The Python and C++ perft suites agree through depth 3 on the initial position, Kiwipete, an endgame position, and a promotion/check-evasion position. GCC and MSVC execute the same C++ baselines in CI. `divide` prints the node count below every legal root move so an incorrect branch can be located without inspecting the full tree.
 
 ## Running the prototype
 
@@ -120,7 +120,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] C++ kingside and queenside castling generation with path safety checks
 - [x] C++ legal filtering through reversible move application and king-safety validation
 - [x] Recursive C++ perft with an initial-position depth-3 CI baseline
-- [ ] Confirm the corrected C++ castling, endgame, and promotion perft suite on both CI runners
+- [x] Confirm C++ castling, endgame, and promotion perft baselines on GCC and MSVC
+- [x] Deterministic C++ Zobrist key with reversible state restoration
 - [x] First material evaluator with mate and dead-position handling
 - [x] Depth-limited alpha-beta search with principal variation
 - [x] Capture-first move ordering and quiescence search
