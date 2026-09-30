@@ -182,7 +182,21 @@ Bitboard Position::attacks_by(Color color) const {
 }
 
 bool Position::in_check(Color color) const {
-    return (pieces(color, PieceType::king) & attacks_by(opposite(color))) != 0;
+    const auto king = pieces(color, PieceType::king);
+    if (king == 0) {
+        return false;
+    }
+    const auto square = static_cast<std::uint8_t>(std::countr_zero(king));
+    const auto enemy = opposite(color);
+    if ((pawn_attacks(color, square) & pieces(enemy, PieceType::pawn)) != 0 ||
+        (knight_attacks(square) & pieces(enemy, PieceType::knight)) != 0 ||
+        (king_attacks(square) & pieces(enemy, PieceType::king)) != 0) {
+        return true;
+    }
+    const auto occupied = occupancy();
+    const auto queens = pieces(enemy, PieceType::queen);
+    return (bishop_attacks(square, occupied) & (pieces(enemy, PieceType::bishop) | queens)) != 0 ||
+        (rook_attacks(square, occupied) & (pieces(enemy, PieceType::rook) | queens)) != 0;
 }
 
 Color Position::side_to_move() const { return side_to_move_; }

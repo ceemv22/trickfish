@@ -18,6 +18,11 @@ void verify(trickfish::Position& position, int depth) {
         }
     }
     for (const auto color : {trickfish::Color::white, trickfish::Color::black}) {
+        const bool expected_check =
+            (position.pieces(color, trickfish::PieceType::king) & position.attacks_by(trickfish::opposite(color))) != 0;
+        if (position.in_check(color) != expected_check) {
+            throw std::runtime_error("targeted check detection mismatch: " + position.to_fen());
+        }
         for (std::size_t type = 0; type < 6; ++type) {
             const auto piece_type = static_cast<trickfish::PieceType>(type);
             if (position.pieces(color, piece_type) != expected_pieces[trickfish::piece_index(color, piece_type)]) {
