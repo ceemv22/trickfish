@@ -7,7 +7,23 @@
 #include "trickfish/position.hpp"
 
 void verify(trickfish::Position& position, int depth) {
+    std::array<trickfish::Bitboard, 12> expected_pieces{};
+    for (std::uint8_t square = 0; square < 64; ++square) {
+        const auto symbol = position.piece_at(square);
+        if (symbol != '.') {
+            const auto index = trickfish::piece_index(
+                trickfish::color_from_symbol(symbol), trickfish::piece_type_from_symbol(symbol)
+            );
+            expected_pieces[index] |= trickfish::square_bit(square);
+        }
+    }
     for (const auto color : {trickfish::Color::white, trickfish::Color::black}) {
+        for (std::size_t type = 0; type < 6; ++type) {
+            const auto piece_type = static_cast<trickfish::PieceType>(type);
+            if (position.pieces(color, piece_type) != expected_pieces[trickfish::piece_index(color, piece_type)]) {
+                throw std::runtime_error("board and piece bitboards disagree: " + position.to_fen());
+            }
+        }
         trickfish::Bitboard expected = 0;
         for (std::uint8_t square = 0; square < 64; ++square) {
             const auto symbol = position.piece_at(square);

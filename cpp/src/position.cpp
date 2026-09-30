@@ -153,18 +153,7 @@ std::string Position::to_fen() const {
         std::to_string(halfmove_clock_) + " " + std::to_string(fullmove_number_);
 }
 
-char Position::piece_at(std::uint8_t square) const {
-    const auto target = square_bit(square);
-    for (std::size_t color = 0; color < 2; ++color) {
-        for (std::size_t type = 0; type < 6; ++type) {
-            const auto piece = piece_index(static_cast<Color>(color), static_cast<PieceType>(type));
-            if ((pieces_[piece] & target) != 0) {
-                return piece_symbol(static_cast<Color>(color), static_cast<PieceType>(type));
-            }
-        }
-    }
-    return '.';
-}
+char Position::piece_at(std::uint8_t square) const { return board_[square]; }
 
 Bitboard Position::pieces(Color color, PieceType type) const { return pieces_[piece_index(color, type)]; }
 
@@ -230,6 +219,7 @@ std::uint64_t Position::compute_key() const {
 
 void Position::add_piece(char symbol, std::uint8_t square) {
     const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
+    board_[square] = symbol;
     pieces_[index] |= square_bit(square);
     occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] |= square_bit(square);
     key_ ^= zobrist::keys.pieces[index][square];
@@ -237,6 +227,7 @@ void Position::add_piece(char symbol, std::uint8_t square) {
 
 void Position::remove_piece(char symbol, std::uint8_t square) {
     const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
+    board_[square] = '.';
     pieces_[index] &= ~square_bit(square);
     occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] &= ~square_bit(square);
     key_ ^= zobrist::keys.pieces[index][square];

@@ -47,6 +47,11 @@ private:
     void remove_piece(char symbol, std::uint8_t square);
     [[nodiscard]] std::uint64_t compute_key() const;
 
+    std::array<char, 64> board_ = [] {
+        std::array<char, 64> board{};
+        board.fill('.');
+        return board;
+    }();
     std::array<Bitboard, 12> pieces_{};
     std::array<Bitboard, 2> occupancy_{};
     Color side_to_move_ = Color::white;
