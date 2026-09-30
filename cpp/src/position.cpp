@@ -234,11 +234,15 @@ std::uint64_t Position::compute_key() const {
 }
 
 void Position::add_piece(char symbol, std::uint8_t square) {
-    pieces_[piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol))] |= square_bit(square);
+    const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
+    pieces_[index] |= square_bit(square);
+    key_ ^= zobrist::keys.pieces[index][square];
 }
 
 void Position::remove_piece(char symbol, std::uint8_t square) {
-    pieces_[piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol))] &= ~square_bit(square);
+    const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
+    pieces_[index] &= ~square_bit(square);
+    key_ ^= zobrist::keys.pieces[index][square];
 }
 
 UndoState Position::make_move(const Move& move) {
@@ -263,6 +267,11 @@ UndoState Position::make_move(const Move& move) {
         undo.captured_square = static_cast<std::uint8_t>(static_cast<int>(move.to) - push);
     }
     undo.captured_piece = piece_at(undo.captured_square);
+
+    key_ ^= zobrist::keys.castling[castling_rights_];
+    if (en_passant_square_ >= 0) {
+        key_ ^= zobrist::keys.en_passant_file[static_cast<std::uint8_t>(en_passant_square_) % 8];
+    }
 
     remove_piece(moving_piece, move.from);
     if (undo.captured_piece != '.') {
@@ -311,7 +320,11 @@ UndoState Position::make_move(const Move& move) {
         ++fullmove_number_;
     }
     side_to_move_ = opposite(side_to_move_);
-    key_ = compute_key();
+    key_ ^= zobrist::keys.side;
+    key_ ^= zobrist::keys.castling[castling_rights_];
+    if (en_passant_square_ >= 0) {
+        key_ ^= zobrist::keys.en_passant_file[static_cast<std::uint8_t>(en_passant_square_) % 8];
+    }
     return undo;
 }
 

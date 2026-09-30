@@ -92,3 +92,5 @@ jobs:
               throw "$($case.Name) perft($($case.Depth)) mismatch: $actualNodes"
             }
           }
+      - name: Verify incremental Zobrist updates
+        run: ctest --test-dir build -C Release --output-on-failure
