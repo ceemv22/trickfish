@@ -62,8 +62,7 @@ Position Position::from_fen(std::string_view fen) {
             if (square >= 64) {
                 throw std::invalid_argument("piece placement exceeds the board");
             }
-            position.pieces_[piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol))] |=
-                square_bit(static_cast<std::uint8_t>(square++));
+            position.add_piece(symbol, static_cast<std::uint8_t>(square++));
             ++rank_squares;
         } else {
             throw std::invalid_argument("invalid piece symbol");
@@ -170,11 +169,7 @@ char Position::piece_at(std::uint8_t square) const {
 Bitboard Position::pieces(Color color, PieceType type) const { return pieces_[piece_index(color, type)]; }
 
 Bitboard Position::occupancy(Color color) const {
-    Bitboard occupied = 0;
-    for (std::size_t type = 0; type < 6; ++type) {
-        occupied |= pieces_[piece_index(color, static_cast<PieceType>(type))];
-    }
-    return occupied;
+    return occupancy_[static_cast<std::size_t>(color)];
 }
 
 Bitboard Position::occupancy() const { return occupancy(Color::white) | occupancy(Color::black); }
@@ -236,12 +231,14 @@ std::uint64_t Position::compute_key() const {
 void Position::add_piece(char symbol, std::uint8_t square) {
     const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
     pieces_[index] |= square_bit(square);
+    occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] |= square_bit(square);
     key_ ^= zobrist::keys.pieces[index][square];
 }
 
 void Position::remove_piece(char symbol, std::uint8_t square) {
     const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
     pieces_[index] &= ~square_bit(square);
+    occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] &= ~square_bit(square);
     key_ ^= zobrist::keys.pieces[index][square];
 }
 

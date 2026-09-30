@@ -48,6 +48,7 @@ private:
     [[nodiscard]] std::uint64_t compute_key() const;
 
     std::array<Bitboard, 12> pieces_{};
+    std::array<Bitboard, 2> occupancy_{};
     Color side_to_move_ = Color::white;
     std::uint8_t castling_rights_ = 0;
     std::int8_t en_passant_square_ = -1;

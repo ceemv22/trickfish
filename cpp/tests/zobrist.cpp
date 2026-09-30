@@ -7,6 +7,18 @@
 #include "trickfish/position.hpp"
 
 void verify(trickfish::Position& position, int depth) {
+    for (const auto color : {trickfish::Color::white, trickfish::Color::black}) {
+        trickfish::Bitboard expected = 0;
+        for (std::uint8_t square = 0; square < 64; ++square) {
+            const auto symbol = position.piece_at(square);
+            if (symbol != '.' && trickfish::color_from_symbol(symbol) == color) {
+                expected |= trickfish::square_bit(square);
+            }
+        }
+        if (position.occupancy(color) != expected) {
+            throw std::runtime_error("incremental occupancy mismatch: " + position.to_fen());
+        }
+    }
     const auto fen = position.to_fen();
     const auto key = position.key();
     if (key != trickfish::Position::from_fen(fen).key()) {
@@ -23,6 +35,7 @@ void verify(trickfish::Position& position, int depth) {
         const auto undo = position.make_move(move);
         verify(position, depth - 1);
         position.unmake_move(move, undo);
+        verify(position, 0);
         if (position.key() != key || position.to_fen() != fen) {
             throw std::runtime_error("unmake failed to restore position: " + fen);
         }
