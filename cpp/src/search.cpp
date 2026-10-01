@@ -148,6 +148,7 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     SearchResult result;
     result.score = negamax(position, depth, 0, -mate_score - 1, mate_score + 1,
         result.nodes, result.transposition_hits, table, &result.best_move);
+    result.completed_depth = depth;
     return result;
 }
 
@@ -161,6 +162,30 @@ SearchResult search(Position& position, int depth, bool use_table) {
 
 SearchResult search(Position& position, int depth, TranspositionTable& table) {
     return search_impl(position, depth, &table);
+}
+
+SearchResult iterative_search(Position& position, int max_depth, bool use_table) {
+    if (max_depth < 1 || max_depth > 64) {
+        throw std::invalid_argument("search depth must be between 1 and 64");
+    }
+    std::optional<TranspositionTable> table;
+    if (use_table) {
+        table.emplace();
+    }
+    SearchResult result;
+    std::uint64_t nodes = 0;
+    std::uint64_t hits = 0;
+    for (int depth = 1; depth <= max_depth; ++depth) {
+        result = search_impl(position, depth, table ? &*table : nullptr);
+        nodes += result.nodes;
+        hits += result.transposition_hits;
+        if (!result.best_move) {
+            break;
+        }
+    }
+    result.nodes = nodes;
+    result.transposition_hits = hits;
+    return result;
 }
 
 }

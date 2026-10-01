@@ -28,9 +28,10 @@ int main(int argc, char** argv) {
                 throw std::invalid_argument("search depth must be an integer");
             }
             auto position = trickfish::Position::from_fen(argc == 4 ? argv[3] : start_fen);
-            const auto result = trickfish::search(position, depth);
+            const auto result = trickfish::iterative_search(position, depth);
             std::cout << "bestmove " << (result.best_move ? result.best_move->to_uci() : "0000") << '\n';
             std::cout << "score " << result.score << '\n';
+            std::cout << "depth " << result.completed_depth << '\n';
             std::cout << "nodes " << result.nodes << '\n';
             return 0;
         }

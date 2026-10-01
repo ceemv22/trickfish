@@ -12,6 +12,10 @@ void verify(std::string_view fen, int depth, int score, std::string_view move) {
     trickfish::TranspositionTable table(4096);
     const auto result = trickfish::search(position, depth, table);
     const auto cached = trickfish::search(position, depth, table);
+    const auto iterative = trickfish::iterative_search(position, depth);
+    if (iterative.score != reference.score || iterative.completed_depth != depth || iterative.nodes == 0) {
+        throw std::runtime_error("iterative search differs from fixed-depth reference");
+    }
     if (reference.score != result.score || cached.score != result.score) {
         throw std::runtime_error("TT changed search score");
     }
@@ -59,6 +63,12 @@ int main() {
         trickfish::TranspositionTable collision_table(1);
         const auto collisions = trickfish::search(opening, 3, collision_table);
         const auto normal = trickfish::search(opening, 3);
+        const auto iterative = trickfish::iterative_search(opening, 3);
+        const auto iterative_plain = trickfish::iterative_search(opening, 3, false);
+        if (iterative.score != plain.score || iterative_plain.score != plain.score ||
+            iterative.completed_depth != 3 || iterative_plain.completed_depth != 3 || !iterative.best_move) {
+            throw std::runtime_error("iterative opening search mismatch");
+        }
         if (plain.score != collisions.score || plain.score != normal.score ||
             opening.to_fen() != opening_fen || opening.key() != opening_key) {
             throw std::runtime_error("TT collision search parity mismatch");
@@ -70,6 +80,11 @@ int main() {
             "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"}) {
             auto position = trickfish::Position::from_fen(fen);
             const auto result = trickfish::search(position, 2);
+            const auto terminal_iterative = trickfish::iterative_search(position, 3);
+            if (terminal_iterative.best_move || terminal_iterative.completed_depth != 1 ||
+                terminal_iterative.score != result.score) {
+                throw std::runtime_error("iterative terminal root mismatch");
+            }
             if (result.best_move || result.score != (position.in_check(position.side_to_move()) ? -100000 : 0)) {
                 throw std::runtime_error("terminal root mismatch");
             }
