@@ -16,6 +16,14 @@
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "--insufficient-material") {
+            if (argc > 3) {
+                throw std::invalid_argument("usage: --insufficient-material [fen]");
+            }
+            const auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
+            std::cout << (position.is_insufficient_material() ? "true" : "false") << '\n';
+            return 0;
+        }
         if (argc > 1 && std::string_view(argv[1]) == "--status") {
             if (argc > 3) {
                 throw std::invalid_argument("usage: --status [fen]");

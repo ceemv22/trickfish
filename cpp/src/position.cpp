@@ -199,6 +199,25 @@ bool Position::in_check(Color color) const {
         (rook_attacks(square, occupied) & (pieces(enemy, PieceType::rook) | queens)) != 0;
 }
 
+bool Position::is_insufficient_material() const {
+    for (const auto color : {Color::white, Color::black}) {
+        if ((pieces(color, PieceType::pawn) | pieces(color, PieceType::rook) |
+            pieces(color, PieceType::queen)) != 0) {
+            return false;
+        }
+    }
+    const auto knights = pieces(Color::white, PieceType::knight) | pieces(Color::black, PieceType::knight);
+    const auto bishops = pieces(Color::white, PieceType::bishop) | pieces(Color::black, PieceType::bishop);
+    if (std::popcount(knights | bishops) <= 1) {
+        return true;
+    }
+    if (knights != 0) {
+        return false;
+    }
+    constexpr Bitboard square_color = 0x55aa55aa55aa55aaULL;
+    return (bishops & square_color) == 0 || (bishops & ~square_color) == 0;
+}
+
 Color Position::side_to_move() const { return side_to_move_; }
 std::uint8_t Position::castling_rights() const { return castling_rights_; }
 

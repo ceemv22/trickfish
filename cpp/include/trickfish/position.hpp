@@ -32,6 +32,7 @@ public:
     [[nodiscard]] Bitboard occupancy() const;
     [[nodiscard]] Bitboard attacks_by(Color color) const;
     [[nodiscard]] bool in_check(Color color) const;
+    [[nodiscard]] bool is_insufficient_material() const;
     [[nodiscard]] Color side_to_move() const;
     [[nodiscard]] std::uint8_t castling_rights() const;
     [[nodiscard]] bool has_castling_right(Color color, bool kingside) const;

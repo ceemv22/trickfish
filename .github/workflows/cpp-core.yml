@@ -155,3 +155,25 @@ jobs:
               throw "Game status mismatch: expected $($case.Expected), got $actual"
             }
           }
+      - name: Verify insufficient material
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $cases = @(
+            @{ Fen = "4k3/8/8/8/8/8/8/4K3 w - - 0 1"; Expected = "true" },
+            @{ Fen = "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1"; Expected = "true" },
+            @{ Fen = "4k3/8/8/8/8/8/8/2N1K3 w - - 0 1"; Expected = "true" },
+            @{ Fen = "4k3/8/8/8/8/2b5/8/B3K3 w - - 0 1"; Expected = "true" },
+            @{ Fen = "4k3/8/8/8/8/8/2b5/B3K3 w - - 0 1"; Expected = "false" },
+            @{ Fen = "4k3/8/8/8/8/8/8/NN2K3 w - - 0 1"; Expected = "false" },
+            @{ Fen = "4k3/8/8/8/8/8/8/BN2K3 w - - 0 1"; Expected = "false" },
+            @{ Fen = "4k3/8/8/8/8/8/P7/4K3 w - - 0 1"; Expected = "false" },
+            @{ Fen = "4k3/8/8/8/8/8/8/R3K3 w - - 0 1"; Expected = "false" },
+            @{ Fen = "4k3/8/8/8/8/8/8/Q3K3 w - - 0 1"; Expected = "false" }
+          )
+          foreach ($case in $cases) {
+            $actual = & $binary --insufficient-material $case.Fen
+            if ($LASTEXITCODE -ne 0 -or $actual -ne $case.Expected) {
+              throw "Insufficient material mismatch: expected $($case.Expected), got $actual"
+            }
+          }
