@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **28.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **29.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -24,7 +24,9 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C10 | Depth-limited negamax/alpha-beta with mate distance and root move | 3.000 | Implemented |
 | C11 | Capture/promotion ordering including en passant | 1.000 | Implemented |
 | C12 | Quiescence with legal check evasions, promotions, and termination policy | 6.000 | Implemented |
-| C13 | Bounded transposition table with depth/bounds and mate normalization | 6.000 | Pending |
+| C13a | Bounded TT storage, full-key probes, depth/bound/move payload, collision/replacement and reset tests | 1.250 | Implemented |
+| C13b | Mate score normalization across search plies with round-trip tests | 0.750 | Pending |
+| C13c | Depth-qualified exact/lower/upper search probes and stores, preferred move, and search parity tests | 4.000 | Pending |
 | C14 | Iterative deepening, principal variation, and completed-depth reporting | 4.000 | Pending |
 | C15 | Deadline/node limits and stop with position restoration | 4.000 | Pending |
 | C16 | Phase-aware positional evaluation and endgame scaling | 12.000 | Pending |
@@ -51,3 +53,7 @@ For each subsequent change, report the previous and current implemented index, t
 
 - Baseline: 22.000 points at `f9ac82b`.
 - C12 implementation: +6.000 points, bringing implemented scope to 28.000%. No playing-strength or CI-success claim follows from this increment.
+
+C13 was split before storage implementation into C13a (1.250), C13b (0.750), and C13c (4.000). The parent total remains 6.000; this split changes no index points.
+
+- C13a implementation: +1.250 points, implemented scope 29.250%. TT storage is not yet used by search; mate normalization and integration remain pending. New CTest runtime verification awaits CI. Storage uses one preallocated slot array, full-key checks, deeper same-key retention, and direct collision eviction. Probe pointers are for immediate use and must not be retained across stores/reset.
