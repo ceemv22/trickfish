@@ -12,10 +12,28 @@
 #include "trickfish/movegen.hpp"
 #include "trickfish/perft.hpp"
 #include "trickfish/position.hpp"
+#include "trickfish/search.hpp"
 
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "--search") {
+            if (argc < 3 || argc > 4) {
+                throw std::invalid_argument("usage: --search depth [fen]");
+            }
+            int depth = 0;
+            const std::string_view text(argv[2]);
+            const auto parsed = std::from_chars(text.data(), text.data() + text.size(), depth);
+            if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size()) {
+                throw std::invalid_argument("search depth must be an integer");
+            }
+            auto position = trickfish::Position::from_fen(argc == 4 ? argv[3] : start_fen);
+            const auto result = trickfish::search(position, depth);
+            std::cout << "bestmove " << (result.best_move ? result.best_move->to_uci() : "0000") << '\n';
+            std::cout << "score " << result.score << '\n';
+            std::cout << "nodes " << result.nodes << '\n';
+            return 0;
+        }
         if (argc > 1 && (std::string_view(argv[1]) == "--eval" ||
             std::string_view(argv[1]) == "--eval-stm")) {
             if (argc > 3) {

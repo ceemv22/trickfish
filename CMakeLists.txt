@@ -6,6 +6,7 @@ add_library(trickfish_core
     cpp/src/movegen.cpp
     cpp/src/perft.cpp
     cpp/src/position.cpp
+    cpp/src/search.cpp
 )
 
 target_include_directories(trickfish_core PUBLIC cpp/include)
@@ -28,4 +29,7 @@ if(BUILD_TESTING)
     add_executable(trickfish_zobrist_test cpp/tests/zobrist.cpp)
     target_link_libraries(trickfish_zobrist_test PRIVATE trickfish_core)
     add_test(NAME zobrist_updates COMMAND trickfish_zobrist_test)
+    add_executable(trickfish_search_test cpp/tests/search.cpp)
+    target_link_libraries(trickfish_search_test PRIVATE trickfish_core)
+    add_test(NAME search_baselines COMMAND trickfish_search_test)
 endif()
