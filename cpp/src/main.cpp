@@ -14,7 +14,12 @@
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
-        if (argc >= 3 && std::string_view(argv[1]) == "--perft") {
+        const bool divide = argc > 1 && std::string_view(argv[1]) == "--divide";
+        const bool perft = argc > 1 && std::string_view(argv[1]) == "--perft";
+        if (divide || perft) {
+            if (argc < 3 || argc > 4) {
+                throw std::invalid_argument("usage: --perft|--divide depth [fen]");
+            }
             int depth = 0;
             const std::string_view depth_text(argv[2]);
             const auto result = std::from_chars(
@@ -27,7 +32,23 @@ int main(int argc, char** argv) {
             }
             const std::string fen = argc >= 4 ? argv[3] : start_fen;
             auto position = trickfish::Position::from_fen(fen);
-            std::cout << trickfish::perft(position, depth) << '\n';
+            if (divide) {
+                if (depth < 1) {
+                    throw std::invalid_argument("divide depth must be positive");
+                }
+                std::uint64_t total = 0;
+                const auto moves = trickfish::generate_legal_moves(position);
+                for (const auto& move : moves) {
+                    const auto undo = position.make_move(move);
+                    const auto nodes = trickfish::perft(position, depth - 1);
+                    position.unmake_move(move, undo);
+                    std::cout << move.to_uci() << " " << nodes << '\n';
+                    total += nodes;
+                }
+                std::cout << "total " << total << '\n';
+            } else {
+                std::cout << trickfish::perft(position, depth) << '\n';
+            }
             return 0;
         }
         const std::string fen = argc > 1 ? argv[1] : start_fen;

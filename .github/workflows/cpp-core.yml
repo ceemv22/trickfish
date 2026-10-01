@@ -94,3 +94,29 @@ jobs:
           }
       - name: Verify incremental Zobrist updates
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: Verify perft divide
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $lines = @(& $binary --divide 3)
+          if ($LASTEXITCODE -ne 0) { throw "Divide execution failed" }
+          if ($lines.Count -ne 21 -or $lines[-1] -ne "total 8902" -or
+              $lines -notcontains "e2e4 600" -or $lines -notcontains "b1c3 440") {
+            throw "Initial-position divide mismatch: $($lines -join ', ')"
+          }
+          $sum = 0L
+          $seen = @{}
+          foreach ($line in $lines[0..19]) {
+            if ($line -notmatch '^([a-h][1-8][a-h][1-8]) ([0-9]+)$') {
+              throw "Invalid divide row: $line"
+            }
+            $move = $Matches[1]
+            if ($seen.ContainsKey($move)) { throw "Duplicate divide move: $move" }
+            $seen[$move] = $true
+            $sum += [long]$Matches[2]
+          }
+          if ($sum -ne 8902) { throw "Divide rows do not sum to 8902" }
+          $single = @(& $binary --divide 1)
+          if ($LASTEXITCODE -ne 0 -or $single.Count -ne 21 -or $single[-1] -ne "total 20") {
+            throw "Depth-one divide mismatch"
+          }
