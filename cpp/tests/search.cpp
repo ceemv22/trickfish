@@ -34,6 +34,8 @@ int main() {
     try {
         verify("4k3/8/8/8/8/8/q7/R3K3 w - - 0 1", 1, 500, "a1a2");
         verify("r3k3/Q7/8/8/8/8/8/4K3 b - - 0 1", 1, 500, "a8a7");
+        verify("r3k3/8/8/8/8/8/q7/R3K3 w - - 0 1", 1, -500, "a1a2");
+        verify("4k3/8/8/8/8/8/p7/4K3 w - - 0 1", 1, -900, "");
         const auto mate_fen = "7k/8/5KQ1/8/8/8/8/8 w - - 0 1";
         verify(mate_fen, 1, 99999, "");
         verify(mate_fen, 3, 99999, "");

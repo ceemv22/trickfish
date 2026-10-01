@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **22.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **28.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -23,7 +23,7 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C09 | Material evaluation, terminal scores, and side-to-move perspective | 1.000 | Implemented |
 | C10 | Depth-limited negamax/alpha-beta with mate distance and root move | 3.000 | Implemented |
 | C11 | Capture/promotion ordering including en passant | 1.000 | Implemented |
-| C12 | Quiescence with legal check evasions, promotions, and termination policy | 6.000 | Pending |
+| C12 | Quiescence with legal check evasions, promotions, and termination policy | 6.000 | Implemented |
 | C13 | Bounded transposition table with depth/bounds and mate normalization | 6.000 | Pending |
 | C14 | Iterative deepening, principal variation, and completed-depth reporting | 4.000 | Pending |
 | C15 | Deadline/node limits and stop with position restoration | 4.000 | Pending |
@@ -43,6 +43,11 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 At this baseline, local static review and `git diff --check` have been performed during development. No local C++ compile/runtime result has been established. GitHub Actions is configured for GCC/Linux and MSVC/Windows builds, FEN/perft, state restoration, search baselines, and CLI fixtures. The Actions result for `f9ac82b` has not been inspected in this session. Therefore a CI-confirmed percentage is **unknown**, not 22.000% and not zero.
 
-C07 currently includes every recorded FEN en passant file in the key; legal-capture normalization is reserved for C17. C09 is a material baseline, not parity with Python positional evaluation. C10 has no quiescence, repetition, TT, or time control. C11 has no measured speedup claim.
+C07 currently includes every recorded FEN en passant file in the key; legal-capture normalization is reserved for C17. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition, TT, or time control. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
 For each subsequent change, report the previous and current implemented index, the milestone/submilestone responsible for the delta, the local checks, and whether the exact commit has passed CI. Keep Python prototype and serious-engine estimates separate: their earlier approximate 60% and 3% estimates have no weighted checklist yet and must not be presented as measured three-decimal indices.
+
+## Index changes
+
+- Baseline: 22.000 points at `f9ac82b`.
+- C12 implementation: +6.000 points, bringing implemented scope to 28.000%. No playing-strength or CI-success claim follows from this increment.
