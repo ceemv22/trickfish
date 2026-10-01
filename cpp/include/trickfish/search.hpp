@@ -4,6 +4,7 @@
 #include <optional>
 
 #include "trickfish/position.hpp"
+#include "trickfish/transposition.hpp"
 
 namespace trickfish {
 
@@ -11,8 +12,10 @@ struct SearchResult {
     std::optional<Move> best_move;
     int score = 0;
     std::uint64_t nodes = 0;
+    std::uint64_t transposition_hits = 0;
 };
 
-[[nodiscard]] SearchResult search(Position& position, int depth);
+[[nodiscard]] SearchResult search(Position& position, int depth, bool use_table = true);
+[[nodiscard]] SearchResult search(Position& position, int depth, TranspositionTable& table);
 
 }
