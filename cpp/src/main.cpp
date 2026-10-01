@@ -7,6 +7,7 @@
 
 #include "trickfish/attacks.hpp"
 #include "trickfish/evaluation.hpp"
+#include "trickfish/game_status.hpp"
 #include "trickfish/move_list.hpp"
 #include "trickfish/movegen.hpp"
 #include "trickfish/perft.hpp"
@@ -15,6 +16,19 @@
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "--status") {
+            if (argc > 3) {
+                throw std::invalid_argument("usage: --status [fen]");
+            }
+            auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
+            switch (trickfish::game_status(position)) {
+                case trickfish::GameStatus::ongoing: std::cout << "ongoing\n"; break;
+                case trickfish::GameStatus::check: std::cout << "check\n"; break;
+                case trickfish::GameStatus::checkmate: std::cout << "checkmate\n"; break;
+                case trickfish::GameStatus::stalemate: std::cout << "stalemate\n"; break;
+            }
+            return 0;
+        }
         if (argc > 1 && std::string_view(argv[1]) == "--material") {
             if (argc > 3) {
                 throw std::invalid_argument("usage: --material [fen]");

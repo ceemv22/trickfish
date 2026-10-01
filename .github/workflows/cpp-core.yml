@@ -137,3 +137,21 @@ jobs:
               throw "Material mismatch: expected $($case.Expected), got $actual"
             }
           }
+      - name: Verify game status
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $cases = @(
+            @{ Fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; Expected = "ongoing" },
+            @{ Fen = "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"; Expected = "checkmate" },
+            @{ Fen = "8/8/8/8/8/6k1/6q1/7K w - - 0 1"; Expected = "checkmate" },
+            @{ Fen = "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"; Expected = "stalemate" },
+            @{ Fen = "8/8/8/8/8/6q1/5k2/7K w - - 0 1"; Expected = "stalemate" },
+            @{ Fen = "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1"; Expected = "check" }
+          )
+          foreach ($case in $cases) {
+            $actual = & $binary --status $case.Fen
+            if ($LASTEXITCODE -ne 0 -or $actual -ne $case.Expected) {
+              throw "Game status mismatch: expected $($case.Expected), got $actual"
+            }
+          }
