@@ -10,13 +10,13 @@
 namespace trickfish {
 
 inline constexpr int mate_score = 100000;
+inline constexpr std::array piece_values = {100, 320, 330, 500, 900, 0};
 
 [[nodiscard]] inline int evaluate_material(const Position& position) {
-    constexpr std::array values = {100, 320, 330, 500, 900, 0};
     int score = 0;
-    for (std::size_t type = 0; type < values.size(); ++type) {
+    for (std::size_t type = 0; type < piece_values.size(); ++type) {
         const auto piece = static_cast<PieceType>(type);
-        score += values[type] * (std::popcount(position.pieces(Color::white, piece)) -
+        score += piece_values[type] * (std::popcount(position.pieces(Color::white, piece)) -
             std::popcount(position.pieces(Color::black, piece)));
     }
     return score;
