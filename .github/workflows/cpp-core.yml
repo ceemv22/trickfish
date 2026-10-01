@@ -120,3 +120,20 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $single.Count -ne 21 -or $single[-1] -ne "total 20") {
             throw "Depth-one divide mismatch"
           }
+      - name: Verify material scores
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $cases = @(
+            @{ Fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; Expected = "0" },
+            @{ Fen = "4k3/8/8/8/8/8/PNBRQ3/4K3 w - - 0 1"; Expected = "2150" },
+            @{ Fen = "4k3/pnbrq3/8/8/8/8/8/4K3 b - - 0 1"; Expected = "-2150" },
+            @{ Fen = "4k3/8/8/8/8/8/PNBRQ3/4K3 b - - 0 1"; Expected = "2150" },
+            @{ Fen = "4k3/8/8/8/8/8/8/4K3 w - - 0 1"; Expected = "0" }
+          )
+          foreach ($case in $cases) {
+            $actual = & $binary --material $case.Fen
+            if ($LASTEXITCODE -ne 0 -or $actual -ne $case.Expected) {
+              throw "Material mismatch: expected $($case.Expected), got $actual"
+            }
+          }

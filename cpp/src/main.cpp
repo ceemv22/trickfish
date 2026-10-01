@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "trickfish/attacks.hpp"
+#include "trickfish/evaluation.hpp"
 #include "trickfish/move_list.hpp"
 #include "trickfish/movegen.hpp"
 #include "trickfish/perft.hpp"
@@ -14,6 +15,14 @@
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "--material") {
+            if (argc > 3) {
+                throw std::invalid_argument("usage: --material [fen]");
+            }
+            const auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
+            std::cout << trickfish::evaluate_material(position) << '\n';
+            return 0;
+        }
         const bool divide = argc > 1 && std::string_view(argv[1]) == "--divide";
         const bool perft = argc > 1 && std::string_view(argv[1]) == "--perft";
         if (divide || perft) {
