@@ -177,3 +177,26 @@ jobs:
               throw "Insufficient material mismatch: expected $($case.Expected), got $actual"
             }
           }
+      - name: Verify basic evaluation
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $cases = @(
+            @{ Fen = "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"; White = "100000"; Side = "-100000" },
+            @{ Fen = "8/8/8/8/8/6k1/6q1/7K w - - 0 1"; White = "-100000"; Side = "-100000" },
+            @{ Fen = "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"; White = "0"; Side = "0" },
+            @{ Fen = "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1"; White = "0"; Side = "0" },
+            @{ Fen = "4k3/8/8/8/8/8/P7/4K3 w - - 0 1"; White = "100"; Side = "100" },
+            @{ Fen = "4k3/8/8/8/8/8/P7/4K3 b - - 0 1"; White = "100"; Side = "-100" },
+            @{ Fen = "4k3/8/8/8/8/8/p7/4K3 b - - 0 1"; White = "-100"; Side = "100" }
+          )
+          foreach ($case in $cases) {
+            $white = & $binary --eval $case.Fen
+            if ($LASTEXITCODE -ne 0 -or $white -ne $case.White) {
+              throw "White-positive evaluation mismatch: $white"
+            }
+            $side = & $binary --eval-stm $case.Fen
+            if ($LASTEXITCODE -ne 0 -or $side -ne $case.Side) {
+              throw "Side-to-move evaluation mismatch: $side"
+            }
+          }

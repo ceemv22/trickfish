@@ -16,6 +16,18 @@
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc > 1 && (std::string_view(argv[1]) == "--eval" ||
+            std::string_view(argv[1]) == "--eval-stm")) {
+            if (argc > 3) {
+                throw std::invalid_argument("usage: --eval|--eval-stm [fen]");
+            }
+            auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
+            const auto score = std::string_view(argv[1]) == "--eval-stm"
+                ? trickfish::evaluate_for_side_to_move(position)
+                : trickfish::evaluate(position);
+            std::cout << score << '\n';
+            return 0;
+        }
         if (argc > 1 && std::string_view(argv[1]) == "--insufficient-material") {
             if (argc > 3) {
                 throw std::invalid_argument("usage: --insufficient-material [fen]");
