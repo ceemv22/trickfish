@@ -7,8 +7,23 @@
 #include <vector>
 
 #include "trickfish/move.hpp"
+#include "trickfish/evaluation.hpp"
 
 namespace trickfish {
+
+inline constexpr int mate_threshold = mate_score - 128;
+
+[[nodiscard]] constexpr int score_to_table(int score, int ply) {
+    if (score >= mate_threshold) return score + ply;
+    if (score <= -mate_threshold) return score - ply;
+    return score;
+}
+
+[[nodiscard]] constexpr int score_from_table(int score, int ply) {
+    if (score >= mate_threshold) return score - ply;
+    if (score <= -mate_threshold) return score + ply;
+    return score;
+}
 
 enum class Bound {
     exact,

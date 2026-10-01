@@ -11,6 +11,18 @@ void require(bool condition, const char* message) {
 
 int main() {
     try {
+        for (const int score : {0, 500, -500, 99999, -99999, 99904, -99904}) {
+            for (const int ply : {0, 1, 32, 96}) {
+                require(trickfish::score_from_table(trickfish::score_to_table(score, ply), ply) == score,
+                    "mate score round-trip mismatch");
+            }
+        }
+        require(trickfish::score_from_table(trickfish::score_to_table(99993, 5), 2) == 99996,
+            "winning mate distance changed across transposition");
+        require(trickfish::score_from_table(trickfish::score_to_table(-99993, 5), 2) == -99996,
+            "losing mate distance changed across transposition");
+        require(trickfish::score_to_table(500, 32) == 500 &&
+            trickfish::score_from_table(-500, 32) == -500, "ordinary score adjusted");
         trickfish::TranspositionTable table(2);
         require(table.capacity() == 2 && table.probe(0) == nullptr, "empty table mismatch");
         const trickfish::Move move(52, 36);
