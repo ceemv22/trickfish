@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 #include "trickfish/position.hpp"
 #include "trickfish/transposition.hpp"
@@ -10,6 +11,7 @@ namespace trickfish {
 
 struct SearchResult {
     std::optional<Move> best_move;
+    std::vector<Move> principal_variation;
     int score = 0;
     int completed_depth = 0;
     std::uint64_t nodes = 0;

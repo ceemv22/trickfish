@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **36.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **38.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -28,7 +28,7 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C13b | Mate score normalization across search plies with round-trip tests | 0.750 | Implemented |
 | C13c | Depth-qualified exact/lower/upper search probes and stores, preferred move, and search parity tests | 4.000 | Implemented |
 | C14a | Iterative deepening with shared TT, accumulated counters, and completed-depth reporting | 2.000 | Implemented |
-| C14b | Legal principal variation with root restoration and search integration tests | 2.000 | Pending |
+| C14b | Legal principal variation with root restoration and search integration tests | 2.000 | Implemented |
 | C15 | Deadline/node limits and stop with position restoration | 4.000 | Pending |
 | C16 | Phase-aware positional evaluation and endgame scaling | 12.000 | Pending |
 | C17 | Legal-en-passant repetition key semantics, history, and move-count draw policy | 4.000 | Pending |
@@ -66,3 +66,5 @@ C13 was split before storage implementation into C13a (1.250), C13b (0.750), and
 C14 was split before implementation into C14a (2.000) and C14b (2.000), preserving its 4.000-point total.
 
 - C14a implementation: +2.000 points, implemented scope 36.000%. The CLI now runs successive completed depths with one shared TT and accumulated node/hit counters. Terminal roots stop after depth one. PV, time limits, stop handling, and interrupted-depth fallback are not part of C14a. Fixed-depth/iterative and TT-disabled parity fixtures await CI.
+
+- C14b implementation: +2.000 points, implemented scope 38.000%. Search returns the selected main-search line and the CLI prints UCI-coordinate PV moves. The line may end early at terminal/draw states or a TT cutoff; cached cutoffs contribute a legal stored move but not an unverified continuation. Quiescence continuations are not included. PV legality, first-move consistency, length, TT-disabled opening coverage, and root-state regression fixtures await CI. Complete TT-hit continuation reconstruction remains future refinement and earns no extra points automatically.

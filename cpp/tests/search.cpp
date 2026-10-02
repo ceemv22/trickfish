@@ -1,9 +1,27 @@
 #include <iostream>
+#include <algorithm>
 #include <stdexcept>
 #include <string_view>
 
 #include "trickfish/search.hpp"
 #include "trickfish/game_status.hpp"
+
+void verify_pv(const trickfish::Position& root, const trickfish::SearchResult& result) {
+    auto replay = root;
+    if (result.principal_variation.size() > static_cast<std::size_t>(result.completed_depth) ||
+        (result.best_move && (result.principal_variation.empty() || result.principal_variation.front() != *result.best_move)) ||
+        (!result.best_move && !result.principal_variation.empty())) {
+        throw std::runtime_error("PV root or length mismatch");
+    }
+    for (const auto& move : result.principal_variation) {
+        const auto legal = trickfish::generate_legal_moves(replay);
+        if (std::find(legal.begin(), legal.end(), move) == legal.end()) {
+            throw std::runtime_error("PV contains an illegal move");
+        }
+        const auto undo = replay.make_move(move);
+        static_cast<void>(undo);
+    }
+}
 
 void verify(std::string_view fen, int depth, int score, std::string_view move) {
     auto position = trickfish::Position::from_fen(fen);
@@ -13,6 +31,9 @@ void verify(std::string_view fen, int depth, int score, std::string_view move) {
     const auto result = trickfish::search(position, depth, table);
     const auto cached = trickfish::search(position, depth, table);
     const auto iterative = trickfish::iterative_search(position, depth);
+    for (const auto* candidate : {&reference, &result, &cached, &iterative}) {
+        verify_pv(position, *candidate);
+    }
     if (iterative.score != reference.score || iterative.completed_depth != depth || iterative.nodes == 0) {
         throw std::runtime_error("iterative search differs from fixed-depth reference");
     }
@@ -65,6 +86,12 @@ int main() {
         const auto normal = trickfish::search(opening, 3);
         const auto iterative = trickfish::iterative_search(opening, 3);
         const auto iterative_plain = trickfish::iterative_search(opening, 3, false);
+        for (const auto* candidate : {&plain, &collisions, &normal, &iterative, &iterative_plain}) {
+            verify_pv(opening, *candidate);
+        }
+        if (plain.principal_variation.size() != 3) {
+            throw std::runtime_error("TT-disabled opening PV is incomplete");
+        }
         if (iterative.score != plain.score || iterative_plain.score != plain.score ||
             iterative.completed_depth != 3 || iterative_plain.completed_depth != 3 || !iterative.best_move) {
             throw std::runtime_error("iterative opening search mismatch");
@@ -81,6 +108,8 @@ int main() {
             auto position = trickfish::Position::from_fen(fen);
             const auto result = trickfish::search(position, 2);
             const auto terminal_iterative = trickfish::iterative_search(position, 3);
+            verify_pv(position, result);
+            verify_pv(position, terminal_iterative);
             if (terminal_iterative.best_move || terminal_iterative.completed_depth != 1 ||
                 terminal_iterative.score != result.score) {
                 throw std::runtime_error("iterative terminal root mismatch");

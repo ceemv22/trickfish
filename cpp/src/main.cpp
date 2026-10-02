@@ -31,6 +31,11 @@ int main(int argc, char** argv) {
             const auto result = trickfish::iterative_search(position, depth);
             std::cout << "bestmove " << (result.best_move ? result.best_move->to_uci() : "0000") << '\n';
             std::cout << "score " << result.score << '\n';
+            std::cout << "pv";
+            for (const auto& move : result.principal_variation) {
+                std::cout << " " << move.to_uci();
+            }
+            std::cout << '\n';
             std::cout << "depth " << result.completed_depth << '\n';
             std::cout << "nodes " << result.nodes << '\n';
             return 0;

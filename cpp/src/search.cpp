@@ -82,7 +82,7 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
 }
 
 int negamax(Position& position, int depth, int ply, int alpha, int beta,
-    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move) {
+    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv) {
     if (depth == 0) {
         return quiescence(position, ply, 0, alpha, beta, nodes);
     }
@@ -94,6 +94,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     if (position.is_insufficient_material()) {
         if (best_move != nullptr) {
             *best_move = moves[0];
+            pv.push_back(moves[0]);
         }
         return 0;
     }
@@ -109,6 +110,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
                 (entry->bound == Bound::exact || (entry->bound == Bound::lower && score >= beta) ||
                     (entry->bound == Bound::upper && score <= alpha))) {
                 if (best_move != nullptr) *best_move = preferred;
+                if (legal_preferred) pv.push_back(*preferred);
                 return score;
             }
         }
@@ -118,11 +120,15 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     std::optional<Move> selected;
     for (const auto& move : moves) {
         const auto undo = position.make_move(move);
-        const int score = -negamax(position, depth - 1, ply + 1, -beta, -alpha, nodes, hits, table, nullptr);
+        std::vector<Move> child_pv;
+        const int score = -negamax(position, depth - 1, ply + 1, -beta, -alpha, nodes, hits, table, nullptr, child_pv);
         position.unmake_move(move, undo);
         if (score > best) {
             best = score;
             selected = move;
+            pv.clear();
+            pv.push_back(move);
+            pv.insert(pv.end(), child_pv.begin(), child_pv.end());
             if (best_move != nullptr) {
                 *best_move = move;
             }
@@ -147,7 +153,7 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     }
     SearchResult result;
     result.score = negamax(position, depth, 0, -mate_score - 1, mate_score + 1,
-        result.nodes, result.transposition_hits, table, &result.best_move);
+        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation);
     result.completed_depth = depth;
     return result;
 }
