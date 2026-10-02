@@ -18,9 +18,11 @@ int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
         const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
-        if (argc > 1 && (std::string_view(argv[1]) == "--search" || limited_search)) {
-            if (argc < (limited_search ? 4 : 3) || argc > (limited_search ? 5 : 4)) {
-                throw std::invalid_argument("usage: --search depth [fen] or --search-nodes depth nodes [fen]");
+        const bool timed_search = argc > 1 && std::string_view(argv[1]) == "--search-time";
+        const bool budgeted_search = limited_search || timed_search;
+        if (argc > 1 && (std::string_view(argv[1]) == "--search" || budgeted_search)) {
+            if (argc < (budgeted_search ? 4 : 3) || argc > (budgeted_search ? 5 : 4)) {
+                throw std::invalid_argument("usage: --search depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
             }
             int depth = 0;
             const std::string_view text(argv[2]);
@@ -38,9 +40,23 @@ int main(int argc, char** argv) {
                 }
                 node_limit = limit;
             }
-            const int fen_index = limited_search ? 4 : 3;
+            std::optional<std::chrono::steady_clock::time_point> deadline;
+            if (timed_search) {
+                std::uint64_t milliseconds = 0;
+                const std::string_view time_text(argv[3]);
+                const auto parsed_time = std::from_chars(time_text.data(), time_text.data() + time_text.size(), milliseconds);
+                const auto now = std::chrono::steady_clock::now();
+                const auto maximum = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::time_point::max() - now).count();
+                if (parsed_time.ec != std::errc{} || parsed_time.ptr != time_text.data() + time_text.size() ||
+                    milliseconds > static_cast<std::uint64_t>(maximum)) {
+                    throw std::invalid_argument("time limit must be a non-negative representable millisecond count");
+                }
+                deadline = now + std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(milliseconds));
+            }
+            const int fen_index = budgeted_search ? 4 : 3;
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
-            const auto result = trickfish::iterative_search(position, depth, true, node_limit);
+            const auto result = trickfish::iterative_search(position, depth, true, node_limit, deadline);
             std::cout << "bestmove " << (result.best_move ? result.best_move->to_uci() : "0000") << '\n';
             std::cout << "score " << result.score << '\n';
             std::cout << "pv";

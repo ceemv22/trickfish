@@ -119,6 +119,19 @@ int main() {
             opening.to_fen() != opening_fen || opening.key() != opening_key) {
             throw std::runtime_error("interruption failed to restore root position");
         }
+        const auto expired = trickfish::iterative_search(opening, 4, true, std::nullopt,
+            std::chrono::steady_clock::now());
+        const auto future = trickfish::iterative_search(opening, 1, true, std::nullopt,
+            std::chrono::steady_clock::time_point::max());
+        if (!expired.stopped || expired.completed_depth != 0 || expired.nodes != 0 || !expired.best_move ||
+            !expired.principal_variation.empty()) {
+            throw std::runtime_error("expired deadline fallback mismatch");
+        }
+        if (future.stopped || future.completed_depth != 1 || future.score != first_iteration.score ||
+            future.best_move != first_iteration.best_move || future.nodes != first_iteration.nodes ||
+            opening.to_fen() != opening_fen || opening.key() != opening_key) {
+            throw std::runtime_error("future deadline altered search or root position");
+        }
         const auto mate_fen = "7k/8/5KQ1/8/8/8/8/8 w - - 0 1";
         verify(mate_fen, 1, 99999, "");
         verify(mate_fen, 3, 99999, "");
