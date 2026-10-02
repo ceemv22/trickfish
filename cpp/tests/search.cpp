@@ -100,6 +100,25 @@ int main() {
             opening.to_fen() != opening_fen || opening.key() != opening_key) {
             throw std::runtime_error("TT collision search parity mismatch");
         }
+        const auto first_iteration = trickfish::iterative_search(opening, 1);
+        const auto limited = trickfish::iterative_search(opening, 4, true, first_iteration.nodes);
+        const auto zero_budget = trickfish::iterative_search(opening, 4, true, 0);
+        if (!limited.stopped || limited.completed_depth != 1 || limited.score != first_iteration.score ||
+            limited.best_move != first_iteration.best_move || limited.nodes != first_iteration.nodes) {
+            throw std::runtime_error("node limit lost last completed iteration");
+        }
+        if (!zero_budget.stopped || zero_budget.completed_depth != 0 || zero_budget.nodes != 0 || !zero_budget.best_move) {
+            throw std::runtime_error("zero node budget fallback mismatch");
+        }
+        const auto opening_moves = trickfish::generate_legal_moves(opening);
+        if (std::find(opening_moves.begin(), opening_moves.end(), *zero_budget.best_move) == opening_moves.end()) {
+            throw std::runtime_error("fallback move is illegal");
+        }
+        const auto interrupted = trickfish::iterative_search(opening, 4, true, first_iteration.nodes + 2);
+        if (!interrupted.stopped || interrupted.completed_depth != 1 || interrupted.nodes != first_iteration.nodes + 2 ||
+            opening.to_fen() != opening_fen || opening.key() != opening_key) {
+            throw std::runtime_error("interruption failed to restore root position");
+        }
         const auto mate_fen = "7k/8/5KQ1/8/8/8/8/8 w - - 0 1";
         verify(mate_fen, 1, 99999, "");
         verify(mate_fen, 3, 99999, "");

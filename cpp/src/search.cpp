@@ -9,6 +9,37 @@
 namespace trickfish {
 namespace {
 
+struct SearchStopped {};
+
+struct SearchBudget {
+    std::optional<std::uint64_t> limit;
+    std::uint64_t nodes = 0;
+    std::uint64_t hits = 0;
+};
+
+void visit(std::uint64_t& nodes, SearchBudget* budget) {
+    if (budget != nullptr) {
+        if (budget->limit && budget->nodes >= *budget->limit) {
+            throw SearchStopped{};
+        }
+        ++budget->nodes;
+    }
+    ++nodes;
+}
+
+class MoveScope {
+public:
+    MoveScope(Position& position, const Move& move)
+        : position_(position), move_(move), undo_(position.make_move(move)) {}
+    ~MoveScope() { position_.unmake_move(move_, undo_); }
+    MoveScope(const MoveScope&) = delete;
+    MoveScope& operator=(const MoveScope&) = delete;
+private:
+    Position& position_;
+    Move move_;
+    UndoState undo_;
+};
+
 int move_priority(const Position& position, const Move& move) {
     int priority = 0;
     const auto victim = position.piece_at(move.to);
@@ -43,8 +74,8 @@ int material_for_side(const Position& position) {
     return position.side_to_move() == Color::white ? score : -score;
 }
 
-int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std::uint64_t& nodes) {
-    ++nodes;
+int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std::uint64_t& nodes, SearchBudget* budget) {
+    visit(nodes, budget);
     auto moves = generate_legal_moves(position);
     const bool in_check = position.in_check(position.side_to_move());
     if (moves.empty()) {
@@ -69,9 +100,11 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
         if (!in_check && position.piece_at(move.to) == '.' && !move.en_passant && move.promotion == '\0') {
             continue;
         }
-        const auto undo = position.make_move(move);
-        const int score = -quiescence(position, ply + 1, qdepth + 1, -beta, -alpha, nodes);
-        position.unmake_move(move, undo);
+        int score = 0;
+        {
+            MoveScope scope(position, move);
+            score = -quiescence(position, ply + 1, qdepth + 1, -beta, -alpha, nodes, budget);
+        }
         best = std::max(best, score);
         alpha = std::max(alpha, score);
         if (alpha >= beta) {
@@ -82,11 +115,11 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
 }
 
 int negamax(Position& position, int depth, int ply, int alpha, int beta,
-    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv) {
+    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget) {
     if (depth == 0) {
-        return quiescence(position, ply, 0, alpha, beta, nodes);
+        return quiescence(position, ply, 0, alpha, beta, nodes, budget);
     }
-    ++nodes;
+    visit(nodes, budget);
     auto moves = generate_legal_moves(position);
     if (moves.empty()) {
         return position.in_check(position.side_to_move()) ? -mate_score + ply : 0;
@@ -103,6 +136,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     if (table != nullptr) {
         if (const auto* entry = table->probe(position.key())) {
             ++hits;
+            if (budget != nullptr) ++budget->hits;
             preferred = entry->best_move;
             const bool legal_preferred = preferred && std::find(moves.begin(), moves.end(), *preferred) != moves.end();
             const int score = score_from_table(entry->score, ply);
@@ -119,10 +153,12 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     int best = -mate_score - 1;
     std::optional<Move> selected;
     for (const auto& move : moves) {
-        const auto undo = position.make_move(move);
         std::vector<Move> child_pv;
-        const int score = -negamax(position, depth - 1, ply + 1, -beta, -alpha, nodes, hits, table, nullptr, child_pv);
-        position.unmake_move(move, undo);
+        int score = 0;
+        {
+            MoveScope scope(position, move);
+            score = -negamax(position, depth - 1, ply + 1, -beta, -alpha, nodes, hits, table, nullptr, child_pv, budget);
+        }
         if (score > best) {
             best = score;
             selected = move;
@@ -147,13 +183,13 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
 
 }
 
-SearchResult search_impl(Position& position, int depth, TranspositionTable* table) {
+SearchResult search_impl(Position& position, int depth, TranspositionTable* table, SearchBudget* budget = nullptr) {
     if (depth < 1 || depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
     SearchResult result;
     result.score = negamax(position, depth, 0, -mate_score - 1, mate_score + 1,
-        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation);
+        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget);
     result.completed_depth = depth;
     return result;
 }
@@ -170,7 +206,8 @@ SearchResult search(Position& position, int depth, TranspositionTable& table) {
     return search_impl(position, depth, &table);
 }
 
-SearchResult iterative_search(Position& position, int max_depth, bool use_table) {
+SearchResult iterative_search(Position& position, int max_depth, bool use_table,
+    std::optional<std::uint64_t> node_limit) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
@@ -178,19 +215,26 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table)
     if (use_table) {
         table.emplace();
     }
+    SearchBudget budget{node_limit};
     SearchResult result;
-    std::uint64_t nodes = 0;
-    std::uint64_t hits = 0;
+    const auto legal = generate_legal_moves(position);
+    if (!legal.empty()) {
+        result.best_move = legal[0];
+    }
+    result.score = evaluate_for_side_to_move(position);
     for (int depth = 1; depth <= max_depth; ++depth) {
-        result = search_impl(position, depth, table ? &*table : nullptr);
-        nodes += result.nodes;
-        hits += result.transposition_hits;
+        try {
+            result = search_impl(position, depth, table ? &*table : nullptr, &budget);
+        } catch (const SearchStopped&) {
+            result.stopped = true;
+            break;
+        }
         if (!result.best_move) {
             break;
         }
     }
-    result.nodes = nodes;
-    result.transposition_hits = hits;
+    result.nodes = budget.nodes;
+    result.transposition_hits = budget.hits;
     return result;
 }
 

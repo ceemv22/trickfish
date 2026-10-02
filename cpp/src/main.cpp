@@ -17,9 +17,10 @@
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
-        if (argc > 1 && std::string_view(argv[1]) == "--search") {
-            if (argc < 3 || argc > 4) {
-                throw std::invalid_argument("usage: --search depth [fen]");
+        const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
+        if (argc > 1 && (std::string_view(argv[1]) == "--search" || limited_search)) {
+            if (argc < (limited_search ? 4 : 3) || argc > (limited_search ? 5 : 4)) {
+                throw std::invalid_argument("usage: --search depth [fen] or --search-nodes depth nodes [fen]");
             }
             int depth = 0;
             const std::string_view text(argv[2]);
@@ -27,8 +28,19 @@ int main(int argc, char** argv) {
             if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size()) {
                 throw std::invalid_argument("search depth must be an integer");
             }
-            auto position = trickfish::Position::from_fen(argc == 4 ? argv[3] : start_fen);
-            const auto result = trickfish::iterative_search(position, depth);
+            std::optional<std::uint64_t> node_limit;
+            if (limited_search) {
+                std::uint64_t limit = 0;
+                const std::string_view limit_text(argv[3]);
+                const auto parsed_limit = std::from_chars(limit_text.data(), limit_text.data() + limit_text.size(), limit);
+                if (parsed_limit.ec != std::errc{} || parsed_limit.ptr != limit_text.data() + limit_text.size()) {
+                    throw std::invalid_argument("node limit must be a non-negative integer");
+                }
+                node_limit = limit;
+            }
+            const int fen_index = limited_search ? 4 : 3;
+            auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
+            const auto result = trickfish::iterative_search(position, depth, true, node_limit);
             std::cout << "bestmove " << (result.best_move ? result.best_move->to_uci() : "0000") << '\n';
             std::cout << "score " << result.score << '\n';
             std::cout << "pv";
@@ -37,6 +49,7 @@ int main(int argc, char** argv) {
             }
             std::cout << '\n';
             std::cout << "depth " << result.completed_depth << '\n';
+            std::cout << "stopped " << (result.stopped ? "true" : "false") << '\n';
             std::cout << "nodes " << result.nodes << '\n';
             return 0;
         }
