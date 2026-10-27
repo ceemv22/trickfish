@@ -16,9 +16,21 @@ struct SearchBudget {
     std::optional<std::chrono::steady_clock::time_point> deadline;
     std::function<bool()> stop_requested;
     RepetitionHistory* history = nullptr;
+    MoveCountDrawPolicy draw_policy = MoveCountDrawPolicy::automatic_only;
     std::uint64_t nodes = 0;
     std::uint64_t hits = 0;
 };
+
+MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
+    return budget != nullptr ? budget->draw_policy : MoveCountDrawPolicy::automatic_only;
+}
+
+std::uint64_t search_key(const Position& position, const SearchBudget* budget) {
+    const auto clock = static_cast<std::uint64_t>(std::min(position.halfmove_clock(), 150));
+    const auto policy = draw_policy(budget) == MoveCountDrawPolicy::claim_fifty_moves
+        ? 0xd1b54a32d192ed03ULL : 0ULL;
+    return position.key() ^ (clock * 0x9e3779b97f4a7c15ULL) ^ policy;
+}
 
 bool is_repetition(const SearchBudget* budget) {
     return budget != nullptr && budget->history != nullptr && budget->history->can_claim_threefold_repetition();
@@ -101,6 +113,9 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
     if (moves.empty()) {
         return in_check ? -mate_score + ply : 0;
     }
+    if (is_move_count_draw(position, draw_policy(budget))) {
+        return 0;
+    }
     if (position.is_insufficient_material() || is_repetition(budget)) {
         return 0;
     }
@@ -144,6 +159,9 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     if (moves.empty()) {
         return position.in_check(position.side_to_move()) ? -mate_score + ply : 0;
     }
+    if (is_move_count_draw(position, draw_policy(budget))) {
+        return 0;
+    }
     if (position.is_insufficient_material() || is_repetition(budget)) {
         if (best_move != nullptr) {
             *best_move = moves[0];
@@ -154,7 +172,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     const int original_alpha = alpha;
     std::optional<Move> preferred;
     if (table != nullptr) {
-        if (const auto* entry = table->probe(position.key())) {
+        if (const auto* entry = table->probe(search_key(position, budget))) {
             ++hits;
             if (budget != nullptr) ++budget->hits;
             preferred = entry->best_move;
@@ -196,7 +214,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     }
     if (table != nullptr) {
         const auto bound = best <= original_alpha ? Bound::upper : best >= beta ? Bound::lower : Bound::exact;
-        table->store({position.key(), depth, score_to_table(best, ply), bound, selected});
+        table->store({search_key(position, budget), depth, score_to_table(best, ply), bound, selected});
     }
     return best;
 }
@@ -229,7 +247,7 @@ SearchResult search(Position& position, int depth, TranspositionTable& table) {
 SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::optional<std::uint64_t> node_limit,
     std::optional<std::chrono::steady_clock::time_point> deadline,
-    std::function<bool()> stop_requested, const RepetitionHistory* history) {
+    std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
@@ -244,13 +262,17 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     if (use_table && history == nullptr) {
         table.emplace();
     }
-    SearchBudget budget{node_limit, deadline, stop_requested, active_history ? &*active_history : nullptr};
+    SearchBudget budget{node_limit, deadline, stop_requested, active_history ? &*active_history : nullptr, draw_policy};
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
         result.best_move = legal[0];
     }
     result.score = evaluate_for_side_to_move(position);
+    if (is_move_count_draw(position, draw_policy)) {
+        result.score = 0;
+        result.best_move.reset();
+    }
     for (int depth = 1; depth <= max_depth; ++depth) {
         try {
             result = search_impl(position, depth, table ? &*table : nullptr, &budget);

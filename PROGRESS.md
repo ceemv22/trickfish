@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **45.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **46.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -37,7 +37,7 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
 | C17c1 | Move-count draw classification, terminal precedence, and reset boundary tests | 0.500 | Implemented |
-| C17c2 | Search draw policy with rule-clock-safe transposition handling | 0.500 | Pending |
+| C17c2 | Search draw policy with rule-clock-safe transposition handling | 0.500 | Implemented |
 | C18 | C++ UCI protocol including position, go, stop, and lifecycle | 5.000 | Pending |
 | C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
 | C20 | PVS, aspiration, null move, LMR, futility, razoring, and extensions | 10.000 | Pending |
@@ -99,3 +99,6 @@ C17c was split before implementation into C17c1 (0.500) and C17c2 (0.500), prese
 
 - CI confirmation: [run 43](https://github.com/ceemv22/trickfish/actions/runs/40591838988) at `6f364ff` passed both OS builds, all four CTest cases, FEN/perft, and all configured CLI fixtures. This confirms that exact commit, not subsequent working-tree changes.
 - C17c1 implementation: +0.500 points, implemented scope 45.500%. MoveCountDraw distinguishes a fifty-move claim opportunity at 100 halfmoves from automatic seventy-five-move draw at 150. Already finished mate/stalemate/insufficient-material positions return no additional move-count classification. Boundary, clock-reset, and terminal precedence tests await CI. Search/evaluation do not consume this helper yet; C17c2 remains pending. Intended-move claims are outside this helper. Rules reference: https://handbook.fide.com/chapter/E012023 (articles 9.3 and 9.6.2).
+
+- CI confirmation: classification commit `23b13bd` passed [run 44](https://github.com/ceemv22/trickfish/actions/runs/40592951569).
+- C17c2 implementation: +0.500 points, implemented scope 46.000%. Main/quiescence search adjudicates automatic seventy-five-move draws after terminal checks. Iterative API optionally always claims an available fifty-move draw; default/CLI policy is automatic-only. Search TT keys include capped halfmove clock and policy while repetition keys remain unchanged. Drawn roots return no move/PV; intended-move claims and choosing a win instead of an optional claim are not modeled. TT clock-isolation, horizon threshold, claim selection, mate precedence, and pawn-reset regressions await CI. Static --eval remains material/terminal evaluation without this search policy.

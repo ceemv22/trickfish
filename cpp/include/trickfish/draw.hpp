@@ -4,6 +4,11 @@
 
 namespace trickfish {
 
+enum class MoveCountDrawPolicy {
+    automatic_only,
+    claim_fifty_moves
+};
+
 enum class MoveCountDraw {
     none,
     fifty_move_claim_available,
@@ -21,6 +26,12 @@ enum class MoveCountDraw {
     return position.halfmove_clock() >= 150
         ? MoveCountDraw::automatic_seventy_five_move
         : MoveCountDraw::fifty_move_claim_available;
+}
+
+[[nodiscard]] inline bool is_move_count_draw(Position& position, MoveCountDrawPolicy policy) {
+    const auto status = move_count_draw_status(position);
+    return status == MoveCountDraw::automatic_seventy_five_move ||
+        (policy == MoveCountDrawPolicy::claim_fifty_moves && status == MoveCountDraw::fifty_move_claim_available);
 }
 
 }

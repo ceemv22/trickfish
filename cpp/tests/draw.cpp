@@ -3,6 +3,7 @@
 #include <string>
 
 #include "trickfish/draw.hpp"
+#include "trickfish/search.hpp"
 
 void verify(int clock, trickfish::MoveCountDraw expected) {
     const auto fen = "4k3/8/8/8/8/8/8/R3K3 w - - " + std::to_string(clock) + " 1";
@@ -55,6 +56,40 @@ int main() {
             throw std::runtime_error("capture did not reset draw clock");
         }
         capture.unmake_move(rook_capture, capture_undo);
+        auto low_clock = trickfish::Position::from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+        auto near_draw = trickfish::Position::from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 149 1");
+        trickfish::TranspositionTable shared;
+        const auto low = trickfish::search(low_clock, 1, shared);
+        const auto near = trickfish::search(near_draw, 1, shared);
+        const auto near_plain = trickfish::search(near_draw, 1, false);
+        if (low_clock.key() != near_draw.key() || low.score != 500 || near.score != 0 || near_plain.score != 0 ||
+            near_draw.halfmove_clock() != 149) {
+            throw std::runtime_error("TT reused a score from a different rule clock");
+        }
+        auto at_claim = trickfish::Position::from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 100 1");
+        const auto auto_policy = trickfish::iterative_search(at_claim, 1);
+        const auto claim_policy = trickfish::iterative_search(at_claim, 1, true,
+            std::nullopt, std::nullopt, {}, nullptr, trickfish::MoveCountDrawPolicy::claim_fifty_moves);
+        if (auto_policy.score != 500 || claim_policy.score != 0 || claim_policy.best_move ||
+            !claim_policy.principal_variation.empty()) {
+            throw std::runtime_error("fifty-move claim incorrectly treated as automatic");
+        }
+        auto automatic = trickfish::Position::from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 150 1");
+        const auto automatic_result = trickfish::iterative_search(automatic, 3);
+        if (automatic_result.score != 0 || automatic_result.best_move || automatic_result.completed_depth != 1) {
+            throw std::runtime_error("automatic draw root continued searching");
+        }
+        auto mate = trickfish::Position::from_fen("7k/6Q1/6K1/8/8/8/8/8 b - - 150 1");
+        if (trickfish::search(mate, 1).score != -100000) {
+            throw std::runtime_error("move-count draw overrode checkmate");
+        }
+        auto reset_choice = trickfish::Position::from_fen("4k3/8/8/8/8/8/P7/R3K3 w - - 99 1");
+        const auto reset_result = trickfish::iterative_search(reset_choice, 1, true,
+            std::nullopt, std::nullopt, {}, nullptr, trickfish::MoveCountDrawPolicy::claim_fifty_moves);
+        if (reset_result.score != 600 || !reset_result.best_move || reset_result.best_move->from != 48 ||
+            reset_choice.halfmove_clock() != 99) {
+            throw std::runtime_error("search missed pawn reset before claim threshold");
+        }
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

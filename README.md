@@ -51,7 +51,7 @@ Python provides the reference rules, positional evaluation, search, and current 
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
 | Perft | Recursive node count and root divide |
 
-C++ has no UCI loop, move-count draw adjudication, positional evaluation, or advanced pruning yet. Both implementations include en passant in the key only when a legal capture exists; A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Calls without a history, including the current CLI, retain the earlier TT/no-repetition behavior. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
+C++ has no UCI loop, positional evaluation, or advanced pruning yet. Both implementations include en passant in the key only when a legal capture exists; A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Calls without a history, including the current CLI, retain the earlier TT/no-repetition behavior. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
 
 Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns material even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
 
@@ -150,7 +150,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Reversible repetition-key history container and three-occurrence threshold
 - [x] Optional history-aware iterative search with conservative TT exclusion
 - [x] Separate fifty-move claim and seventy-five-move automatic-draw classification
-- [ ] Move-count draw search policy and rule-clock-safe TT handling
+- [x] Automatic seventy-five-move search draws, optional fifty-move claim policy, and clock-aware TT keys
 - [ ] Positional evaluation and endgame scaling
 - [ ] C++ UCI interface
 - [ ] Advanced ordering, pruning, extensions, and measured optimization
@@ -199,7 +199,7 @@ ctest --test-dir build --output-on-failure
 
 `--material`, `--eval`, `--eval-stm`, `--status`, and `--insufficient-material` accept an optional quoted FEN. `--perft`, `--divide`, and `--search` accept a depth followed by an optional quoted FEN. `--search-nodes` accepts depth, a non-negative node limit, and an optional quoted FEN. `--search-time` accepts depth, a non-negative millisecond budget, and an optional quoted FEN. Without a FEN, commands use the initial position. `--eval` is white-positive; `--eval-stm` and search scores are side-to-move positive. Mate scores use a separate magnitude of 100,000, with search adjusting for distance. Search output is a diagnostic CLI, not a C++ UCI session.
 
-The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. It does not submit claims, handle intended-move claims, or alter search/evaluation yet. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
+The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. Search now adjudicates automatic seventy-five-move draws in main and quiescence nodes, with mate checked first. The iterative API optionally always claims an available fifty-move draw; the default CLI policy does not claim it automatically. Intended-move claims and selecting a win instead of an optional claim remain unmodeled. Search TT keys include halfmove clock and draw policy; repetition keys still omit clocks. Static `--eval` does not apply this search draw policy. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
 
 ## Verification standard
 

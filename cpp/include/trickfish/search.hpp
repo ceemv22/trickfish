@@ -8,6 +8,7 @@
 
 #include "trickfish/position.hpp"
 #include "trickfish/history.hpp"
+#include "trickfish/draw.hpp"
 #include "trickfish/transposition.hpp"
 
 namespace trickfish {
@@ -27,7 +28,8 @@ struct SearchResult {
     std::optional<std::uint64_t> node_limit = std::nullopt,
     std::optional<std::chrono::steady_clock::time_point> deadline = std::nullopt,
     std::function<bool()> stop_requested = {},
-    const RepetitionHistory* history = nullptr);
+    const RepetitionHistory* history = nullptr,
+    MoveCountDrawPolicy draw_policy = MoveCountDrawPolicy::automatic_only);
 [[nodiscard]] SearchResult search(Position& position, int depth, TranspositionTable& table);
 
 }
