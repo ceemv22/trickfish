@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **45.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **45.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -36,7 +36,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
-| C17c | Move-count draw policy and checkmate precedence | 1.000 | Pending |
+| C17c1 | Move-count draw classification, terminal precedence, and reset boundary tests | 0.500 | Implemented |
+| C17c2 | Search draw policy with rule-clock-safe transposition handling | 0.500 | Pending |
 | C18 | C++ UCI protocol including position, go, stop, and lifecycle | 5.000 | Pending |
 | C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
 | C20 | PVS, aspiration, null move, LMR, futility, razoring, and extensions | 10.000 | Pending |
@@ -49,7 +50,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-27. The last fully successful run before the current failures is [run 39](https://github.com/ceemv22/trickfish/actions/runs/40589872908) at `95adaf8` (42.000 implemented-scope points at that commit). Runs 40 through 42 failed. At `c67dcdf`, [run 42](https://github.com/ceemv22/trickfish/actions/runs/40591127959) built successfully and passed FEN/perft on both GCC/Linux and MSVC/Windows. CTest passed search_baselines, transposition_storage, and repetition_history on both systems, but zobrist_updates failed with "position must contain exactly one king of each color". Later CLI verification steps were skipped. These are exact-commit observations, not a pass for the working tree or an assessment of playing strength. Local C++ compile/runtime execution is still unavailable.
+GitHub Actions was inspected on 2026-10-27. [Run 43](https://github.com/ceemv22/trickfish/actions/runs/40591838988) at `6f364ff` passed GCC/Linux and MSVC/Windows builds, all four CTest cases, FEN/perft, and configured CLI fixtures. That exact commit contains 45.000 implemented-scope points. The additional C17c1 working-tree changes still require their own CI result. Earlier runs 40 through 42 failed on the invalid occupied-EP-target test fixture; the repair did not disable tests. Local C++ compile/runtime execution is still unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -93,3 +94,8 @@ C17b was split before implementation into C17b1 (0.750) and C17b2 (1.250), prese
 - C17b2 implementation: +1.250 points, implemented scope 45.000%. Iterative search optionally accepts a history ending at the root, copies it for local use, and records/unrecords main/quiescence moves with exception-safe restoration. Three occurrences score zero under an explicit always-claim search policy, after terminal checks. History-aware mode disables TT to avoid reusing path-dependent scores. Search without a supplied history retains previous TT/no-repetition behavior; CLI/FEN alone cannot supply played-game history yet. Caller history is unchanged. Fresh/repeated context, interrupted search, and mismatched-root regressions await CI. This does not implement optional claim selection, intended-move claims, or fivefold adjudication.
 
 - CI regression repair: +0.000 points; implemented scope remains 45.000%. The occupied-EP-target fixture placed a white knight on d6 attacking the non-moving black king on e8. Moving that king to a8 preserves the blocked-target scenario without starting from an illegal check position. Fixture preconditions and contextual diagnostics were added; all CTest cases remain enabled. The repaired commit still requires GCC/MSVC Actions confirmation.
+
+C17c was split before implementation into C17c1 (0.500) and C17c2 (0.500), preserving its 1.000-point total.
+
+- CI confirmation: [run 43](https://github.com/ceemv22/trickfish/actions/runs/40591838988) at `6f364ff` passed both OS builds, all four CTest cases, FEN/perft, and all configured CLI fixtures. This confirms that exact commit, not subsequent working-tree changes.
+- C17c1 implementation: +0.500 points, implemented scope 45.500%. MoveCountDraw distinguishes a fifty-move claim opportunity at 100 halfmoves from automatic seventy-five-move draw at 150. Already finished mate/stalemate/insufficient-material positions return no additional move-count classification. Boundary, clock-reset, and terminal precedence tests await CI. Search/evaluation do not consume this helper yet; C17c2 remains pending. Intended-move claims are outside this helper. Rules reference: https://handbook.fide.com/chapter/E012023 (articles 9.3 and 9.6.2).

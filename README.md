@@ -149,7 +149,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Legal-en-passant repetition-equivalent keys
 - [x] Reversible repetition-key history container and three-occurrence threshold
 - [x] Optional history-aware iterative search with conservative TT exclusion
-- [ ] Move-count draw policy
+- [x] Separate fifty-move claim and seventy-five-move automatic-draw classification
+- [ ] Move-count draw search policy and rule-clock-safe TT handling
 - [ ] Positional evaluation and endgame scaling
 - [ ] C++ UCI interface
 - [ ] Advanced ordering, pruning, extensions, and measured optimization
@@ -197,6 +198,8 @@ ctest --test-dir build --output-on-failure
 ```
 
 `--material`, `--eval`, `--eval-stm`, `--status`, and `--insufficient-material` accept an optional quoted FEN. `--perft`, `--divide`, and `--search` accept a depth followed by an optional quoted FEN. `--search-nodes` accepts depth, a non-negative node limit, and an optional quoted FEN. `--search-time` accepts depth, a non-negative millisecond budget, and an optional quoted FEN. Without a FEN, commands use the initial position. `--eval` is white-positive; `--eval-stm` and search scores are side-to-move positive. Mate scores use a separate magnitude of 100,000, with search adjusting for distance. Search output is a diagnostic CLI, not a C++ UCI session.
+
+The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. It does not submit claims, handle intended-move claims, or alter search/evaluation yet. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
 
 ## Verification standard
 
