@@ -8,7 +8,7 @@ Trickfish is a chess-engine research project with a Python reference engine and 
 
 ## Current implementation
 
-Python provides the reference rules, positional evaluation, search, and current UCI interface. C++ provides mutable position state, legal move generation, perft, material plus a bishop-pair term, and an initial search implementation. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
+Python provides the reference rules, positional evaluation, search, and current UCI interface. C++ provides mutable position state, legal move generation, perft, material, bishop-pair, and rook-file terms, and an initial search implementation. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
 
 ### Python reference engine
 
@@ -45,7 +45,7 @@ Python provides the reference rules, positional evaluation, search, and current 
 | Attacks | Compile-time pawn/knight/king tables, blocker-aware sliding attacks, aggregate attack maps, and targeted king check detection |
 | Position key | Incremental deterministic 64-bit Zobrist key with undo restoration; only legal en passant availability is hashed |
 | Game state | Check, checkmate, stalemate, and conservative insufficient-material detection |
-| Evaluation | White-positive material plus the reference bishop-pair term, mate/stalemate/insufficient-material handling, and side-to-move score conversion |
+| Evaluation | White-positive material plus reference bishop-pair and rook-file terms, mate/stalemate/insufficient-material handling, and side-to-move score conversion |
 | Search | Negamax, alpha-beta, mate-distance scores, capture/promotion ordering, quiescence, bounded TT, and iterative deepening |
 | TT | Full-key checks, depth-qualified exact/lower/upper bounds, mate-score normalization, and preferred-move ordering |
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
@@ -152,6 +152,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Separate fifty-move claim and seventy-five-move automatic-draw classification
 - [x] Automatic seventy-five-move search draws, optional fifty-move claim policy, and clock-aware TT keys
 - [x] Reference bishop-pair term in static evaluation and search
+- [x] Reference rook-file term in static evaluation and search
 - [ ] Remaining phase-aware positional evaluation and endgame scaling
 - [ ] C++ UCI interface
 - [ ] Advanced ordering, pruning, extensions, and measured optimization
@@ -200,7 +201,7 @@ ctest --test-dir build --output-on-failure
 
 `--material`, `--eval`, `--eval-stm`, `--status`, and `--insufficient-material` accept an optional quoted FEN. `--perft`, `--divide`, and `--search` accept a depth followed by an optional quoted FEN. `--search-nodes` accepts depth, a non-negative node limit, and an optional quoted FEN. `--search-time` accepts depth, a non-negative millisecond budget, and an optional quoted FEN. Without a FEN, commands use the initial position. `--eval` is white-positive; `--eval-stm` and search scores are side-to-move positive. Mate scores use a separate magnitude of 100,000, with search adjusting for distance. Search output is a diagnostic CLI, not a C++ UCI session.
 
-The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. Search now adjudicates automatic seventy-five-move draws in main and quiescence nodes, with mate checked first. The iterative API optionally always claims an available fifty-move draw; the default CLI policy does not claim it automatically. Intended-move claims and selecting a win instead of an optional claim remain unmodeled. Search TT keys include halfmove clock and draw policy; repetition keys still omit clocks. Static `--eval` does not apply this search draw policy. Its non-terminal score is material plus a one-time 30-point bonus per side with at least two bishops, matching the Python reference term. `--material` remains material-only; other Python positional terms are still absent. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
+The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. Search now adjudicates automatic seventy-five-move draws in main and quiescence nodes, with mate checked first. The iterative API optionally always claims an available fifty-move draw; the default CLI policy does not claim it automatically. Intended-move claims and selecting a win instead of an optional claim remain unmodeled. Search TT keys include halfmove clock and draw policy; repetition keys still omit clocks. Static `--eval` does not apply this search draw policy. Its non-terminal score combines material, a one-time 30-point bonus per side with at least two bishops, and the Python rook-file term. Each rook gets 10 points if its file lacks a friendly pawn and another 10 if it lacks an enemy pawn; the entire rook-file term is disabled when no pawns remain. `--material` remains material-only; other Python positional terms are still absent. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
 
 ## Verification standard
 

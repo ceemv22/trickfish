@@ -86,7 +86,7 @@ int main() {
         auto reset_choice = trickfish::Position::from_fen("4k3/8/8/8/8/8/P7/R3K3 w - - 99 1");
         const auto reset_result = trickfish::iterative_search(reset_choice, 1, true,
             std::nullopt, std::nullopt, {}, nullptr, trickfish::MoveCountDrawPolicy::claim_fifty_moves);
-        if (reset_result.score != 600 || !reset_result.best_move || reset_result.best_move->from != 48 ||
+        if (reset_result.score != 610 || !reset_result.best_move || reset_result.best_move->from != 48 ||
             reset_choice.halfmove_clock() != 99) {
             throw std::runtime_error("search missed pawn reset before claim threshold");
         }

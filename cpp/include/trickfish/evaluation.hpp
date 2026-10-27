@@ -28,8 +28,30 @@ inline constexpr std::array piece_values = {100, 320, 330, 500, 900, 0};
     return white - black;
 }
 
+[[nodiscard]] inline int evaluate_rook_files(const Position& position) {
+    const auto white_pawns = position.pieces(Color::white, PieceType::pawn);
+    const auto black_pawns = position.pieces(Color::black, PieceType::pawn);
+    if ((white_pawns | black_pawns) == 0) {
+        return 0;
+    }
+    int score = 0;
+    constexpr Bitboard a_file = 0x0101010101010101ULL;
+    for (const auto color : {Color::white, Color::black}) {
+        const auto own_pawns = color == Color::white ? white_pawns : black_pawns;
+        const auto enemy_pawns = color == Color::white ? black_pawns : white_pawns;
+        auto rooks = position.pieces(color, PieceType::rook);
+        while (rooks != 0) {
+            const auto file = pop_lsb(rooks) % 8;
+            const auto mask = a_file << file;
+            const int bonus = ((own_pawns & mask) == 0 ? 10 : 0) + ((enemy_pawns & mask) == 0 ? 10 : 0);
+            score += color == Color::white ? bonus : -bonus;
+        }
+    }
+    return score;
+}
+
 [[nodiscard]] inline int evaluate_static(const Position& position) {
-    return evaluate_material(position) + evaluate_bishop_pair(position);
+    return evaluate_material(position) + evaluate_bishop_pair(position) + evaluate_rook_files(position);
 }
 
 [[nodiscard]] inline int evaluate(Position& position) {

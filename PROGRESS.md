@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **46.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **47.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -33,7 +33,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C15b | Deadline-based interruption and completed-depth fallback tests | 1.500 | Implemented |
 | C15c | External stop signal with deterministic interruption/restoration tests | 1.000 | Implemented |
 | C16a | Reference bishop-pair term integrated into static evaluation/search with terminal precedence tests | 0.500 | Implemented |
-| C16b | Remaining phase-aware positional evaluation and endgame scaling | 11.500 | Pending |
+| C16b1 | Python-reference rook-file term with color/file boundary and search integration tests | 0.500 | Implemented |
+| C16b2 | Remaining phase-aware positional evaluation and endgame scaling | 11.000 | Pending |
 | C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
@@ -108,3 +109,9 @@ C16 was split before implementation into C16a (0.500) and C16b (11.500), preserv
 
 - CI confirmation: `44b345f` passed both OS jobs and all configured checks in [run 45](https://github.com/ceemv22/trickfish/actions/runs/40593824927).
 - C16a implementation: +0.500 points, implemented scope 46.500%. Static evaluation adds the Python reference bishop-pair term: +30 for at least two white bishops, -30 for at least two black bishops, counted once per side regardless of promotions or square colors. Main-search leaves/quiescence use that static score; --material remains unchanged. Terminal/recognized insufficient-material handling still takes precedence in evaluate. This is not phase-aware positional parity, tuning, or a strength claim. CTest color/sign, three-bishop saturation, terminal precedence, and search integration fixtures await CI.
+
+C16b was split before rook-file implementation into C16b1 (0.500) and C16b2 (11.000), preserving its 11.500-point total.
+
+- C16b1 implementation: +0.500 points, implemented scope 47.000%. Static/search evaluation ports the Python rook-file term: per rook, +10 if its file has no friendly pawn and +10 if it has no enemy pawn, signed by color. With no pawns anywhere the term is disabled. This intentionally preserves the reference behavior, including +10 with only a friendly pawn on the file. Color, blocked/open file, doubled rook, pawnless, and search fixtures await CI. The pawn-reset draw regression now expects 610 rather than 600 because this position has a +10 reference rook-file term. No strength claim or tuning is implied.
+
+- CI confirmation: bishop-pair commit `64a7d45` passed [run 46](https://github.com/ceemv22/trickfish/actions/runs/40594229285); this does not confirm the subsequent rook-file changes.
