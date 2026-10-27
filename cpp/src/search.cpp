@@ -101,8 +101,8 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
     });
 }
 
-int material_for_side(const Position& position) {
-    const auto score = evaluate_material(position);
+int static_for_side(const Position& position) {
+    const auto score = evaluate_static(position);
     return position.side_to_move() == Color::white ? score : -score;
 }
 
@@ -120,11 +120,11 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
         return 0;
     }
     if (qdepth >= 32) {
-        return material_for_side(position);
+        return static_for_side(position);
     }
     int best = -mate_score - 1;
     if (!in_check) {
-        best = material_for_side(position);
+        best = static_for_side(position);
         if (best >= beta) {
             return best;
         }

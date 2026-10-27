@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **46.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **46.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -32,7 +32,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C15a | Node-limited iterative search, exception-safe move restoration, and completed-iteration fallback | 1.500 | Implemented |
 | C15b | Deadline-based interruption and completed-depth fallback tests | 1.500 | Implemented |
 | C15c | External stop signal with deterministic interruption/restoration tests | 1.000 | Implemented |
-| C16 | Phase-aware positional evaluation and endgame scaling | 12.000 | Pending |
+| C16a | Reference bishop-pair term integrated into static evaluation/search with terminal precedence tests | 0.500 | Implemented |
+| C16b | Remaining phase-aware positional evaluation and endgame scaling | 11.500 | Pending |
 | C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
@@ -102,3 +103,8 @@ C17c was split before implementation into C17c1 (0.500) and C17c2 (0.500), prese
 
 - CI confirmation: classification commit `23b13bd` passed [run 44](https://github.com/ceemv22/trickfish/actions/runs/40592951569).
 - C17c2 implementation: +0.500 points, implemented scope 46.000%. Main/quiescence search adjudicates automatic seventy-five-move draws after terminal checks. Iterative API optionally always claims an available fifty-move draw; default/CLI policy is automatic-only. Search TT keys include capped halfmove clock and policy while repetition keys remain unchanged. Drawn roots return no move/PV; intended-move claims and choosing a win instead of an optional claim are not modeled. TT clock-isolation, horizon threshold, claim selection, mate precedence, and pawn-reset regressions await CI. Static --eval remains material/terminal evaluation without this search policy.
+
+C16 was split before implementation into C16a (0.500) and C16b (11.500), preserving its 12.000-point total.
+
+- CI confirmation: `44b345f` passed both OS jobs and all configured checks in [run 45](https://github.com/ceemv22/trickfish/actions/runs/40593824927).
+- C16a implementation: +0.500 points, implemented scope 46.500%. Static evaluation adds the Python reference bishop-pair term: +30 for at least two white bishops, -30 for at least two black bishops, counted once per side regardless of promotions or square colors. Main-search leaves/quiescence use that static score; --material remains unchanged. Terminal/recognized insufficient-material handling still takes precedence in evaluate. This is not phase-aware positional parity, tuning, or a strength claim. CTest color/sign, three-bishop saturation, terminal precedence, and search integration fixtures await CI.

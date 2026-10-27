@@ -22,6 +22,16 @@ inline constexpr std::array piece_values = {100, 320, 330, 500, 900, 0};
     return score;
 }
 
+[[nodiscard]] inline int evaluate_bishop_pair(const Position& position) {
+    const int white = std::popcount(position.pieces(Color::white, PieceType::bishop)) >= 2 ? 30 : 0;
+    const int black = std::popcount(position.pieces(Color::black, PieceType::bishop)) >= 2 ? 30 : 0;
+    return white - black;
+}
+
+[[nodiscard]] inline int evaluate_static(const Position& position) {
+    return evaluate_material(position) + evaluate_bishop_pair(position);
+}
+
 [[nodiscard]] inline int evaluate(Position& position) {
     const auto status = game_status(position);
     if (status == GameStatus::checkmate) {
@@ -30,7 +40,7 @@ inline constexpr std::array piece_values = {100, 320, 330, 500, 900, 0};
     if (status == GameStatus::stalemate || position.is_insufficient_material()) {
         return 0;
     }
-    return evaluate_material(position);
+    return evaluate_static(position);
 }
 
 [[nodiscard]] inline int evaluate_for_side_to_move(Position& position) {

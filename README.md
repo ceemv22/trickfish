@@ -8,7 +8,7 @@ Trickfish is a chess-engine research project with a Python reference engine and 
 
 ## Current implementation
 
-Python provides the reference rules, positional evaluation, search, and current UCI interface. C++ provides mutable position state, legal move generation, perft, a material evaluator, and an initial search implementation. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
+Python provides the reference rules, positional evaluation, search, and current UCI interface. C++ provides mutable position state, legal move generation, perft, material plus a bishop-pair term, and an initial search implementation. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
 
 ### Python reference engine
 
@@ -45,15 +45,15 @@ Python provides the reference rules, positional evaluation, search, and current 
 | Attacks | Compile-time pawn/knight/king tables, blocker-aware sliding attacks, aggregate attack maps, and targeted king check detection |
 | Position key | Incremental deterministic 64-bit Zobrist key with undo restoration; only legal en passant availability is hashed |
 | Game state | Check, checkmate, stalemate, and conservative insufficient-material detection |
-| Evaluation | White-positive material score, mate/stalemate/insufficient-material handling, and side-to-move score conversion |
+| Evaluation | White-positive material plus the reference bishop-pair term, mate/stalemate/insufficient-material handling, and side-to-move score conversion |
 | Search | Negamax, alpha-beta, mate-distance scores, capture/promotion ordering, quiescence, bounded TT, and iterative deepening |
 | TT | Full-key checks, depth-qualified exact/lower/upper bounds, mate-score normalization, and preferred-move ordering |
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
 | Perft | Recursive node count and root divide |
 
-C++ has no UCI loop, positional evaluation, or advanced pruning yet. Both implementations include en passant in the key only when a legal capture exists; A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Calls without a history, including the current CLI, retain the earlier TT/no-repetition behavior. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
+C++ has no UCI loop, phase-aware positional evaluation, or advanced pruning yet. Both implementations include en passant in the key only when a legal capture exists; A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Calls without a history, including the current CLI, retain the earlier TT/no-repetition behavior. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
 
-Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns material even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
+Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns static evaluation even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
 
 `--search` runs depths successively with a shared TT and reports the last completed depth. It stops terminal roots after the first iteration. The reported PV covers selected main-search moves, excludes quiescence continuations, and may truncate at TT cutoffs or terminal/draw states. It is not guaranteed to reach the reported depth. `--search-time` accepts a depth and a non-negative millisecond budget using a steady-clock deadline. Deadline checks occur before main/quiescence node visits; setup and individual node operations can overrun the budget. The iterative-search API also accepts a stop predicate. It runs synchronously before node visits; a true result preserves the same completed-iteration fallback. Callers must synchronize any predicate state changed from another thread. The CLI has no interactive stop command yet. `--search-nodes` caps main/quiescence node visits across all iterations. On node-budget or deadline exhaustion it restores position state and returns the last completed iteration; before depth one completes it returns a legal fallback with depth 0, an empty PV, and `stopped true`. Root fallback preparation is outside the node budget. `--divide` prints the node count under each legal root move and the total.
 
@@ -151,7 +151,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Optional history-aware iterative search with conservative TT exclusion
 - [x] Separate fifty-move claim and seventy-five-move automatic-draw classification
 - [x] Automatic seventy-five-move search draws, optional fifty-move claim policy, and clock-aware TT keys
-- [ ] Positional evaluation and endgame scaling
+- [x] Reference bishop-pair term in static evaluation and search
+- [ ] Remaining phase-aware positional evaluation and endgame scaling
 - [ ] C++ UCI interface
 - [ ] Advanced ordering, pruning, extensions, and measured optimization
 - [ ] Reproducible benchmarks, tuning, self-play, and SPRT matches
@@ -199,7 +200,7 @@ ctest --test-dir build --output-on-failure
 
 `--material`, `--eval`, `--eval-stm`, `--status`, and `--insufficient-material` accept an optional quoted FEN. `--perft`, `--divide`, and `--search` accept a depth followed by an optional quoted FEN. `--search-nodes` accepts depth, a non-negative node limit, and an optional quoted FEN. `--search-time` accepts depth, a non-negative millisecond budget, and an optional quoted FEN. Without a FEN, commands use the initial position. `--eval` is white-positive; `--eval-stm` and search scores are side-to-move positive. Mate scores use a separate magnitude of 100,000, with search adjusting for distance. Search output is a diagnostic CLI, not a C++ UCI session.
 
-The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. Search now adjudicates automatic seventy-five-move draws in main and quiescence nodes, with mate checked first. The iterative API optionally always claims an available fifty-move draw; the default CLI policy does not claim it automatically. Intended-move claims and selecting a win instead of an optional claim remain unmodeled. Search TT keys include halfmove clock and draw policy; repetition keys still omit clocks. Static `--eval` does not apply this search draw policy. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
+The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. Search now adjudicates automatic seventy-five-move draws in main and quiescence nodes, with mate checked first. The iterative API optionally always claims an available fifty-move draw; the default CLI policy does not claim it automatically. Intended-move claims and selecting a win instead of an optional claim remain unmodeled. Search TT keys include halfmove clock and draw policy; repetition keys still omit clocks. Static `--eval` does not apply this search draw policy. Its non-terminal score is material plus a one-time 30-point bonus per side with at least two bishops, matching the Python reference term. `--material` remains material-only; other Python positional terms are still absent. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
 
 ## Verification standard
 
