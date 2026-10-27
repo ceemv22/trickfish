@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **42.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **43.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -33,7 +33,9 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C15b | Deadline-based interruption and completed-depth fallback tests | 1.500 | Implemented |
 | C15c | External stop signal with deterministic interruption/restoration tests | 1.000 | Implemented |
 | C16 | Phase-aware positional evaluation and endgame scaling | 12.000 | Pending |
-| C17 | Legal-en-passant repetition key semantics, history, and move-count draw policy | 4.000 | Pending |
+| C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
+| C17b | Reversible repetition history and counting with search integration | 2.000 | Pending |
+| C17c | Move-count draw policy and checkmate precedence | 1.000 | Pending |
 | C18 | C++ UCI protocol including position, go, stop, and lifecycle | 5.000 | Pending |
 | C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
 | C20 | PVS, aspiration, null move, LMR, futility, razoring, and extensions | 10.000 | Pending |
@@ -48,7 +50,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 At this baseline, local static review and `git diff --check` have been performed during development. No local C++ compile/runtime result has been established. GitHub Actions is configured for GCC/Linux and MSVC/Windows builds, FEN/perft, state restoration, search baselines, and CLI fixtures. The Actions result for `f9ac82b` has not been inspected in this session. Therefore a CI-confirmed percentage is **unknown**, not 22.000% and not zero.
 
-C07 currently includes every recorded FEN en passant file in the key; legal-capture normalization is reserved for C17. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
+C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
 For each subsequent change, report the previous and current implemented index, the milestone/submilestone responsible for the delta, the local checks, and whether the exact commit has passed CI. Keep Python prototype and serious-engine estimates separate: their earlier approximate 60% and 3% estimates have no weighted checklist yet and must not be presented as measured three-decimal indices.
 
@@ -78,3 +80,7 @@ C15 was split before implementation into C15a (1.500), C15b (1.500), and C15c (1
 - C15b implementation: +1.500 points, implemented scope 41.000%. Iterative search accepts an absolute steady-clock deadline; --search-time accepts depth and non-negative milliseconds. Deadline and node budget may be combined in the API. Checks occur before main/quiescence node visits and use C15a restoration/fallback. Allocation, fallback preparation, and individual node operations are not hard time bounded. Expired/future deadline tests avoid machine-speed timing assumptions and await CI. External stop remains C15c.
 
 - C15c implementation: +1.000 points, implemented scope 42.000%. Iterative search accepts a caller-owned stop predicate, checked before main/quiescence node visits alongside node/deadline limits. A true result uses the same completed-iteration fallback and move restoration. The callback runs synchronously on the search thread; callers must synchronize state changed from other threads. Immediate, inactive, and deterministic mid-iteration stop tests await CI. No C++ UCI stop-command loop is implemented yet.
+
+C17 was split before implementation into C17a (1.000), C17b (2.000), and C17c (1.000), preserving its 4.000-point total.
+
+- C17a implementation: +1.000 points, implemented scope 43.000%. Full/incremental keys include EP only when a capture survives king-safety checks. Trial board copies avoid recursion through make_move while preserving FEN state. Ten reference cases cover both colors, pins, horizontal discovered check, one legal capturer among two candidates, check evasion, and absent/blocked targets. C++ key-equivalence and make/unmake regressions await CI. No repetition history is added yet. Key values intentionally change for unusable EP targets.

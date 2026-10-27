@@ -233,12 +233,40 @@ int Position::halfmove_clock() const { return halfmove_clock_; }
 int Position::fullmove_number() const { return fullmove_number_; }
 std::uint64_t Position::key() const { return key_; }
 
+bool Position::has_legal_en_passant() const {
+    if (en_passant_square_ < 0) {
+        return false;
+    }
+    const auto target = static_cast<std::uint8_t>(en_passant_square_);
+    const auto color = side_to_move_;
+    const int push = color == Color::white ? -8 : 8;
+    const int captured_square = static_cast<int>(target) - push;
+    const char pawn = piece_symbol(color, PieceType::pawn);
+    const char captured_pawn = piece_symbol(opposite(color), PieceType::pawn);
+    if (piece_at(target) != '.' || captured_square < 0 || captured_square >= 64 ||
+        piece_at(static_cast<std::uint8_t>(captured_square)) != captured_pawn) {
+        return false;
+    }
+    auto candidates = pawn_attacks(opposite(color), target) & pieces(color, PieceType::pawn);
+    while (candidates != 0) {
+        const auto source = pop_lsb(candidates);
+        auto trial = *this;
+        trial.remove_piece(pawn, source);
+        trial.remove_piece(captured_pawn, static_cast<std::uint8_t>(captured_square));
+        trial.add_piece(pawn, target);
+        if (!trial.in_check(color)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::uint64_t Position::compute_key() const {
     std::uint64_t key = zobrist::keys.castling[castling_rights_];
     if (side_to_move_ == Color::black) {
         key ^= zobrist::keys.side;
     }
-    if (en_passant_square_ >= 0) {
+    if (has_legal_en_passant()) {
         key ^= zobrist::keys.en_passant_file[static_cast<std::uint8_t>(en_passant_square_) % 8];
     }
     for (std::size_t piece = 0; piece < pieces_.size(); ++piece) {
@@ -290,7 +318,7 @@ UndoState Position::make_move(const Move& move) {
     undo.captured_piece = piece_at(undo.captured_square);
 
     key_ ^= zobrist::keys.castling[castling_rights_];
-    if (en_passant_square_ >= 0) {
+    if (has_legal_en_passant()) {
         key_ ^= zobrist::keys.en_passant_file[static_cast<std::uint8_t>(en_passant_square_) % 8];
     }
 
@@ -343,7 +371,7 @@ UndoState Position::make_move(const Move& move) {
     side_to_move_ = opposite(side_to_move_);
     key_ ^= zobrist::keys.side;
     key_ ^= zobrist::keys.castling[castling_rights_];
-    if (en_passant_square_ >= 0) {
+    if (has_legal_en_passant()) {
         key_ ^= zobrist::keys.en_passant_file[static_cast<std::uint8_t>(en_passant_square_) % 8];
     }
     return undo;

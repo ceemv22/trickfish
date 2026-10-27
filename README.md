@@ -43,7 +43,7 @@ Python provides the reference rules, positional evaluation, search, and current 
 | Updates | Reversible make/unmake for ordinary moves, captures, promotions, en passant, and castling |
 | Move generation | Fixed-capacity move list, all-piece pseudo-legal generation, castling path checks, and legal filtering |
 | Attacks | Compile-time pawn/knight/king tables, blocker-aware sliding attacks, aggregate attack maps, and targeted king check detection |
-| Position key | Incremental deterministic 64-bit Zobrist key with undo restoration; every recorded en passant file is hashed |
+| Position key | Incremental deterministic 64-bit Zobrist key with undo restoration; only legal en passant availability is hashed |
 | Game state | Check, checkmate, stalemate, and conservative insufficient-material detection |
 | Evaluation | White-positive material score, mate/stalemate/insufficient-material handling, and side-to-move score conversion |
 | Search | Negamax, alpha-beta, mate-distance scores, capture/promotion ordering, quiescence, bounded TT, and iterative deepening |
@@ -51,7 +51,7 @@ Python provides the reference rules, positional evaluation, search, and current 
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
 | Perft | Recursive node count and root divide |
 
-C++ has no UCI loop, repetition history, move-count draw adjudication, positional evaluation, or advanced pruning yet. Its Zobrist en passant treatment is not yet suitable for repetition equivalence; Python includes only legal en passant state in that key.
+C++ has no UCI loop, repetition history, move-count draw adjudication, positional evaluation, or advanced pruning yet. Both implementations include en passant in the key only when a legal capture exists; C++ repetition history is still pending. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
 
 Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns material even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
 
@@ -146,7 +146,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Node budget with state restoration and completed-iteration fallback
 - [x] Steady-clock deadline with completed-iteration fallback
 - [x] API stop predicate with completed-iteration fallback and state restoration
-- [ ] Repetition-equivalent keys, history, and move-count draw policy
+- [x] Legal-en-passant repetition-equivalent keys
+- [ ] Repetition history and move-count draw policy
 - [ ] Positional evaluation and endgame scaling
 - [ ] C++ UCI interface
 - [ ] Advanced ordering, pruning, extensions, and measured optimization

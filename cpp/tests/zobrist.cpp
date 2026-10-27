@@ -2,6 +2,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
+#include <sstream>
+#include <string>
 
 #include "trickfish/movegen.hpp"
 #include "trickfish/position.hpp"
@@ -63,6 +65,29 @@ void verify(trickfish::Position& position, int depth) {
     }
 }
 
+void verify_en_passant(std::string_view fen, int expected_captures) {
+    auto position = trickfish::Position::from_fen(fen);
+    std::istringstream fields{std::string(fen)};
+    std::array<std::string, 6> parts;
+    for (auto& part : parts) fields >> part;
+    parts[3] = "-";
+    std::string without_ep;
+    for (const auto& part : parts) {
+        if (!without_ep.empty()) without_ep += ' ';
+        without_ep += part;
+    }
+    const auto baseline = trickfish::Position::from_fen(without_ep);
+    int captures = 0;
+    for (const auto& move : trickfish::generate_legal_moves(position)) {
+        if (move.en_passant) ++captures;
+    }
+    if (captures != expected_captures ||
+        ((position.key() != baseline.key()) != (expected_captures != 0)) || position.to_fen() != fen) {
+        throw std::runtime_error("legal en passant key mismatch: " + std::string(fen));
+    }
+    verify(position, 2);
+}
+
 int main() {
     constexpr std::array<std::string_view, 6> positions = {
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -73,6 +98,16 @@ int main() {
         "4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1"
     };
     try {
+        verify_en_passant("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", 1);
+        verify_en_passant("4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1", 1);
+        verify_en_passant("4k3/8/8/3p4/8/8/8/4K3 w - d6 0 1", 0);
+        verify_en_passant("k3r3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", 0);
+        verify_en_passant("4k3/8/8/r4pPK/8/8/8/8 w - f6 0 1", 0);
+        verify_en_passant("k3r3/8/8/2PpP3/8/8/8/4K3 w - d6 0 1", 1);
+        verify_en_passant("4k3/8/8/3pP3/4K3/8/8/8 w - d6 0 1", 1);
+        verify_en_passant("4k3/8/8/8/3Pp3/8/8/K3R3 b - d3 0 1", 0);
+        verify_en_passant("4k3/8/8/4P3/8/8/8/4K3 w - d6 0 1", 0);
+        verify_en_passant("4k3/8/3N4/3pP3/8/8/8/4K3 w - d6 0 1", 0);
         for (const auto fen : positions) {
             auto position = trickfish::Position::from_fen(fen);
             verify(position, 3);

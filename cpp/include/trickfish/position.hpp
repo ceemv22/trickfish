@@ -47,6 +47,7 @@ private:
     void add_piece(char symbol, std::uint8_t square);
     void remove_piece(char symbol, std::uint8_t square);
     [[nodiscard]] std::uint64_t compute_key() const;
+    [[nodiscard]] bool has_legal_en_passant() const;
 
     std::array<char, 64> board_ = [] {
         std::array<char, 64> board{};
