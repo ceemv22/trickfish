@@ -92,7 +92,7 @@ jobs:
               throw "$($case.Name) perft($($case.Depth)) mismatch: $actualNodes"
             }
           }
-      - name: Verify incremental Zobrist updates
+      - name: Run C++ regression tests
         run: ctest --test-dir build -C Release --output-on-failure
       - name: Verify perft divide
         shell: pwsh

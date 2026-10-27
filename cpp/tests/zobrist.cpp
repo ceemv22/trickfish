@@ -67,6 +67,9 @@ void verify(trickfish::Position& position, int depth) {
 
 void verify_en_passant(std::string_view fen, int expected_captures) {
     auto position = trickfish::Position::from_fen(fen);
+    if (position.in_check(trickfish::opposite(position.side_to_move()))) {
+        throw std::runtime_error("invalid en passant fixture: non-moving king is in check: " + std::string(fen));
+    }
     std::istringstream fields{std::string(fen)};
     std::array<std::string, 6> parts;
     for (auto& part : parts) fields >> part;
@@ -85,7 +88,11 @@ void verify_en_passant(std::string_view fen, int expected_captures) {
         ((position.key() != baseline.key()) != (expected_captures != 0)) || position.to_fen() != fen) {
         throw std::runtime_error("legal en passant key mismatch: " + std::string(fen));
     }
-    verify(position, 2);
+    try {
+        verify(position, 2);
+    } catch (const std::exception& error) {
+        throw std::runtime_error("en passant fixture failed: " + std::string(fen) + ": " + error.what());
+    }
 }
 
 int main() {
@@ -107,7 +114,7 @@ int main() {
         verify_en_passant("4k3/8/8/3pP3/4K3/8/8/8 w - d6 0 1", 1);
         verify_en_passant("4k3/8/8/8/3Pp3/8/8/K3R3 b - d3 0 1", 0);
         verify_en_passant("4k3/8/8/4P3/8/8/8/4K3 w - d6 0 1", 0);
-        verify_en_passant("4k3/8/3N4/3pP3/8/8/8/4K3 w - d6 0 1", 0);
+        verify_en_passant("k7/8/3N4/3pP3/8/8/8/4K3 w - d6 0 1", 0);
         for (const auto fen : positions) {
             auto position = trickfish::Position::from_fen(fen);
             verify(position, 3);
