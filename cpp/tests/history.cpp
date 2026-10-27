@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "trickfish/history.hpp"
+#include "trickfish/search.hpp"
 #include "trickfish/movegen.hpp"
 
 void require(bool condition, const char* message) {
@@ -55,6 +56,58 @@ int main() {
         position.unmake_move(trickfish::Move(52, 36), undo);
         require(history.current_key() == root_key && history.current_count() == 1,
             "branch undo failed to restore history");
+        auto advantaged = trickfish::Position::from_fen(
+            "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        trickfish::RepetitionHistory repeated(advantaged);
+        for (std::size_t index = 0; index < 8; ++index) {
+            const auto unused = advantaged.make_move(cycle[index % cycle.size()]);
+            static_cast<void>(unused);
+            repeated.push(advantaged);
+        }
+        const auto before = advantaged.to_fen();
+        const auto before_key = advantaged.key();
+        const auto material_search = trickfish::iterative_search(advantaged, 1, false);
+        const auto repetition_search = trickfish::iterative_search(advantaged, 2, true,
+            std::nullopt, std::nullopt, {}, &repeated);
+        require(material_search.score > 0 && repetition_search.score == 0 && repetition_search.best_move &&
+            repetition_search.transposition_hits == 0, "history-aware search failed to distinguish repetition");
+        require(advantaged.to_fen() == before && advantaged.key() == before_key && repeated.size() == 9 &&
+            repeated.current_count() == 3, "search modified caller history or root position");
+        auto before_third = trickfish::Position::from_fen(
+            "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        trickfish::RepetitionHistory twice(before_third);
+        for (std::size_t index = 0; index < 7; ++index) {
+            const auto unused = before_third.make_move(cycle[index % cycle.size()]);
+            static_cast<void>(unused);
+            twice.push(before_third);
+        }
+        const auto child_fen = before_third.to_fen();
+        const auto child_key = before_third.key();
+        const auto saved = trickfish::iterative_search(before_third, 1, true,
+            std::nullopt, std::nullopt, {}, &twice);
+        require(saved.score == 0 && saved.best_move == cycle[3], "search missed repetition at quiescence entry");
+        require(before_third.to_fen() == child_fen && before_third.key() == child_key && twice.size() == 8 &&
+            twice.current_count() == 2, "child repetition search changed root/history");
+        trickfish::RepetitionHistory fresh(position);
+        const auto plain = trickfish::iterative_search(position, 1, false);
+        const auto history_mode = trickfish::iterative_search(position, 1, true,
+            std::nullopt, std::nullopt, {}, &fresh);
+        require(history_mode.score == plain.score && history_mode.transposition_hits == 0,
+            "fresh history changed score or used unsafe TT scores");
+        const auto stopped = trickfish::iterative_search(position, 4, true,
+            plain.nodes + 2, std::nullopt, {}, &fresh);
+        require(stopped.stopped && stopped.completed_depth == 1 && stopped.score == plain.score &&
+            position.to_fen() == fen && fresh.size() == 1 && fresh.current_count() == 1,
+            "history-aware interrupted search lost root state");
+        bool mismatched = false;
+        try {
+            const auto ignored = trickfish::iterative_search(advantaged, 1, true,
+                std::nullopt, std::nullopt, {}, &fresh);
+            static_cast<void>(ignored);
+        } catch (const std::invalid_argument&) {
+            mismatched = true;
+        }
+        require(mismatched && advantaged.to_fen() == before, "mismatched root history accepted");
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

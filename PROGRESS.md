@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **43.750%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **45.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -35,7 +35,7 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C16 | Phase-aware positional evaluation and endgame scaling | 12.000 | Pending |
 | C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
-| C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Pending |
+| C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
 | C17c | Move-count draw policy and checkmate precedence | 1.000 | Pending |
 | C18 | C++ UCI protocol including position, go, stop, and lifecycle | 5.000 | Pending |
 | C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
@@ -89,3 +89,5 @@ C17 was split before implementation into C17a (1.000), C17b (2.000), and C17c (1
 C17b was split before implementation into C17b1 (0.750) and C17b2 (1.250), preserving its 2.000-point total.
 
 - C17b1 implementation: +0.750 points, implemented scope 43.750%. RepetitionHistory records the initial key and subsequent positions, supports guarded pop, counts the current key, and reports the three-occurrence threshold. Callers must push after make and pop alongside unmake; it does not own or validate moves. The FEN alone cannot reconstruct earlier game positions. Knight-cycle, root protection, and alternate-branch regressions await CI. Search does not consume this history yet; no repetition draw scoring or intended-move claim detection is added.
+
+- C17b2 implementation: +1.250 points, implemented scope 45.000%. Iterative search optionally accepts a history ending at the root, copies it for local use, and records/unrecords main/quiescence moves with exception-safe restoration. Three occurrences score zero under an explicit always-claim search policy, after terminal checks. History-aware mode disables TT to avoid reusing path-dependent scores. Search without a supplied history retains previous TT/no-repetition behavior; CLI/FEN alone cannot supply played-game history yet. Caller history is unchanged. Fresh/repeated context, interrupted search, and mismatched-root regressions await CI. This does not implement optional claim selection, intended-move claims, or fivefold adjudication.

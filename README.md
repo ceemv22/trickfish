@@ -51,7 +51,7 @@ Python provides the reference rules, positional evaluation, search, and current 
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
 | Perft | Recursive node count and root divide |
 
-C++ has no UCI loop, search repetition handling, move-count draw adjudication, positional evaluation, or advanced pruning yet. Both implementations include en passant in the key only when a legal capture exists; A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; search integration remains pending. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
+C++ has no UCI loop, move-count draw adjudication, positional evaluation, or advanced pruning yet. Both implementations include en passant in the key only when a legal capture exists; A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Calls without a history, including the current CLI, retain the earlier TT/no-repetition behavior. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
 
 Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns material even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
 
@@ -148,7 +148,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] API stop predicate with completed-iteration fallback and state restoration
 - [x] Legal-en-passant repetition-equivalent keys
 - [x] Reversible repetition-key history container and three-occurrence threshold
-- [ ] Search repetition integration and move-count draw policy
+- [x] Optional history-aware iterative search with conservative TT exclusion
+- [ ] Move-count draw policy
 - [ ] Positional evaluation and endgame scaling
 - [ ] C++ UCI interface
 - [ ] Advanced ordering, pruning, extensions, and measured optimization

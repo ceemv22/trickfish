@@ -15,9 +15,14 @@ struct SearchBudget {
     std::optional<std::uint64_t> limit;
     std::optional<std::chrono::steady_clock::time_point> deadline;
     std::function<bool()> stop_requested;
+    RepetitionHistory* history = nullptr;
     std::uint64_t nodes = 0;
     std::uint64_t hits = 0;
 };
+
+bool is_repetition(const SearchBudget* budget) {
+    return budget != nullptr && budget->history != nullptr && budget->history->can_claim_threefold_repetition();
+}
 
 void visit(std::uint64_t& nodes, SearchBudget* budget) {
     if (budget != nullptr) {
@@ -33,15 +38,26 @@ void visit(std::uint64_t& nodes, SearchBudget* budget) {
 
 class MoveScope {
 public:
-    MoveScope(Position& position, const Move& move)
-        : position_(position), move_(move), undo_(position.make_move(move)) {}
-    ~MoveScope() { position_.unmake_move(move_, undo_); }
+    MoveScope(Position& position, const Move& move, RepetitionHistory* history)
+        : position_(position), move_(move), undo_(position.make_move(move)), history_(history) {
+        try {
+            if (history_ != nullptr) history_->push(position_);
+        } catch (...) {
+            position_.unmake_move(move_, undo_);
+            throw;
+        }
+    }
+    ~MoveScope() {
+        if (history_ != nullptr) history_->pop();
+        position_.unmake_move(move_, undo_);
+    }
     MoveScope(const MoveScope&) = delete;
     MoveScope& operator=(const MoveScope&) = delete;
 private:
     Position& position_;
     Move move_;
     UndoState undo_;
+    RepetitionHistory* history_;
 };
 
 int move_priority(const Position& position, const Move& move) {
@@ -85,7 +101,7 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
     if (moves.empty()) {
         return in_check ? -mate_score + ply : 0;
     }
-    if (position.is_insufficient_material()) {
+    if (position.is_insufficient_material() || is_repetition(budget)) {
         return 0;
     }
     if (qdepth >= 32) {
@@ -106,7 +122,7 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
         }
         int score = 0;
         {
-            MoveScope scope(position, move);
+            MoveScope scope(position, move, budget != nullptr ? budget->history : nullptr);
             score = -quiescence(position, ply + 1, qdepth + 1, -beta, -alpha, nodes, budget);
         }
         best = std::max(best, score);
@@ -128,7 +144,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     if (moves.empty()) {
         return position.in_check(position.side_to_move()) ? -mate_score + ply : 0;
     }
-    if (position.is_insufficient_material()) {
+    if (position.is_insufficient_material() || is_repetition(budget)) {
         if (best_move != nullptr) {
             *best_move = moves[0];
             pv.push_back(moves[0]);
@@ -160,7 +176,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
         std::vector<Move> child_pv;
         int score = 0;
         {
-            MoveScope scope(position, move);
+            MoveScope scope(position, move, budget != nullptr ? budget->history : nullptr);
             score = -negamax(position, depth - 1, ply + 1, -beta, -alpha, nodes, hits, table, nullptr, child_pv, budget);
         }
         if (score > best) {
@@ -213,15 +229,22 @@ SearchResult search(Position& position, int depth, TranspositionTable& table) {
 SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::optional<std::uint64_t> node_limit,
     std::optional<std::chrono::steady_clock::time_point> deadline,
-    std::function<bool()> stop_requested) {
+    std::function<bool()> stop_requested, const RepetitionHistory* history) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
+    std::optional<RepetitionHistory> active_history;
+    if (history != nullptr) {
+        if (history->current_key() != position.key()) {
+            throw std::invalid_argument("repetition history does not end at the root position");
+        }
+        active_history.emplace(*history);
+    }
     std::optional<TranspositionTable> table;
-    if (use_table) {
+    if (use_table && history == nullptr) {
         table.emplace();
     }
-    SearchBudget budget{node_limit, deadline, stop_requested};
+    SearchBudget budget{node_limit, deadline, stop_requested, active_history ? &*active_history : nullptr};
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
