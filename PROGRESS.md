@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **41.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **42.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -31,7 +31,7 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C14b | Legal principal variation with root restoration and search integration tests | 2.000 | Implemented |
 | C15a | Node-limited iterative search, exception-safe move restoration, and completed-iteration fallback | 1.500 | Implemented |
 | C15b | Deadline-based interruption and completed-depth fallback tests | 1.500 | Implemented |
-| C15c | External stop signal with deterministic interruption/restoration tests | 1.000 | Pending |
+| C15c | External stop signal with deterministic interruption/restoration tests | 1.000 | Implemented |
 | C16 | Phase-aware positional evaluation and endgame scaling | 12.000 | Pending |
 | C17 | Legal-en-passant repetition key semantics, history, and move-count draw policy | 4.000 | Pending |
 | C18 | C++ UCI protocol including position, go, stop, and lifecycle | 5.000 | Pending |
@@ -76,3 +76,5 @@ C15 was split before implementation into C15a (1.500), C15b (1.500), and C15c (1
 - C15a implementation: +1.500 points, implemented scope 39.500%. A shared node budget covers main/quiescence visits and all iterations. Move scopes restore state during budget exceptions. Interrupted iterations are discarded; if none completes, a legal fallback has depth 0 and no PV. Root fallback preparation is not counted as a search node. Node/hit counters include interrupted work. Deadline and external stop are pending. Deterministic interruption/restoration tests await CI.
 
 - C15b implementation: +1.500 points, implemented scope 41.000%. Iterative search accepts an absolute steady-clock deadline; --search-time accepts depth and non-negative milliseconds. Deadline and node budget may be combined in the API. Checks occur before main/quiescence node visits and use C15a restoration/fallback. Allocation, fallback preparation, and individual node operations are not hard time bounded. Expired/future deadline tests avoid machine-speed timing assumptions and await CI. External stop remains C15c.
+
+- C15c implementation: +1.000 points, implemented scope 42.000%. Iterative search accepts a caller-owned stop predicate, checked before main/quiescence node visits alongside node/deadline limits. A true result uses the same completed-iteration fallback and move restoration. The callback runs synchronously on the search thread; callers must synchronize state changed from other threads. Immediate, inactive, and deterministic mid-iteration stop tests await CI. No C++ UCI stop-command loop is implemented yet.

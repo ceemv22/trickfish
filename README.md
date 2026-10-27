@@ -51,11 +51,11 @@ Python provides the reference rules, positional evaluation, search, and current 
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
 | Perft | Recursive node count and root divide |
 
-C++ has no UCI loop, external-stop control, repetition history, move-count draw adjudication, positional evaluation, or advanced pruning yet. Its Zobrist en passant treatment is not yet suitable for repetition equivalence; Python includes only legal en passant state in that key.
+C++ has no UCI loop, repetition history, move-count draw adjudication, positional evaluation, or advanced pruning yet. Its Zobrist en passant treatment is not yet suitable for repetition equivalence; Python includes only legal en passant state in that key.
 
 Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns material even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
 
-`--search` runs depths successively with a shared TT and reports the last completed depth. It stops terminal roots after the first iteration. The reported PV covers selected main-search moves, excludes quiescence continuations, and may truncate at TT cutoffs or terminal/draw states. It is not guaranteed to reach the reported depth. `--search-time` accepts a depth and a non-negative millisecond budget using a steady-clock deadline. Deadline checks occur before main/quiescence node visits; setup and individual node operations can overrun the budget. There is no external stop signal yet. `--search-nodes` caps main/quiescence node visits across all iterations. On node-budget or deadline exhaustion it restores position state and returns the last completed iteration; before depth one completes it returns a legal fallback with depth 0, an empty PV, and `stopped true`. Root fallback preparation is outside the node budget. `--divide` prints the node count under each legal root move and the total.
+`--search` runs depths successively with a shared TT and reports the last completed depth. It stops terminal roots after the first iteration. The reported PV covers selected main-search moves, excludes quiescence continuations, and may truncate at TT cutoffs or terminal/draw states. It is not guaranteed to reach the reported depth. `--search-time` accepts a depth and a non-negative millisecond budget using a steady-clock deadline. Deadline checks occur before main/quiescence node visits; setup and individual node operations can overrun the budget. The iterative-search API also accepts a stop predicate. It runs synchronously before node visits; a true result preserves the same completed-iteration fallback. Callers must synchronize any predicate state changed from another thread. The CLI has no interactive stop command yet. `--search-nodes` caps main/quiescence node visits across all iterations. On node-budget or deadline exhaustion it restores position state and returns the last completed iteration; before depth one completes it returns a legal fallback with depth 0, an empty PV, and `stopped true`. Root fallback preparation is outside the node budget. `--divide` prints the node count under each legal root move and the total.
 
 ### Verification coverage
 
@@ -145,7 +145,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Legal principal variation output with explicit TT truncation
 - [x] Node budget with state restoration and completed-iteration fallback
 - [x] Steady-clock deadline with completed-iteration fallback
-- [ ] External stop handling
+- [x] API stop predicate with completed-iteration fallback and state restoration
 - [ ] Repetition-equivalent keys, history, and move-count draw policy
 - [ ] Positional evaluation and endgame scaling
 - [ ] C++ UCI interface

@@ -132,6 +132,28 @@ int main() {
             opening.to_fen() != opening_fen || opening.key() != opening_key) {
             throw std::runtime_error("future deadline altered search or root position");
         }
+        const auto immediate_stop = trickfish::iterative_search(opening, 4, true,
+            std::nullopt, std::nullopt, [] { return true; });
+        const auto never_stop = trickfish::iterative_search(opening, 1, true,
+            std::nullopt, std::nullopt, [] { return false; });
+        std::uint64_t stop_checks = 0;
+        const auto callback_stop = trickfish::iterative_search(opening, 4, true,
+            std::nullopt, std::nullopt, [&] { return ++stop_checks > first_iteration.nodes + 2; });
+        if (!immediate_stop.stopped || immediate_stop.completed_depth != 0 || immediate_stop.nodes != 0 ||
+            !immediate_stop.best_move || !immediate_stop.principal_variation.empty()) {
+            throw std::runtime_error("immediate stop fallback mismatch");
+        }
+        if (never_stop.stopped || never_stop.score != first_iteration.score ||
+            never_stop.best_move != first_iteration.best_move || never_stop.nodes != first_iteration.nodes) {
+            throw std::runtime_error("inactive stop callback altered search");
+        }
+        if (!callback_stop.stopped || callback_stop.completed_depth != 1 ||
+            callback_stop.score != first_iteration.score || callback_stop.best_move != first_iteration.best_move ||
+            callback_stop.nodes != first_iteration.nodes + 2 ||
+            opening.to_fen() != opening_fen || opening.key() != opening_key) {
+            throw std::runtime_error("external stop lost completed result or root state");
+        }
+        verify_pv(opening, callback_stop);
         const auto mate_fen = "7k/8/5KQ1/8/8/8/8/8 w - - 0 1";
         verify(mate_fen, 1, 99999, "");
         verify(mate_fen, 3, 99999, "");

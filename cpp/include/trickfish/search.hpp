@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <chrono>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -23,7 +24,8 @@ struct SearchResult {
 [[nodiscard]] SearchResult search(Position& position, int depth, bool use_table = true);
 [[nodiscard]] SearchResult iterative_search(Position& position, int max_depth, bool use_table = true,
     std::optional<std::uint64_t> node_limit = std::nullopt,
-    std::optional<std::chrono::steady_clock::time_point> deadline = std::nullopt);
+    std::optional<std::chrono::steady_clock::time_point> deadline = std::nullopt,
+    std::function<bool()> stop_requested = {});
 [[nodiscard]] SearchResult search(Position& position, int depth, TranspositionTable& table);
 
 }

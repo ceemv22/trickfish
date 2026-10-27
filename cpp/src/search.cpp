@@ -14,6 +14,7 @@ struct SearchStopped {};
 struct SearchBudget {
     std::optional<std::uint64_t> limit;
     std::optional<std::chrono::steady_clock::time_point> deadline;
+    std::function<bool()> stop_requested;
     std::uint64_t nodes = 0;
     std::uint64_t hits = 0;
 };
@@ -21,7 +22,8 @@ struct SearchBudget {
 void visit(std::uint64_t& nodes, SearchBudget* budget) {
     if (budget != nullptr) {
         if ((budget->limit && budget->nodes >= *budget->limit) ||
-            (budget->deadline && std::chrono::steady_clock::now() >= *budget->deadline)) {
+            (budget->deadline && std::chrono::steady_clock::now() >= *budget->deadline) ||
+            (budget->stop_requested && budget->stop_requested())) {
             throw SearchStopped{};
         }
         ++budget->nodes;
@@ -210,7 +212,8 @@ SearchResult search(Position& position, int depth, TranspositionTable& table) {
 
 SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::optional<std::uint64_t> node_limit,
-    std::optional<std::chrono::steady_clock::time_point> deadline) {
+    std::optional<std::chrono::steady_clock::time_point> deadline,
+    std::function<bool()> stop_requested) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
@@ -218,7 +221,7 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     if (use_table) {
         table.emplace();
     }
-    SearchBudget budget{node_limit, deadline};
+    SearchBudget budget{node_limit, deadline, stop_requested};
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
