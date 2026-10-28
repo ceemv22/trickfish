@@ -120,20 +120,118 @@ inline int pawn_structure_total(const Position& position, int phase) {
     return detail::pawn_structure_total(position, game_phase(position));
 }
 
+namespace detail {
+
+inline int center_distance(std::uint8_t square) {
+    const int rank = square / 8;
+    const int file = square % 8;
+    return std::abs(2 * file - 7) + std::abs(2 * rank - 7);
+}
+
+inline int king_safety_total(const Position& position, int phase) {
+    int score = 0;
+    for (const auto color : {Color::white, Color::black}) {
+        auto kings = position.pieces(color, PieceType::king);
+        const auto pawns = position.pieces(color, PieceType::pawn);
+        const int pawn_rank = color == Color::white ? 6 : 1;
+        while (kings != 0) {
+            const auto square = pop_lsb(kings);
+            const int file = square % 8;
+            const bool castled_square = color == Color::white
+                ? square == 58 || square == 62 : square == 2 || square == 6;
+            int bonus = castled_square ? 20 : 0;
+            for (int shield_file = file - 1; shield_file <= file + 1; ++shield_file) {
+                if (shield_file >= 0 && shield_file < 8 &&
+                    (pawns & square_bit(static_cast<std::uint8_t>(pawn_rank * 8 + shield_file))) != 0) {
+                    bonus += 8;
+                }
+            }
+            const int scaled = bonus * phase / evaluation_max_phase;
+            score += color == Color::white ? scaled : -scaled;
+        }
+    }
+    return score;
+}
+
+inline int king_activity_total(const Position& position, int phase) {
+    if ((position.pieces(Color::white, PieceType::queen) | position.pieces(Color::black, PieceType::queen) |
+        position.pieces(Color::white, PieceType::rook) | position.pieces(Color::black, PieceType::rook)) != 0) {
+        return 0;
+    }
+    int score = 0;
+    for (const auto color : {Color::white, Color::black}) {
+        auto kings = position.pieces(color, PieceType::king);
+        while (kings != 0) {
+            const auto square = pop_lsb(kings);
+            const int bonus = std::max(0, 14 - center_distance(square)) * (evaluation_max_phase - phase) /
+                evaluation_max_phase;
+            score += color == Color::white ? bonus : -bonus;
+        }
+    }
+    return score;
+}
+
+}
+
+[[nodiscard]] inline int evaluate_piece_activity(const Position& position) {
+    int score = 0;
+    for (std::uint8_t square = 0; square < 64; ++square) {
+        const auto symbol = position.piece_at(square);
+        if (symbol == '.') continue;
+        const auto color = color_from_symbol(symbol);
+        const int rank = square / 8;
+        const int file = square % 8;
+        const auto distance = detail::center_distance(square);
+        int bonus = 0;
+        switch (piece_type_from_symbol(symbol)) {
+            case PieceType::pawn: {
+                const int advance = color == Color::white ? 6 - rank : rank - 1;
+                bonus = 5 * advance + (file == 3 || file == 4 ? 6 : 0);
+                break;
+            }
+            case PieceType::knight: bonus = std::max(0, 28 - 2 * distance); break;
+            case PieceType::bishop: bonus = std::max(0, 16 - distance); break;
+            case PieceType::rook: {
+                const bool seventh = color == Color::white ? rank == 1 : rank == 6;
+                bonus = seventh && position.pieces(opposite(color), PieceType::pawn) != 0 ? 20 : 0;
+                break;
+            }
+            case PieceType::queen:
+            case PieceType::king: break;
+        }
+        score += color == Color::white ? bonus : -bonus;
+    }
+    return score;
+}
+
+[[nodiscard]] inline int evaluate_king_safety(const Position& position) {
+    return detail::king_safety_total(position, game_phase(position));
+}
+
+[[nodiscard]] inline int evaluate_king_activity(const Position& position) {
+    return detail::king_activity_total(position, game_phase(position));
+}
+
 struct EvaluationBreakdown {
     int phase = 0;
     int material = 0;
+    int piece_activity = 0;
     int pawn_structure = 0;
     int bishop_pair = 0;
     int rook_files = 0;
+    int king_safety = 0;
+    int king_activity = 0;
 
-    [[nodiscard]] int total() const { return material + pawn_structure + bishop_pair + rook_files; }
+    [[nodiscard]] int total() const {
+        return material + piece_activity + pawn_structure + bishop_pair + rook_files + king_safety + king_activity;
+    }
 };
 
 [[nodiscard]] inline EvaluationBreakdown evaluate_breakdown(const Position& position) {
     const auto phase = game_phase(position);
-    return {phase, evaluate_material(position), detail::pawn_structure_total(position, phase),
-        evaluate_bishop_pair(position), evaluate_rook_files(position)};
+    return {phase, evaluate_material(position), evaluate_piece_activity(position), detail::pawn_structure_total(position, phase),
+        evaluate_bishop_pair(position), evaluate_rook_files(position), detail::king_safety_total(position, phase),
+        detail::king_activity_total(position, phase)};
 }
 
 [[nodiscard]] inline int evaluate_static(const Position& position) {

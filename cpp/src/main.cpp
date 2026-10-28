@@ -27,9 +27,12 @@ int main(int argc, char** argv) {
             const auto detail = trickfish::evaluate_breakdown(position);
             std::cout << "phase " << detail.phase << '\n';
             std::cout << "material " << detail.material << '\n';
+            std::cout << "piece_activity " << detail.piece_activity << '\n';
             std::cout << "pawn_structure " << detail.pawn_structure << '\n';
             std::cout << "bishop_pair " << detail.bishop_pair << '\n';
             std::cout << "rook_files " << detail.rook_files << '\n';
+            std::cout << "king_safety " << detail.king_safety << '\n';
+            std::cout << "king_activity " << detail.king_activity << '\n';
             std::cout << "static_total " << detail.total() << '\n';
             std::cout << "evaluation " << trickfish::evaluate(position) << '\n';
             return 0;

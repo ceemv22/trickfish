@@ -188,7 +188,7 @@ jobs:
             @{ Fen = "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1"; White = "0"; Side = "0" },
             @{ Fen = "4k3/8/8/8/8/8/P7/4K3 w - - 0 1"; White = "96"; Side = "96" },
             @{ Fen = "4k3/8/8/8/8/8/P7/4K3 b - - 0 1"; White = "96"; Side = "-96" },
-            @{ Fen = "4k3/8/8/8/8/8/p7/4K3 b - - 0 1"; White = "-146"; Side = "146" }
+            @{ Fen = "4k3/8/8/8/8/8/p7/4K3 b - - 0 1"; White = "-171"; Side = "171" }
           )
           foreach ($case in $cases) {
             $white = & $binary --eval $case.Fen

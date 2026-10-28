@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **55.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **61.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -35,7 +35,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C16a | Reference bishop-pair term integrated into static evaluation/search with terminal precedence tests | 0.500 | Implemented |
 | C16b1 | Python-reference rook-file term with color/file boundary and search integration tests | 0.500 | Implemented |
 | C16c | Phase-aware pawn structure, explainable breakdown, and Python term-parity fixtures | 3.000 | Implemented |
-| C16d | Remaining piece/king activity, phase-aware king safety, and endgame scaling | 8.000 | Pending |
+| C16e | Reference piece/king activity, phase-aware king safety, and full evaluator parity fixtures | 6.000 | Implemented |
+| C16f | Additional position-dependent endgame/drawish score scaling and fixtures | 2.000 | Pending |
 | C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
@@ -55,7 +56,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Clock-control commit `e58ab6d` passed [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/40747108643). That confirms the 52.000-point implementation at that exact commit. The new phase/pawn-evaluation working tree still requires its own C++ CTest, updated CLI score fixtures, and 80-position cross-language term-parity run. Local C++ compile/runtime execution remains unavailable.
+GitHub Actions was inspected on 2026-10-28. Phase/pawn commit `075dc39` passed [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/40750906373), confirming the configured checks at the 55.000-point implementation. The new activity/king-evaluation working tree requires its own C++ CTest, updated CLI score fixtures, and 118-position full reference-evaluator parity run. Local C++ compile/runtime execution remains unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -129,3 +130,9 @@ C18 was split before implementation into C18a (1.500), C18b (2.000), and C18c (1
 Before pawn-evaluation implementation, C16b2 was split into C16c (3.000) and C16d (8.000), preserving its 11.000-point total.
 
 - C16c implementation: +3.000 points, implemented scope 55.000%. Added capped 0..24 material phase and the Python reference pawn-structure term: extra doubled-pawn penalties, isolated-pawn penalties, and passed-pawn bonuses scaled by advancement/phase. EvaluationBreakdown and --eval-detail expose implemented terms, their static sum, and the separate terminal-aware score. Search already consumes evaluate_static, so the new pawn term changes search scores; --material stays unchanged. C++ phase capture/promotion/undo, edge-file, doubled/isolated/passed, promoted-phase cap, and terminal precedence fixtures are configured. An 80-position process parity suite compares implemented components against Python, including color mirrors and legal child/promotion/EP states. Python reference validation and updated quiescence fixture expectations passed locally; new C++ runtime/parity results are pending CI. Piece activity, king terms, tuning, and strength measurement remain outside this milestone.
+
+Before activity/king-term implementation, C16d was split into C16e (6.000) and C16f (2.000), preserving its 8.000-point total. C16f goes beyond the reference phase/pawn/king weighting and remains separately pending.
+
+- C16e implementation: +6.000 points, implemented scope 61.000%. Ported the remaining current Python static terms: pawn advancement/central-file and minor-piece centrality, conditional seventh-rank rook activity, phase-scaled home-square/pawn-shield king safety, and king centrality when no heavy pieces remain. The c/g-square bonus is positional, not a castling-history assertion. Breakdown/CLI expose all seven score components; terminal precedence is separate. The parity suite now uses the public Python evaluator and validates 118 reference positions, with vertical color reflections preserving castled files. New frozen component and search fixtures cover activity, king safety, low-phase rounding, and heavy-piece gating. Python fixture validation and reference depth-one scores passed locally; all new C++ execution awaits CI. C16f additional endgame/drawish scaling remains pending. Reference parity is neither tuned evaluation nor measured playing strength.
+
+- Additional local audit: the unchanged Python suite ran 92 tests; 90 passed and two existing search/CLI expectations asserted 900 while the reference returned 897. No Python source or test files were changed in this package. The 118-state reference fixture/symmetry validation passed; this does not execute C++. Git staging was blocked by permission denied on .git/index.lock, so no local commit was created by the agent.

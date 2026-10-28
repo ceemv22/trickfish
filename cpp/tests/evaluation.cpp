@@ -5,12 +5,12 @@
 #include "trickfish/evaluation.hpp"
 #include "trickfish/search.hpp"
 
-void verify(std::string_view fen, int material, int positional, int final_score) {
+void verify(std::string_view fen, int material, int positional, int static_score, int final_score) {
     auto position = trickfish::Position::from_fen(fen);
     const auto key = position.key();
     if (trickfish::evaluate_material(position) != material ||
         trickfish::evaluate_bishop_pair(position) != positional ||
-        trickfish::evaluate_static(position) != material + positional ||
+        trickfish::evaluate_static(position) != static_score ||
         trickfish::evaluate(position) != final_score || position.to_fen() != fen || position.key() != key) {
         throw std::runtime_error("bishop-pair evaluation or position restoration mismatch");
     }
@@ -42,24 +42,48 @@ void verify_pawns(std::string_view fen, int phase, int pawns, int total, int fin
     }
 }
 
+void verify_activity(std::string_view fen, int piece_activity, int king_safety, int king_activity, int total) {
+    auto position = trickfish::Position::from_fen(fen);
+    const auto key = position.key();
+    const auto detail = trickfish::evaluate_breakdown(position);
+    if (detail.piece_activity != piece_activity || detail.king_safety != king_safety ||
+        detail.king_activity != king_activity || detail.total() != total ||
+        trickfish::evaluate_piece_activity(position) != piece_activity ||
+        trickfish::evaluate_king_safety(position) != king_safety ||
+        trickfish::evaluate_king_activity(position) != king_activity ||
+        trickfish::evaluate(position) != total || position.to_fen() != fen || position.key() != key) {
+        throw std::runtime_error("activity/king evaluation or state restoration mismatch");
+    }
+}
+
 int main() {
     try {
+        verify_activity("n6k/8/8/8/3N4/8/8/4K3 w - - 0 1", 24, 0, 5, 29);
+        verify_activity("k6b/8/8/8/3B4/8/P7/4K3 w - - 0 1", 12, 0, 5, 113);
+        verify_activity("k7/8/8/8/3K4/8/P7/8 w - - 0 1", 0, 0, 12, 108);
+        verify_activity("k7/8/8/8/3K4/8/P7/1Q6 w - - 0 1", 0, 0, 0, 996);
+        verify_activity("1q2k3/8/8/8/8/8/5PPP/1Q4K1 w - - 0 1", 0, 14, 0, 338);
+        verify_activity("1q2k3/8/8/8/8/8/PPP5/1QK5 w - - 0 1", 0, 12, 0, 336);
+        verify_activity("1q2k3/8/8/8/8/8/3PPP2/1Q2K3 w - - 0 1", 12, 8, 0, 344);
+        verify_activity("4k3/R6p/8/8/8/8/8/4K3 w - - 0 1", 20, 0, 0, 444);
+        verify_activity("4k3/R7/8/8/8/8/8/4K3 w - - 0 1", 0, 0, 0, 500);
+        verify_activity("4k3/8/8/8/8/8/5PPP/6KN w - - 0 1", 0, 1, -4, 641);
         verify_pawns("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 24, 0, 0, 0);
         verify_pawns("4k3/8/8/8/8/8/P7/4K3 w - - 0 1", 0, -4, 96, 96);
-        verify_pawns("4k3/8/8/P7/8/8/8/4K3 w - - 0 1", 0, 26, 126, 126);
+        verify_pawns("4k3/8/8/P7/8/8/8/4K3 w - - 0 1", 0, 26, 141, 141);
         verify_pawns("4k3/8/8/8/8/8/PP6/4K3 w - - 0 1", 0, 16, 216, 216);
-        verify_pawns("4k3/8/8/8/8/P7/P7/4K3 w - - 0 1", 0, -13, 187, 187);
+        verify_pawns("4k3/8/8/8/8/P7/P7/4K3 w - - 0 1", 0, -13, 192, 192);
         verify_pawns("4k3/p7/8/8/8/8/P7/4K3 w - - 0 1", 0, 0, 0, 0);
-        verify_pawns("4k3/8/1p6/8/P7/8/8/4K3 w - - 0 1", 0, 0, 0, 0);
-        verify_pawns("4k3/8/8/P7/8/1p6/8/4K3 w - - 0 1", 0, -10, -10, -10);
-        verify_pawns("4k3/8/8/P7/8/8/8/1Q2K3 w - - 0 1", 4, 25, 1025, 1025);
-        verify_pawns("3qk3/8/8/P7/8/8/8/3QK3 w - - 0 1", 8, 24, 124, 124);
+        verify_pawns("4k3/8/1p6/8/P7/8/8/4K3 w - - 0 1", 0, 0, 5, 5);
+        verify_pawns("4k3/8/8/P7/8/1p6/8/4K3 w - - 0 1", 0, -10, -15, -15);
+        verify_pawns("4k3/8/8/P7/8/8/8/1Q2K3 w - - 0 1", 4, 25, 1040, 1040);
+        verify_pawns("3qk3/8/8/P7/8/8/8/3QK3 w - - 0 1", 8, 24, 139, 139);
         verify_pawns("rnbqkbnr/pppppppp/8/8/8/8/QQPPPPPP/RNBQKBNR w KQkq - 0 1", 24, -8, 1592, 1592);
-        verify_pawns("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", 0, 10, 10, 10);
-        verify_pawns("4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1", 0, -10, -10, -10);
+        verify_pawns("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", 0, 10, 15, 15);
+        verify_pawns("4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1", 0, -10, -15, -15);
         verify_pawns("4k3/8/8/8/8/8/1P6/R3K3 w - - 0 1", 2, -4, 616, 616);
-        verify_pawns("4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1", 2, 0, 690, 690);
-        verify_pawns("4k3/8/8/8/8/8/8/2B1K3 w - - 0 1", 1, 0, 330, 0);
+        verify_pawns("4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1", 2, 0, 702, 702);
+        verify_pawns("4k3/8/8/8/8/8/8/2B1K3 w - - 0 1", 1, 0, 336, 0);
         verify_pawns("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1", 4, 0, 900, 100000);
         verify_pawns("8/8/8/8/8/6k1/6q1/7K w - - 0 1", 4, 0, -900, -100000);
         verify_pawns("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", 4, 0, 900, 0);
@@ -73,20 +97,20 @@ int main() {
         verify_rook_files("4k3/8/8/8/8/R7/1P6/R3K3 w - - 0 1", 40, 1136);
         verify_rook_files("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 0, 500);
 
-        verify("4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1", 660, 30, 690);
-        verify("4k3/8/8/8/8/8/8/2B1KB2 b - - 0 1", 660, 30, 690);
-        verify("2b1kb2/8/8/8/8/8/8/4K3 w - - 0 1", -660, -30, -690);
-        verify("2b1kb2/8/8/8/8/8/8/2B1KB2 w - - 0 1", 0, 0, 0);
-        verify("4k3/8/8/8/8/8/1B6/2B1KB2 w - - 0 1", 990, 30, 1020);
-        verify("4k3/8/8/8/8/8/8/2B1K3 w - - 0 1", 330, 0, 0);
+        verify("4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1", 660, 30, 702, 702);
+        verify("4k3/8/8/8/8/8/8/2B1KB2 b - - 0 1", 660, 30, 702, 702);
+        verify("2b1kb2/8/8/8/8/8/8/4K3 w - - 0 1", -660, -30, -702, -702);
+        verify("2b1kb2/8/8/8/8/8/8/2B1KB2 w - - 0 1", 0, 0, 0, 0);
+        verify("4k3/8/8/8/8/8/1B6/2B1KB2 w - - 0 1", 990, 30, 1038, 1038);
+        verify("4k3/8/8/8/8/8/8/2B1K3 w - - 0 1", 330, 0, 336, 0);
         auto position = trickfish::Position::from_fen("4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1");
         const auto result = trickfish::search(position, 1);
-        if (result.score != 690 || !result.best_move) {
+        if (result.score != 708 || !result.best_move) {
             throw std::runtime_error("search did not use static positional term");
         }
         auto rook_position = trickfish::Position::from_fen("4k3/8/8/8/8/8/1P6/R3K3 w - - 0 1");
         const auto rook_search = trickfish::search(rook_position, 1);
-        if (rook_search.score != 635 || !rook_search.best_move) {
+        if (rook_search.score != 645 || !rook_search.best_move) {
             throw std::runtime_error("search did not use rook-file term");
         }
         auto promotion = trickfish::Position::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");

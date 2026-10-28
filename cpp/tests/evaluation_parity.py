@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import pathlib
 import subprocess
 import sys
@@ -6,7 +7,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from trickfish.position import Position
-from trickfish.evaluation import _material, _bishop_pair, _rook_files, _game_phase, _pawn_structure
+from trickfish.evaluation import evaluate, evaluate_breakdown
 
 ROOT_FENS = (
     'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
@@ -29,29 +30,25 @@ ROOT_FENS = (
     '8/8/8/8/8/6k1/6q1/7K w - - 0 1',
     '7k/5Q2/6K1/8/8/8/8/8 b - - 0 1',
     '4k3/P7/8/8/8/8/8/4K3 w - - 0 1',
+    'n6k/8/8/8/3N4/8/8/4K3 w - - 0 1',
+    'k6b/8/8/8/3B4/8/P7/4K3 w - - 0 1',
+    'k7/8/8/8/3K4/8/P7/8 w - - 0 1',
+    'k7/8/8/8/3K4/8/P7/1Q6 w - - 0 1',
+    '1q2k3/8/8/8/8/8/5PPP/1Q4K1 w - - 0 1',
+    '1q2k3/8/8/8/8/8/PPP5/1QK5 w - - 0 1',
+    '1q2k3/8/8/8/8/8/3PPP2/1Q2K3 w - - 0 1',
+    '4k3/R6p/8/8/8/8/8/4K3 w - - 0 1',
+    '4k3/R7/8/8/8/8/8/4K3 w - - 0 1',
+    '4k3/8/8/8/8/8/5PPP/6KN w - - 0 1',
 )
 
 def expected_fields(position):
-    phase = _game_phase(position)
-    fields = {
-        "phase": phase,
-        "material": _material(position),
-        "pawn_structure": _pawn_structure(position, True, phase) - _pawn_structure(position, False, phase),
-        "bishop_pair": _bishop_pair(position),
-        "rook_files": _rook_files(position),
-    }
-    fields["static_total"] = sum(value for key, value in fields.items() if key != "phase")
-    status = position.game_status()
-    if status == "checkmate":
-        fields["evaluation"] = -100000 if position.side_to_move == "w" else 100000
-    elif status == "stalemate" or position.is_insufficient_material():
-        fields["evaluation"] = 0
-    else:
-        fields["evaluation"] = fields["static_total"]
-    return fields
+    detail = evaluate_breakdown(position)
+    return dict(asdict(detail), static_total=detail.total, evaluation=evaluate(position))
+
 
 def mirrored(position):
-    board = tuple(piece.swapcase() if piece is not None else None for piece in reversed(position.board))
+    board = tuple(piece.swapcase() if piece is not None else None for rank in range(7, -1, -1) for piece in position.board[rank * 8:rank * 8 + 8])
     return Position(board, "b" if position.side_to_move == "w" else "w", "-", None,
         position.halfmove_clock, position.fullmove_number)
 
@@ -66,7 +63,7 @@ def positions_for_checks():
         mirror = mirrored(position)
         original = expected_fields(position)
         reflected = expected_fields(mirror)
-        for field in ["material", "pawn_structure", "bishop_pair", "rook_files", "static_total"]:
+        for field in ["material", "piece_activity", "pawn_structure", "bishop_pair", "rook_files", "king_safety", "king_activity", "static_total", "evaluation"]:
             if reflected[field] != -original[field]:
                 raise AssertionError(f"reference color symmetry failed for {field}: {fen}")
         if reflected["phase"] != original["phase"]:
@@ -95,7 +92,7 @@ def main():
         expected = expected_fields(position)
         if actual != expected:
             raise AssertionError(f"evaluation term mismatch for {fen}: expected {expected}, got {actual}")
-    print(f"C++/Python implemented-term parity passed for {len(positions)} positions")
+    print(f"C++/Python reference-evaluator parity passed for {len(positions)} positions")
 
 if __name__ == "__main__":
     main()
