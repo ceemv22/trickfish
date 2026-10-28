@@ -21,6 +21,14 @@ struct UndoState {
     std::uint8_t captured_square = 64;
 };
 
+struct NullUndoState {
+    Color side_to_move = Color::white;
+    std::int8_t en_passant_square = -1;
+    int halfmove_clock = 0;
+    int fullmove_number = 1;
+    std::uint64_t position_key = 0;
+};
+
 class Position {
 public:
     static Position from_fen(std::string_view fen);
@@ -42,6 +50,8 @@ public:
     [[nodiscard]] std::uint64_t key() const;
     [[nodiscard]] UndoState make_move(const Move& move);
     void unmake_move(const Move& move, const UndoState& undo);
+    [[nodiscard]] NullUndoState make_null_move();
+    void unmake_null_move(const NullUndoState& undo) noexcept;
 
 private:
     void add_piece(char symbol, std::uint8_t square);

@@ -207,7 +207,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Bounded exchange search with exhaustive reference parity and work counters
 - [x] Optional interruptible exchange ordering with comparative diagnostics
 - [x] Bounded one-ply continuation history with context-aware quiet ordering
-- [ ] Correction history, other pruning, and extensions
+- [x] Reversible synthetic null-move state with key/undo fixtures
+- [ ] Correction history, null-move pruning, other pruning, and extensions
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -312,6 +313,8 @@ The expected exchange gain is 900. The original exchange baseline passed CI at `
 Exchange checkpoints check search deadlines, exhausted node budgets and stop requests. Exchange states are not main-search nodes; `SearchResult` separately reports completed exchange evaluations and their state/cutoff totals. Partially interrupted exchange work is excluded from these completed-work counters. The standalone `analyze_exchange` API also accepts an optional checkpoint callback; exceptions propagate while preserving the caller's position.
 
 Add `--compare-exchange` to the benchmark command to repeat each fixture using `--search-see` and compare score/depth with normal search. Each mode has its own deterministic repeat/PV checks and wall-time samples; node delta is relative to default search. The tactical CI suite is configured to include this comparison. Optional exchange ordering/cancellation passed CI at `e574793`. This legal exchange calculation may cost more than the ordering saves; enabling it by default requires performance evidence.
+
+The C++ position API provides `make_null_move` / `unmake_null_move` for a synthetic search pass. It rejects an in-check side or overflowing counters before mutation, clears en passant, advances the synthetic turn counters, and flips side with an incremental Zobrist update. Undo restores side, EP, clocks and key; board state and castling rights are unchanged. This state is not a legal game move and must not enter played-game repetition history. UCI continues to reject null moves in position/searchmoves input. Search does not call the API yet: null-move pruning remains unimplemented. New null-state CTests require this change's CI.
 
 ## Verification standard
 

@@ -2,6 +2,7 @@
 
 #include <bit>
 #include <charconv>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -292,6 +293,32 @@ void Position::remove_piece(char symbol, std::uint8_t square) {
     pieces_[index] &= ~square_bit(square);
     occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] &= ~square_bit(square);
     key_ ^= zobrist::keys.pieces[index][square];
+}
+
+NullUndoState Position::make_null_move() {
+    if (in_check(side_to_move_)) throw std::invalid_argument("null move is not allowed in check");
+    if (halfmove_clock_ == std::numeric_limits<int>::max() ||
+        (side_to_move_ == Color::black && fullmove_number_ == std::numeric_limits<int>::max())) {
+        throw std::overflow_error("null move would overflow move counters");
+    }
+    const NullUndoState undo{side_to_move_, en_passant_square_, halfmove_clock_, fullmove_number_, key_};
+    if (has_legal_en_passant()) {
+        key_ ^= zobrist::keys.en_passant_file[static_cast<std::uint8_t>(en_passant_square_) % 8];
+    }
+    en_passant_square_ = -1;
+    ++halfmove_clock_;
+    if (side_to_move_ == Color::black) ++fullmove_number_;
+    side_to_move_ = opposite(side_to_move_);
+    key_ ^= zobrist::keys.side;
+    return undo;
+}
+
+void Position::unmake_null_move(const NullUndoState& undo) noexcept {
+    side_to_move_ = undo.side_to_move;
+    en_passant_square_ = undo.en_passant_square;
+    halfmove_clock_ = undo.halfmove_clock;
+    fullmove_number_ = undo.fullmove_number;
+    key_ = undo.position_key;
 }
 
 UndoState Position::make_move(const Move& move) {

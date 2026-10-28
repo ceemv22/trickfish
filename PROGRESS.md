@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **72.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **72.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -55,7 +55,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C19n | Correction history and further ordering work | 0.500 | Pending |
 | C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
-| C20d | Null move, LMR, futility, razoring, and extensions | 6.500 | Pending |
+| C20e | Reversible synthetic null-move state with incremental keys, guards, and undo fixtures | 0.500 | Implemented |
+| C20f | Null-move pruning, LMR, futility, razoring, and extensions | 6.000 | Pending |
 | C21a | Fixed-suite search benchmark, deterministic repeats, legal PV validation, and provenance reports | 2.000 | Implemented |
 | C21c | Bounded tactical regression suite with explicit objectives, mirrored colors, and CI process checks | 1.000 | Implemented |
 | C21d | Broader tactical suites and controlled match infrastructure | 5.000 | Pending |
@@ -67,7 +68,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Continuation commit `6926714` passed both OS jobs in [run 63](https://github.com/ceemv22/trickfish/actions/runs/40761519263), confirming configured checks at the 72.000-point implementation. Twelve tooling tests and root/special-move reference legality checks pass locally. New C++ root-restriction and UCI process execution requires CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. UCI searchmoves commit `a9fb49d` passed both OS jobs in [run 64](https://github.com/ceemv22/trickfish/actions/runs/40762162738), confirming configured checks at the 72.000-point implementation. Twelve tooling tests pass locally. New C++ null-state/key/undo/guard fixtures require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -195,3 +196,7 @@ Before continuation implementation, C19l was split into C19m (0.500) and C19n (0
 - C19m implementation: +0.500 points, implemented scope 72.000%. Added one-ply quiet continuation history conditioned on current side, previous moved piece type/destination and current moving type/destination. A lazy 16384-entry direct-mapped table checks full keys, resets collided entries on update, and uses bounded +/-16384 gravity rewards/penalties alongside quiet history. Previous context is passed through main search only; root and quiescence have none. Ordering priorities are preserved and history scores combined only for ties. State spans iterations/retries of one search and resets for a new search. SearchOptions::use_continuation disables it; --search-ab disables it, and benchmark metadata records the policies. CTests cover score/PV parity, disabled counters, update/reuse paths, repeatability and caller position/repetition-history restoration on interruption. Twelve tooling tests pass locally; new C++ runtime awaits CI. No tuning, speedup or strength gain is established.
 
 - UCI searchmoves extension: +0.000 points; implemented scope remains 72.000%. SearchOptions::root_moves accepts unique legal moves (empty means unrestricted API search). Nonempty lists constrain root search/PV/fallback and disable TT for the entire restricted search. UCI go searchmoves parses legal coordinate moves with promotion/castling/EP flags, rejects empty/duplicate/illegal lists, and accepts other supported go parameters before or after the list. This enhancement is outside the existing weighted UCI baseline and does not earn retrospective points. Existing UCI lifecycle remains; CTests cover restricted/excluded winners, zero-budget fallback, invalid lists, underpromotion/history and all-legal score parity. Process regressions cover special moves, parameter order, stop/infinite and recovery after rejection. Twelve local tooling tests and fixture legality pass; C++ execution awaits CI.
+
+Before null-state implementation, C20d was split into C20e (0.500) and C20f (6.000), preserving 6.500 points. C20e requires synthetic side/EP/clock transitions, incremental-key/FEN parity, in-check/overflow rejection before mutation, and exact undo of nested null states. It does not implement null-move pruning.
+
+- C20e implementation: +0.500 points, implemented scope 72.500%. Position::make_null_move creates a synthetic pass: rejects check/clock overflow before mutation, removes any legally capturable EP key component and clears the FEN EP field, increments halfmove and black fullmove counters, flips side and its key component. Piece boards, occupancy, attacks and castling rights remain unchanged. NullUndoState restores side/EP/clocks/key; nested null undo and a real reply make/unmake are covered alongside FEN-recomputed keys, legal/pinned/inactive EP and rejection atomicity. Twelve tooling tests pass locally; new C++ runtime awaits CI. Search never calls this API yet, UCI does not accept null game moves, and null states must not be appended to played-game repetition history. C20f null-move pruning remains pending; no speed or strength claim follows.
