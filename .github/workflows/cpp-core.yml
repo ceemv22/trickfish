@@ -200,3 +200,10 @@ jobs:
               throw "Side-to-move evaluation mismatch: $side"
             }
           }
+      - name: Verify interactive C++ UCI process
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/tests/uci_process.py $binary
+          if ($LASTEXITCODE -ne 0) { throw "Interactive UCI checks failed" }

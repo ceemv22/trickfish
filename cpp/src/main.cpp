@@ -13,10 +13,14 @@
 #include "trickfish/perft.hpp"
 #include "trickfish/position.hpp"
 #include "trickfish/search.hpp"
+#include "trickfish/uci.hpp"
 
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--uci")) {
+            return trickfish::run_uci(std::cin, std::cout);
+        }
         const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
         const bool timed_search = argc > 1 && std::string_view(argv[1]) == "--search-time";
         const bool budgeted_search = limited_search || timed_search;

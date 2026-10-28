@@ -1,0 +1,255 @@
+#include "trickfish/uci.hpp"
+
+#include <algorithm>
+#include <charconv>
+#include <chrono>
+#include <condition_variable>
+#include <cstdlib>
+#include <cstdint>
+#include <istream>
+#include <mutex>
+#include <optional>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <stop_token>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+
+#include "trickfish/evaluation.hpp"
+#include "trickfish/movegen.hpp"
+#include "trickfish/search.hpp"
+
+namespace trickfish {
+namespace {
+
+constexpr std::string_view starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+std::vector<std::string> tokens_for(std::string_view command) {
+    std::istringstream input{std::string(command)};
+    std::vector<std::string> tokens;
+    for (std::string word; input >> word;) tokens.push_back(std::move(word));
+    return tokens;
+}
+
+void validate_root(const Position& position) {
+    if (position.in_check(opposite(position.side_to_move()))) {
+        throw std::invalid_argument("non-moving king is in check");
+    }
+    for (std::uint8_t file = 0; file < 8; ++file) {
+        for (const auto square : {file, static_cast<std::uint8_t>(56 + file)}) {
+            const auto piece = position.piece_at(square);
+            if (piece == 'P' || piece == 'p') {
+                throw std::invalid_argument("pawn on a promotion rank");
+            }
+        }
+    }
+    if (position.en_passant_square() >= 0) {
+        const int rank = position.en_passant_square() / 8;
+        if (rank != (position.side_to_move() == Color::white ? 2 : 5)) {
+            throw std::invalid_argument("en passant rank does not match side to move");
+        }
+    }
+}
+
+std::uint64_t number_for(const std::string& text) {
+    std::uint64_t value = 0;
+    const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (result.ec != std::errc{} || result.ptr != text.data() + text.size()) {
+        throw std::invalid_argument("invalid non-negative integer: " + text);
+    }
+    return value;
+}
+
+struct GoLimits {
+    int depth = 64;
+    std::optional<std::uint64_t> nodes;
+    std::optional<std::chrono::steady_clock::time_point> deadline;
+    bool infinite = false;
+};
+
+GoLimits parse_go(const std::vector<std::string>& tokens) {
+    GoLimits limits;
+    limits.infinite = tokens.size() == 1;
+    for (std::size_t index = 1; index < tokens.size(); ++index) {
+        const auto& name = tokens[index];
+        if (name == "infinite") {
+            limits.infinite = true;
+            continue;
+        }
+        if (name != "depth" && name != "nodes" && name != "movetime") {
+            throw std::invalid_argument("unsupported go parameter: " + name);
+        }
+        if (++index == tokens.size()) {
+            throw std::invalid_argument("missing go parameter value");
+        }
+        const auto value = number_for(tokens[index]);
+        if (name == "depth") {
+            if (value < 1 || value > 64) throw std::invalid_argument("depth must be between 1 and 64");
+            limits.depth = static_cast<int>(value);
+        } else if (name == "nodes") {
+            limits.nodes = value;
+        } else {
+            const auto now = std::chrono::steady_clock::now();
+            const auto maximum = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::time_point::max() - now).count();
+            if (value > static_cast<std::uint64_t>(maximum)) {
+                throw std::invalid_argument("movetime is too large");
+            }
+            limits.deadline = now + std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(value));
+        }
+    }
+    return limits;
+}
+
+class UciSession {
+public:
+    UciSession(std::istream& input, std::ostream& output)
+        : input_(input), output_(output), position_(Position::from_fen(starting_fen)), history_(position_) {}
+
+    ~UciSession() { stop_search(); }
+
+    int run() {
+        for (std::string command; std::getline(input_, command);) {
+            const auto tokens = tokens_for(command);
+            if (tokens.empty()) continue;
+            try {
+                const auto& name = tokens[0];
+                if (name == "uci") {
+                    emit("id name Trickfish C++\nid author ceemv22\nuciok");
+                } else if (name == "isready") {
+                    emit("readyok");
+                } else if (name == "quit") {
+                    break;
+                } else if (name == "stop") {
+                    stop_search();
+                } else if (name == "ucinewgame") {
+                    stop_search();
+                    auto next = parse_uci_position("position startpos");
+                    position_ = std::move(next.position);
+                    history_ = std::move(next.history);
+                } else if (name == "position") {
+                    stop_search();
+                    auto next = parse_uci_position(command);
+                    position_ = std::move(next.position);
+                    history_ = std::move(next.history);
+                } else if (name == "go") {
+                    stop_search();
+                    start_search(parse_go(tokens));
+                } else if (name == "setoption" || name == "ponderhit") {
+                    emit("info string unsupported command: " + name);
+                }
+            } catch (const std::exception& error) {
+                emit("info string error: " + std::string(error.what()));
+            }
+        }
+        stop_search();
+        return 0;
+    }
+
+private:
+    void emit(const std::string& text) {
+        std::lock_guard lock(output_mutex_);
+        output_ << text << '\n' << std::flush;
+    }
+
+    void stop_search() {
+        if (worker_.joinable()) {
+            worker_.request_stop();
+            worker_.join();
+        }
+    }
+
+    void emit_result(const SearchResult& result) {
+        std::ostringstream message;
+        message << "info depth " << result.completed_depth << " nodes " << result.nodes;
+        if (result.completed_depth > 0) {
+            if (std::abs(result.score) >= mate_threshold) {
+                const int moves = (mate_score - std::abs(result.score) + 1) / 2;
+                message << " score mate " << (result.score < 0 ? -moves : moves);
+            } else {
+                message << " score cp " << result.score;
+            }
+        }
+        if (!result.principal_variation.empty()) {
+            message << " pv";
+            for (const auto& move : result.principal_variation) message << ' ' << move.to_uci();
+        }
+        message << "\nbestmove " << (result.best_move ? result.best_move->to_uci() : "0000");
+        emit(message.str());
+    }
+
+    void start_search(GoLimits limits) {
+        worker_ = std::jthread([this, root = position_, history = history_, limits](std::stop_token stop) mutable {
+            try {
+                const auto result = iterative_search(root, limits.depth, true, limits.nodes, limits.deadline,
+                    [stop] { return stop.stop_requested(); }, &history);
+                if (limits.infinite && !stop.stop_requested()) {
+                    std::mutex wait_mutex;
+                    std::unique_lock lock(wait_mutex);
+                    std::condition_variable_any condition;
+                    condition.wait(lock, stop, [] { return false; });
+                }
+                emit_result(result);
+            } catch (const std::exception& error) {
+                emit("info string search error: " + std::string(error.what()) + "\nbestmove 0000");
+            }
+        });
+    }
+
+    std::istream& input_;
+    std::ostream& output_;
+    Position position_;
+    RepetitionHistory history_;
+    std::mutex output_mutex_;
+    std::jthread worker_;
+};
+
+}
+
+UciPosition parse_uci_position(std::string_view command) {
+    const auto tokens = tokens_for(command);
+    if (tokens.size() < 2 || tokens[0] != "position") {
+        throw std::invalid_argument("position requires startpos or fen");
+    }
+    std::string fen;
+    std::size_t move_index = 0;
+    if (tokens[1] == "startpos") {
+        fen = starting_fen;
+        move_index = 2;
+    } else if (tokens[1] == "fen" && tokens.size() >= 8) {
+        for (std::size_t index = 2; index < 8; ++index) {
+            if (!fen.empty()) fen += ' ';
+            fen += tokens[index];
+        }
+        move_index = 8;
+    } else {
+        throw std::invalid_argument("position requires startpos or six FEN fields");
+    }
+    auto position = Position::from_fen(fen);
+    validate_root(position);
+    RepetitionHistory history(position);
+    if (move_index < tokens.size()) {
+        if (tokens[move_index++] != "moves") throw std::invalid_argument("expected moves after position");
+        for (; move_index < tokens.size(); ++move_index) {
+            const auto legal = generate_legal_moves(position);
+            const auto found = std::find_if(legal.begin(), legal.end(), [&](const Move& move) {
+                return move.to_uci() == tokens[move_index];
+            });
+            if (found == legal.end()) throw std::invalid_argument("illegal move: " + tokens[move_index]);
+            const auto undo = position.make_move(*found);
+            static_cast<void>(undo);
+            history.push(position);
+        }
+    }
+    return {std::move(position), std::move(history)};
+}
+
+int run_uci(std::istream& input, std::ostream& output) {
+    UciSession session(input, output);
+    return session.run();
+}
+
+}

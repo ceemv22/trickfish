@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **47.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **50.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -40,7 +40,9 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
 | C17c1 | Move-count draw classification, terminal precedence, and reset boundary tests | 0.500 | Implemented |
 | C17c2 | Search draw policy with rule-clock-safe transposition handling | 0.500 | Implemented |
-| C18 | C++ UCI protocol including position, go, stop, and lifecycle | 5.000 | Pending |
+| C18a | UCI handshake and transactional legal startpos/FEN/move-history loading | 1.500 | Implemented |
+| C18b | Asynchronous depth/node/movetime search, stop/quit/EOF lifecycle, and protocol tests | 2.000 | Implemented |
+| C18c | Remaining-clock allocation and UCI clock-control tests | 1.500 | Pending |
 | C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
 | C20 | PVS, aspiration, null move, LMR, futility, razoring, and extensions | 10.000 | Pending |
 | C21 | Reproducible search/tactical benchmarks and controlled match infrastructure | 8.000 | Pending |
@@ -52,7 +54,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-27. [Run 43](https://github.com/ceemv22/trickfish/actions/runs/40591838988) at `6f364ff` passed GCC/Linux and MSVC/Windows builds, all four CTest cases, FEN/perft, and configured CLI fixtures. That exact commit contains 45.000 implemented-scope points. The additional C17c1 working-tree changes still require their own CI result. Earlier runs 40 through 42 failed on the invalid occupied-EP-target test fixture; the repair did not disable tests. Local C++ compile/runtime execution is still unavailable.
+GitHub Actions was inspected on 2026-10-28. Rook-file commit `a2b24fc` passed [run 47](https://github.com/ceemv22/trickfish/actions/runs/40595966381). That confirms the 47.000-point implementation at that exact commit. The new C18a/C18b UCI working tree still requires its own GCC/MSVC build, CTest, and process-protocol results. Local C++ compile/runtime execution remains unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -115,3 +117,8 @@ C16b was split before rook-file implementation into C16b1 (0.500) and C16b2 (11.
 - C16b1 implementation: +0.500 points, implemented scope 47.000%. Static/search evaluation ports the Python rook-file term: per rook, +10 if its file has no friendly pawn and +10 if it has no enemy pawn, signed by color. With no pawns anywhere the term is disabled. This intentionally preserves the reference behavior, including +10 with only a friendly pawn on the file. Color, blocked/open file, doubled rook, pawnless, and search fixtures await CI. The pawn-reset draw regression now expects 610 rather than 600 because this position has a +10 reference rook-file term. No strength claim or tuning is implied.
 
 - CI confirmation: bishop-pair commit `64a7d45` passed [run 46](https://github.com/ceemv22/trickfish/actions/runs/40594229285); this does not confirm the subsequent rook-file changes.
+
+C18 was split before implementation into C18a (1.500), C18b (2.000), and C18c (1.500), preserving its 5.000-point total.
+
+- C18a/C18b implementation: +3.500 points, implemented scope 50.500%. Added --uci/default-entry UCI, handshake/readiness, transactional startpos/FEN/legal-move loading, and complete supplied move history. A jthread owns copies of position/history; synchronized output and joined stop/position/new-game/quit/EOF transitions avoid shared mutable board state. Search accepts depth/nodes/movetime or infinite/bare-go mode; infinite defers bestmove until stop even if the depth ceiling is reached. Final info uses side-to-move cp or mate distance in moves, plus depth/nodes/PV; no live per-iteration callback is added. A depth-zero fallback omits score. Position rejection includes a non-moving checked king, back-rank pawns, and EP rank mismatch, but is not exhaustive legal-history validation.
+- UCI limitations: wtime/btime/increments/movestogo remain C18c; ponder, searchmoves, mate limits, options, and Chess960 are unsupported. The frontend always supplies history, so its search currently disables TT as required by C17b2. Search is single-worker, not parallel tree search. Each go starts a fresh search context. No GUI compatibility or strength claim follows. C++ parser/lifecycle tests and nine stdlib Python process-protocol tests are configured for both CI runners; their new C++ runtime results are pending.
