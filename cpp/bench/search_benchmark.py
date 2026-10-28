@@ -144,6 +144,7 @@ def main():
         "environment": {"platform": platform.platform(), "machine": platform.machine(),
             "processor": platform.processor(), "python": platform.python_version()},
         "search": {"mode": "diagnostic_iterative", "algorithm": "pvs",
+            "aspiration_window": 25, "reference_aspiration_window": 0,
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,

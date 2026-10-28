@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 #include "trickfish/evaluation.hpp"
 #include "trickfish/movegen.hpp"
@@ -236,14 +237,15 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
 
 }
 
-SearchResult search_impl(Position& position, int depth, TranspositionTable* table, SearchBudget* budget = nullptr, bool use_pvs = true) {
+SearchResult search_impl(Position& position, int depth, TranspositionTable* table, SearchBudget* budget = nullptr, bool use_pvs = true,
+    int alpha = -mate_score - 1, int beta = mate_score + 1) {
     if (depth < 1 || depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
     SearchBudget local_budget;
     if (budget == nullptr) budget = &local_budget;
     SearchResult result;
-    result.score = negamax(position, depth, 0, -mate_score - 1, mate_score + 1,
+    result.score = negamax(position, depth, 0, alpha, beta,
         result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget, use_pvs);
     result.completed_depth = depth;
     result.pvs_probes = budget->pvs_probes;
@@ -266,9 +268,12 @@ SearchResult search(Position& position, int depth, TranspositionTable& table, bo
 SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::optional<std::uint64_t> node_limit,
     std::optional<std::chrono::steady_clock::time_point> deadline,
-    std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy, bool use_pvs) {
+    std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy, bool use_pvs, int aspiration_window) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
+    }
+    if (aspiration_window < 0 || aspiration_window > mate_score + 1) {
+        throw std::invalid_argument("aspiration window must be between 0 and 100001");
     }
     std::optional<RepetitionHistory> active_history;
     if (history != nullptr) {
@@ -292,9 +297,27 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
         result.score = 0;
         result.best_move.reset();
     }
+    std::uint64_t fail_low = 0;
+    std::uint64_t fail_high = 0;
     for (int depth = 1; depth <= max_depth; ++depth) {
         try {
-            result = search_impl(position, depth, table ? &*table : nullptr, &budget, use_pvs);
+            int radius = aspiration_window;
+            const int center = result.score;
+            const bool narrow = depth > 1 && radius > 0 && std::abs(center) < mate_threshold;
+            int alpha = narrow ? std::max(-mate_score - 1, center - radius) : -mate_score - 1;
+            int beta = narrow ? std::min(mate_score + 1, center + radius) : mate_score + 1;
+            while (true) {
+                auto candidate = search_impl(position, depth, table ? &*table : nullptr, &budget, use_pvs, alpha, beta);
+                if (candidate.score > alpha && candidate.score < beta) {
+                    result = std::move(candidate);
+                    break;
+                }
+                if (candidate.score <= alpha) ++fail_low;
+                else ++fail_high;
+                radius = std::min(2 * (mate_score + 1), radius * 2);
+                alpha = std::max(-mate_score - 1, center - radius);
+                beta = std::min(mate_score + 1, center + radius);
+            }
         } catch (const SearchStopped&) {
             result.stopped = true;
             break;
@@ -307,6 +330,8 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     result.transposition_hits = budget.hits;
     result.pvs_probes = budget.pvs_probes;
     result.pvs_researches = budget.pvs_researches;
+    result.aspiration_fail_low = fail_low;
+    result.aspiration_fail_high = fail_high;
     return result;
 }
 
