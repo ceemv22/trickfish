@@ -10,7 +10,8 @@ void verify(std::string_view fen, std::string_view text, int expected) {
     const auto key = position.key();
     for (const auto& move : trickfish::generate_legal_moves(position)) {
         if (move.to_uci() == text) {
-            if (trickfish::static_exchange(position, move) != expected || position.to_fen() != fen || position.key() != key) {
+            if (trickfish::static_exchange(position, move) != expected ||
+                trickfish::static_exchange_reference(position, move) != expected || position.to_fen() != fen || position.key() != key) {
                 throw std::runtime_error("exchange score or root preservation mismatch");
             }
             return;
@@ -34,6 +35,8 @@ int main() {
         verify("1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1", "a7b8q", 1300);
         verify("1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1", "a7b8n", 720);
         verify("1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1", "a7a8q", -100);
+        verify("7k/8/8/8/8/1R5K/p7/1r6 w - - 0 1", "b3b1", -800);
+        verify("k7/8/2b2n2/3p4/4Q3/8/8/7K w - - 0 1", "e4d5", -800);
         auto root = trickfish::Position::from_fen("4k3/8/8/8/8/8/P7/4K3 w - - 0 1");
         const auto fen = root.to_fen();
         const auto key = root.key();

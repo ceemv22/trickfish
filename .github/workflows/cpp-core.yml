@@ -243,3 +243,5 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $gain -ne "900") { throw "Exchange capture mismatch" }
           $loss = & $binary --see d4d5 "k7/8/4p3/3p4/3R4/8/8/7K w - - 0 1"
           if ($LASTEXITCODE -ne 0 -or $loss -ne "-400") { throw "Exchange recapture mismatch" }
+          $reference = & $binary --see-reference a1a2 "4k3/8/8/8/8/8/q7/R3K3 w - - 0 1"
+          if ($LASTEXITCODE -ne 0 -or $reference -ne $gain) { throw "Exchange reference mismatch" }

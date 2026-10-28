@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "trickfish/evaluation.hpp"
+#include "trickfish/attacks.hpp"
 #include "trickfish/movegen.hpp"
 
 namespace trickfish {
@@ -20,9 +21,41 @@ int material_gain(const Position& position, const Move& move) {
     return gain;
 }
 
-int recapture_gain(const Position& position, std::uint8_t target) {
+MoveList legal_recaptures(Position& position, std::uint8_t target) {
+    MoveList moves;
+    const auto victim = position.piece_at(target);
+    const auto color = position.side_to_move();
+    if (victim == '.' || color_from_symbol(victim) == color || piece_type_from_symbol(victim) == PieceType::king) return moves;
+    const auto occupied = position.occupancy();
+    auto attackers = pawn_attacks(opposite(color), target) & position.pieces(color, PieceType::pawn);
+    attackers |= knight_attacks(target) & position.pieces(color, PieceType::knight);
+    attackers |= king_attacks(target) & position.pieces(color, PieceType::king);
+    attackers |= bishop_attacks(target, occupied) &
+        (position.pieces(color, PieceType::bishop) | position.pieces(color, PieceType::queen));
+    attackers |= rook_attacks(target, occupied) &
+        (position.pieces(color, PieceType::rook) | position.pieces(color, PieceType::queen));
+    const auto append = [&](const Move& move) {
+        const auto undo = position.make_move(move);
+        const bool legal = !position.in_check(color);
+        position.unmake_move(move, undo);
+        if (legal) moves.push(move);
+    };
+    while (attackers != 0) {
+        const auto from = pop_lsb(attackers);
+        const bool promotes = piece_type_from_symbol(position.piece_at(from)) == PieceType::pawn &&
+            target / 8 == (color == Color::white ? 0 : 7);
+        if (promotes) {
+            for (char promotion : {'q', 'r', 'b', 'n'}) append(Move(from, target, promotion));
+        } else {
+            append(Move(from, target));
+        }
+    }
+    return moves;
+}
+
+int recapture_gain(const Position& position, std::uint8_t target, bool targeted) {
     auto current = position;
-    const auto legal = generate_legal_moves(current);
+    const auto legal = targeted ? legal_recaptures(current, target) : generate_legal_moves(current);
     int best = 0;
     for (const auto& move : legal) {
         if (move.to != target || current.piece_at(target) == '.') continue;
@@ -30,14 +63,12 @@ int recapture_gain(const Position& position, std::uint8_t target) {
         auto child = current;
         const auto undo = child.make_move(move);
         static_cast<void>(undo);
-        best = std::max(best, gain - recapture_gain(child, target));
+        best = std::max(best, gain - recapture_gain(child, target, targeted));
     }
     return best;
 }
 
-}
-
-int static_exchange(const Position& position, const Move& move) {
+int exchange_impl(const Position& position, const Move& move, bool targeted) {
     auto current = position;
     const auto legal = generate_legal_moves(current);
     if (std::find(legal.begin(), legal.end(), move) == legal.end()) {
@@ -49,7 +80,17 @@ int static_exchange(const Position& position, const Move& move) {
     const int gain = material_gain(current, move);
     const auto undo = current.make_move(move);
     static_cast<void>(undo);
-    return gain - recapture_gain(current, move.to);
+    return gain - recapture_gain(current, move.to, targeted);
+}
+
+}
+
+int static_exchange_reference(const Position& position, const Move& move) {
+    return exchange_impl(position, move, false);
+}
+
+int static_exchange(const Position& position, const Move& move) {
+    return exchange_impl(position, move, true);
 }
 
 }

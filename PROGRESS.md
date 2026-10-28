@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **69.750%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **70.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -48,7 +48,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C19a | Two quiet killer moves per main-search ply, selectable ordering, and parity/restoration checks | 0.750 | Implemented |
 | C19c | Bounded quiet history rewards/penalties, selectable ordering, and search parity/restoration | 1.000 | Implemented |
 | C19e | Legal-recapture material exchange reference with special-move and pin fixtures | 0.500 | Implemented |
-| C19f | Optimized SEE/search integration, continuation/correction history, and ordering | 2.750 | Pending |
+| C19g | Targeted legal-recapture generation with full-generator exchange parity fixtures | 0.500 | Implemented |
+| C19h | Further SEE optimization/search integration, continuation/correction history, and ordering | 2.250 | Pending |
 | C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
 | C20d | Null move, LMR, futility, razoring, and extensions | 6.500 | Pending |
@@ -63,7 +64,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Tactical-regression commit `9648856` passed both OS jobs in [run 58](https://github.com/ceemv22/trickfish/actions/runs/40759111895), confirming configured checks at the 69.250-point implementation. Thirteen legal exchange fixture lines and their frozen material outcomes were validated locally against Python rules/material. Eleven tooling tests pass. New C++ exchange API/CLI execution requires CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. Exchange-reference commit `30bda03` passed both OS jobs in [run 59](https://github.com/ceemv22/trickfish/actions/runs/40759652647), confirming configured checks at the 69.750-point implementation. Eleven tooling tests pass locally; new promotion-recapture and competing-attacker fixture lines are reference-legal. Targeted/full-generator C++ exchange parity and CLI checks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -173,3 +174,7 @@ Before tactical-regression implementation, C21b was split into C21c (1.000) and 
 Before exchange-reference implementation, C19d was split into C19e (0.500) and C19f (2.750), preserving 3.250 points. C19e covers a diagnostic legal-recapture material minimax on one target square, optional stopping, special moves, position preservation and frozen fixtures. It does not cover fast SEE, pruning, search-order integration or forced-check continuations.
 
 - C19e implementation: +0.500 points, implemented scope 69.750%. Added static_exchange(const Position&, Move) and --see move [fen]. The initial move must be a legal capture or promotion. Subsequent legal captures on the same target are exhaustively considered with material-only minimax and optional stopping; promotion gain and initial en passant are included. Copies preserve caller position state. Frozen CTests cover both-color captures, defended losses, x-ray recaptures, pinned pawns, legal/illegal king recaptures, EP, promotion capture/underpromotion/recapture, and rejection of quiet/illegal moves. Thirteen fixture lines and material outcomes plus eleven tooling tests pass locally; C++ runtime awaits CI. This diagnostic baseline is unoptimized, can branch substantially, ignores off-target tactics and forced-check continuations, and is not called by search. C19f optimized SEE/integration remains pending.
+
+Before targeted recapture implementation, C19f was split into C19g (0.500) and C19h (2.250), preserving 2.750 points. C19g requires target-attacker candidates, legal king-safety filtering, recapture promotions, retained full-generator reference, and score/state parity; no runtime speedup is an acceptance assumption.
+
+- C19g implementation: +0.500 points, implemented scope 70.250%. Exchange recaptures now use target-centric pawn/knight/king and sliding attack masks, followed by make/check/unmake legality filtering and all four recapture promotions. Occupancy is recomputed at each recursive exchange state, exposing x-rays. static_exchange_reference and --see-reference retain the full legal-generator path. All fifteen frozen fixtures compare both evaluators, adding recapture promotion and competing bishop/knight attackers. Initial move validation and restricted exchange semantics are unchanged; neither evaluator is used by search. Eleven tooling tests and new fixture legality checks pass locally; C++ parity/runtime awaits CI. This removes unrelated recapture candidates but remains exhaustive and unoptimized in other respects; no measured speedup is claimed.

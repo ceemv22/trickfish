@@ -22,12 +22,14 @@ int main(int argc, char** argv) {
         if (argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--uci")) {
             return trickfish::run_uci(std::cin, std::cout);
         }
-        if (argc > 1 && std::string_view(argv[1]) == "--see") {
-            if (argc < 3 || argc > 4) throw std::invalid_argument("usage: --see move [fen]");
+        if (argc > 1 && (std::string_view(argv[1]) == "--see" || std::string_view(argv[1]) == "--see-reference")) {
+            if (argc < 3 || argc > 4) throw std::invalid_argument("usage: --see|--see-reference move [fen]");
             auto position = trickfish::Position::from_fen(argc == 4 ? argv[3] : start_fen);
             for (const auto& move : trickfish::generate_legal_moves(position)) {
                 if (move.to_uci() == argv[2]) {
-                    std::cout << trickfish::static_exchange(position, move) << '\n';
+                    const auto score = std::string_view(argv[1]) == "--see-reference"
+                        ? trickfish::static_exchange_reference(position, move) : trickfish::static_exchange(position, move);
+                    std::cout << score << '\n';
                     return 0;
                 }
             }
