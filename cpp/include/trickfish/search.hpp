@@ -27,6 +27,9 @@ struct SearchResult {
     std::uint64_t aspiration_fail_high = 0;
     std::uint64_t killer_cutoffs = 0;
     std::uint64_t killer_moves_searched = 0;
+    std::uint64_t history_rewards = 0;
+    std::uint64_t history_penalties = 0;
+    std::uint64_t history_moves_searched = 0;
 };
 
 struct SearchOptions {
@@ -35,6 +38,7 @@ struct SearchOptions {
     bool use_killers = true;
     int aspiration_window = 25;
     MoveCountDrawPolicy draw_policy = MoveCountDrawPolicy::automatic_only;
+    bool use_history = true;
 };
 
 struct SearchLimits {

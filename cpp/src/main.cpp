@@ -78,6 +78,7 @@ int main(int argc, char** argv) {
             const int fen_index = budgeted_search ? 4 : 3;
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
             trickfish::SearchOptions options;
+            options.use_history = !reference_search;
             options.use_pvs = !reference_search;
             options.use_killers = !reference_search;
             options.aspiration_window = reference_search ? 0 : 25;

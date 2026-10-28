@@ -27,6 +27,11 @@ struct SearchBudget {
     std::array<std::array<std::optional<Move>, 2>, 64> killers{};
     std::uint64_t killer_cutoffs = 0;
     std::uint64_t killer_moves_searched = 0;
+    bool use_history = true;
+    std::array<std::array<std::array<int, 64>, 64>, 2> quiet_history{};
+    std::uint64_t history_rewards = 0;
+    std::uint64_t history_penalties = 0;
+    std::uint64_t history_moves_searched = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -84,6 +89,20 @@ bool is_quiet(const Position& position, const Move& move) {
     return position.piece_at(move.to) == '.' && !move.en_passant && move.promotion == '\0';
 }
 
+int history_priority(const Position& position, const Move& move, const SearchBudget* budget) {
+    if (budget == nullptr || !budget->use_history || !is_quiet(position, move)) return 0;
+    return budget->quiet_history[static_cast<std::size_t>(position.side_to_move())][move.from][move.to];
+}
+
+void update_history(const Position& position, const Move& move, SearchBudget* budget, int bonus) {
+    if (budget == nullptr || !budget->use_history || !is_quiet(position, move)) return;
+    auto& score = budget->quiet_history[static_cast<std::size_t>(position.side_to_move())][move.from][move.to];
+    score += bonus - score * std::abs(bonus) / 16384;
+    score = std::clamp(score, -16384, 16384);
+    if (bonus > 0) ++budget->history_rewards;
+    else ++budget->history_penalties;
+}
+
 int killer_priority(const Position& position, const Move& move, const SearchBudget* budget, int ply) {
     if (budget == nullptr || !budget->use_killers || ply < 0 || ply >= 64 || !is_quiet(position, move)) return 0;
     const auto& slots = budget->killers[static_cast<std::size_t>(ply)];
@@ -126,6 +145,9 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
         if (left_priority != right_priority) {
             return left_priority > right_priority;
         }
+        const auto left_history = history_priority(position, left, budget);
+        const auto right_history = history_priority(position, right, budget);
+        if (left_history != right_history) return left_history > right_history;
         if (left.from != right.from) return left.from < right.from;
         if (left.to != right.to) return left.to < right.to;
         return left.promotion < right.promotion;
@@ -221,8 +243,10 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     order_moves(position, moves, preferred, budget, ply);
     int best = -mate_score - 1;
     std::optional<Move> selected;
+    MoveList searched_quiets;
     for (const auto& move : moves) {
         if (killer_priority(position, move, budget, ply) != 0) ++budget->killer_moves_searched;
+        if (history_priority(position, move, budget) != 0) ++budget->history_moves_searched;
         std::vector<Move> child_pv;
         int score = 0;
         {
@@ -255,8 +279,14 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
         alpha = std::max(alpha, score);
         if (alpha >= beta) {
             record_killer(position, move, budget, ply);
+            if (is_quiet(position, move)) {
+                const int bonus = std::min(512, depth * depth);
+                update_history(position, move, budget, bonus);
+                for (const auto& quiet : searched_quiets) update_history(position, quiet, budget, -bonus);
+            }
             break;
         }
+        if (is_quiet(position, move)) searched_quiets.push(move);
     }
     if (table != nullptr) {
         const auto bound = best <= original_alpha ? Bound::upper : best >= beta ? Bound::lower : Bound::exact;
@@ -283,6 +313,9 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     result.pvs_researches = budget->pvs_researches;
     result.killer_cutoffs = budget->killer_cutoffs;
     result.killer_moves_searched = budget->killer_moves_searched;
+    result.history_rewards = budget->history_rewards;
+    result.history_penalties = budget->history_penalties;
+    result.history_moves_searched = budget->history_moves_searched;
     return result;
 }
 
@@ -333,6 +366,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     }
     SearchBudget budget{limits.nodes, limits.deadline, limits.stop_requested, active_history ? &*active_history : nullptr, options.draw_policy};
     budget.use_killers = options.use_killers;
+    budget.use_history = options.use_history;
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
@@ -380,6 +414,9 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.aspiration_fail_high = fail_high;
     result.killer_cutoffs = budget.killer_cutoffs;
     result.killer_moves_searched = budget.killer_moves_searched;
+    result.history_rewards = budget.history_rewards;
+    result.history_penalties = budget.history_penalties;
+    result.history_moves_searched = budget.history_moves_searched;
     return result;
 }
 

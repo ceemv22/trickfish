@@ -146,6 +146,7 @@ def main():
         "search": {"mode": "diagnostic_iterative", "algorithm": "pvs",
             "aspiration_window": 25, "reference_aspiration_window": 0,
             "killer_moves": True, "reference_killer_moves": False,
+            "quiet_history": True, "reference_quiet_history": False,
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,

@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **67.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **68.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -46,7 +46,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C18b | Asynchronous depth/node/movetime search, stop/quit/EOF lifecycle, and protocol tests | 2.000 | Implemented |
 | C18c | Remaining-clock allocation and UCI clock-control tests | 1.500 | Implemented |
 | C19a | Two quiet killer moves per main-search ply, selectable ordering, and parity/restoration checks | 0.750 | Implemented |
-| C19b | SEE, history, continuation/correction history, and ordering integration | 4.250 | Pending |
+| C19c | Bounded quiet history rewards/penalties, selectable ordering, and search parity/restoration | 1.000 | Implemented |
+| C19d | SEE, continuation/correction history, and ordering integration | 3.250 | Pending |
 | C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
 | C20d | Null move, LMR, futility, razoring, and extensions | 6.500 | Pending |
@@ -60,7 +61,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Killer-ordering commit `3402908` passed both OS jobs in [run 55](https://github.com/ceemv22/trickfish/actions/runs/40757682016), confirming configured checks at the 67.250-point implementation. The current named-search-configuration refactor still requires its own C++ compile/runtime CI. No new roadmap scope is credited. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. Named-configuration commit `1602584` passed both OS jobs in [run 56](https://github.com/ceemv22/trickfish/actions/runs/40758270638), confirming configured checks at the 67.250-point implementation. The new quiet-history working tree passed eight local benchmark-tool tests; all new C++ ordering/parity/lifetime/interruption checks and paired benchmarks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -158,3 +159,7 @@ Before killer-ordering implementation, C19 was split into C19a (0.750) and C19b 
 - C19a implementation: +0.750 points, implemented scope 67.250%. Main-search quiet beta cutoffs maintain two unique recency-ordered moves per ply (0..63). TT moves retain first priority; captures/promotions precede killer quiets, and quiescence does not use killers. Per-search state is shared across iterative depths, PVS re-searches and aspiration retries, then discarded. Public search APIs expose a trailing use_killers switch; --search-ab disables killers alongside PVS/aspiration. SearchResult counts quiet killer cutoffs and legal killer moves actually searched, including interrupted work. New CTests compare enabled/disabled/full-window scores, validate PVs, exercise storage/reuse, repeat independent searches, and check history-mode interruption restoration. Eight tooling tests pass locally; new C++ runtime and paired benchmark results await CI. No speedup or strength gain has been measured.
 
 - Search configuration refactor: +0.000 points; implemented scope remains 67.250%. Added SearchOptions for table/PVS/killers/aspiration/draw policy and SearchLimits for nodes/deadline/stop callback. The structured iterative overload owns the single implementation; the legacy positional overload translates its arguments. CLI/UCI use named configuration. Existing aspiration, killer, draw-claim, and expired-deadline regressions now exercise structured calls while the other CTests retain positional compatibility coverage. Search defaults, ordering, budgets, and history handling are unchanged. Eight local benchmark-tool tests and diff/comment checks pass; new C++ compile/runtime results await CI.
+
+Before quiet-history implementation, C19b was split into C19c (1.000) and C19d (3.250), preserving 4.250 points. C19c requires bounded side/from/to history, cutoff rewards and prior-quiet penalties, tactical/killer precedence, per-search lifetime, selectable disabling, and score/PV/interruption checks.
+
+- C19c implementation: +1.000 points, implemented scope 68.250%. Added side/from/to quiet history bounded to +/-16384 with gravity updates. Quiet beta cutoffs earn min(512, depth squared); prior searched quiets on that node receive the negative bonus. History only breaks ties within existing ordering priorities, preserving TT/tactical/killer precedence; quiescence receives no history state. Per-search lifetime spans iterative depths/retries and resets for each new search. SearchOptions::use_history disables it; --search-ab disables it as part of the reference policy. Result counters report rewards, penalties and nonzero-history moves searched. New CTests exercise reference score/PV agreement, enabled/disabled behavior, update/reuse paths, deterministic fresh searches and played-history interruption restoration. Eight tooling tests pass locally; new C++ execution awaits CI. No speedup, tuning or strength gain is established.
