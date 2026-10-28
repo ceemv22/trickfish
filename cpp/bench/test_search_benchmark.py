@@ -48,6 +48,21 @@ class BenchmarkTest(unittest.TestCase):
             with patch.object(benchmark.subprocess, "run", side_effect=error), self.assertRaises(type(error)):
                 benchmark.run_case(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, 2, 10)
 
+    def test_reference_comparison_allows_ties_but_rejects_score_drift(self):
+        candidate = {"id": "tie", "score": 0, "depth": 2, "nodes": 50, "bestmove": "a1b1"}
+        reference = dict(candidate, nodes=70, bestmove="a1c1")
+        comparison = benchmark.compare_reference(candidate, reference)
+        self.assertEqual(comparison["node_delta_per_repeat"], -20)
+        for drift in [dict(reference, score=1), dict(reference, depth=1)]:
+            with self.assertRaisesRegex(ValueError, "PVS/full-window mismatch"):
+                benchmark.compare_reference(candidate, drift)
+
+    def test_reference_runner_selects_full_window_cli(self):
+        process = subprocess.CompletedProcess([], 0, OUTPUT)
+        with patch.object(benchmark.subprocess, "run", return_value=process) as execute:
+            benchmark.run_case(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, 2, 10, False)
+            self.assertEqual(execute.call_args.args[0][1], "--search-ab")
+
     def test_suite_rejects_duplicates_and_checked_nonmoving_king(self):
         path = Mock()
         case = {"id": "capture", "fen": FEN}

@@ -39,10 +39,11 @@ int main(int argc, char** argv) {
         }
         const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
         const bool timed_search = argc > 1 && std::string_view(argv[1]) == "--search-time";
+        const bool reference_search = argc > 1 && std::string_view(argv[1]) == "--search-ab";
         const bool budgeted_search = limited_search || timed_search;
-        if (argc > 1 && (std::string_view(argv[1]) == "--search" || budgeted_search)) {
+        if (argc > 1 && (std::string_view(argv[1]) == "--search" || reference_search || budgeted_search)) {
             if (argc < (budgeted_search ? 4 : 3) || argc > (budgeted_search ? 5 : 4)) {
-                throw std::invalid_argument("usage: --search depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
+                throw std::invalid_argument("usage: --search|--search-ab depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
             }
             int depth = 0;
             const std::string_view text(argv[2]);
@@ -76,7 +77,8 @@ int main(int argc, char** argv) {
             }
             const int fen_index = budgeted_search ? 4 : 3;
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
-            const auto result = trickfish::iterative_search(position, depth, true, node_limit, deadline);
+            const auto result = trickfish::iterative_search(position, depth, true, node_limit, deadline, {}, nullptr,
+                trickfish::MoveCountDrawPolicy::automatic_only, !reference_search);
             std::cout << "bestmove " << (result.best_move ? result.best_move->to_uci() : "0000") << '\n';
             std::cout << "score " << result.score << '\n';
             std::cout << "pv";

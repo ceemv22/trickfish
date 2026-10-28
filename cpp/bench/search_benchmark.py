@@ -74,13 +74,13 @@ def parse_result(output, fen, requested_depth):
     return result
 
 
-def run_case(binary, case, depth, repeats, timeout):
+def run_case(binary, case, depth, repeats, timeout, use_pvs=True):
     samples = []
     expected = None
     for _ in range(repeats):
         started = time.perf_counter_ns()
         process = subprocess.run(
-            [str(binary), "--search", str(depth), case["fen"]],
+            [str(binary), "--search" if use_pvs else "--search-ab", str(depth), case["fen"]],
             capture_output=True, text=True, timeout=timeout, check=True,
         )
         elapsed = (time.perf_counter_ns() - started) / 1_000_000
@@ -91,6 +91,13 @@ def run_case(binary, case, depth, repeats, timeout):
         samples.append(elapsed)
     return dict(case, **expected, process_wall_ms=samples,
         median_process_wall_ms=statistics.median(samples))
+
+
+def compare_reference(candidate, reference):
+    if candidate["score"] != reference["score"] or candidate["depth"] != reference["depth"]:
+        raise ValueError(f"PVS/full-window mismatch: {candidate['id']}")
+    return {"score_equal": True, "reference": reference,
+        "node_delta_per_repeat": candidate["nodes"] - reference["nodes"]}
 
 
 def revision():
@@ -111,6 +118,7 @@ def main():
     parser.add_argument("--depth", type=int, default=3)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--timeout", type=float, default=60)
+    parser.add_argument("--compare-alphabeta", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
@@ -121,17 +129,22 @@ def main():
     suite = load_suite(suite_path)
     binary_hash = digest(binary)
     results = [run_case(binary, case, args.depth, args.repeats, args.timeout) for case in suite["positions"]]
+    if args.compare_alphabeta:
+        for case, candidate in zip(suite["positions"], results):
+            reference = run_case(binary, case, args.depth, args.repeats, args.timeout, False)
+            candidate["alphabeta_comparison"] = compare_reference(candidate, reference)
     if digest(binary) != binary_hash or digest(suite_path) != suite_hash:
         raise ValueError("binary or suite changed during benchmark")
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "binary": str(binary), "binary_sha256": binary_hash,
         "suite": str(suite_path), "suite_sha256": suite_hash,
         "checkout": revision(),
         "environment": {"platform": platform.platform(), "machine": platform.machine(),
             "processor": platform.processor(), "python": platform.python_version()},
-        "search": {"mode": "diagnostic_iterative", "requested_depth": args.depth,
+        "search": {"mode": "diagnostic_iterative", "algorithm": "pvs",
+            "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,
             "draw_policy": "automatic_only", "timing": "process-inclusive wall time"},

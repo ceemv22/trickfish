@@ -19,6 +19,8 @@ struct SearchBudget {
     MoveCountDrawPolicy draw_policy = MoveCountDrawPolicy::automatic_only;
     std::uint64_t nodes = 0;
     std::uint64_t hits = 0;
+    std::uint64_t pvs_probes = 0;
+    std::uint64_t pvs_researches = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -150,7 +152,7 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
 }
 
 int negamax(Position& position, int depth, int ply, int alpha, int beta,
-    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget) {
+    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget, bool use_pvs) {
     if (depth == 0) {
         return quiescence(position, ply, 0, alpha, beta, nodes, budget);
     }
@@ -195,7 +197,20 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
         int score = 0;
         {
             MoveScope scope(position, move, budget != nullptr ? budget->history : nullptr);
-            score = -negamax(position, depth - 1, ply + 1, -beta, -alpha, nodes, hits, table, nullptr, child_pv, budget);
+            if (use_pvs && selected && beta > alpha + 1) {
+                ++budget->pvs_probes;
+                score = -negamax(position, depth - 1, ply + 1, -alpha - 1, -alpha,
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs);
+                if (score > alpha && score < beta) {
+                    ++budget->pvs_researches;
+                    child_pv.clear();
+                    score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
+                        nodes, hits, table, nullptr, child_pv, budget, use_pvs);
+                }
+            } else {
+                score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs);
+            }
         }
         if (score > best) {
             best = score;
@@ -221,33 +236,37 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
 
 }
 
-SearchResult search_impl(Position& position, int depth, TranspositionTable* table, SearchBudget* budget = nullptr) {
+SearchResult search_impl(Position& position, int depth, TranspositionTable* table, SearchBudget* budget = nullptr, bool use_pvs = true) {
     if (depth < 1 || depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
+    SearchBudget local_budget;
+    if (budget == nullptr) budget = &local_budget;
     SearchResult result;
     result.score = negamax(position, depth, 0, -mate_score - 1, mate_score + 1,
-        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget);
+        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget, use_pvs);
     result.completed_depth = depth;
+    result.pvs_probes = budget->pvs_probes;
+    result.pvs_researches = budget->pvs_researches;
     return result;
 }
 
-SearchResult search(Position& position, int depth, bool use_table) {
+SearchResult search(Position& position, int depth, bool use_table, bool use_pvs) {
     if (!use_table) {
-        return search_impl(position, depth, nullptr);
+        return search_impl(position, depth, nullptr, nullptr, use_pvs);
     }
     TranspositionTable table;
-    return search_impl(position, depth, &table);
+    return search_impl(position, depth, &table, nullptr, use_pvs);
 }
 
-SearchResult search(Position& position, int depth, TranspositionTable& table) {
-    return search_impl(position, depth, &table);
+SearchResult search(Position& position, int depth, TranspositionTable& table, bool use_pvs) {
+    return search_impl(position, depth, &table, nullptr, use_pvs);
 }
 
 SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::optional<std::uint64_t> node_limit,
     std::optional<std::chrono::steady_clock::time_point> deadline,
-    std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy) {
+    std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy, bool use_pvs) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
@@ -275,7 +294,7 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     }
     for (int depth = 1; depth <= max_depth; ++depth) {
         try {
-            result = search_impl(position, depth, table ? &*table : nullptr, &budget);
+            result = search_impl(position, depth, table ? &*table : nullptr, &budget, use_pvs);
         } catch (const SearchStopped&) {
             result.stopped = true;
             break;
@@ -286,6 +305,8 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     }
     result.nodes = budget.nodes;
     result.transposition_hits = budget.hits;
+    result.pvs_probes = budget.pvs_probes;
+    result.pvs_researches = budget.pvs_researches;
     return result;
 }
 

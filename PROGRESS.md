@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **63.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **65.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -46,7 +46,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C18b | Asynchronous depth/node/movetime search, stop/quit/EOF lifecycle, and protocol tests | 2.000 | Implemented |
 | C18c | Remaining-clock allocation and UCI clock-control tests | 1.500 | Implemented |
 | C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
-| C20 | PVS, aspiration, null move, LMR, futility, razoring, and extensions | 10.000 | Pending |
+| C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
+| C20b | Aspiration, null move, LMR, futility, razoring, and extensions | 8.000 | Pending |
 | C21a | Fixed-suite search benchmark, deterministic repeats, legal PV validation, and provenance reports | 2.000 | Implemented |
 | C21b | Tactical suites and controlled match infrastructure | 6.000 | Pending |
 | C22 | Profile-guided movegen/state optimization with measured regressions | 6.000 | Pending |
@@ -57,7 +58,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Reference-evaluation commit `c89686f` passed both OS jobs in [run 51](https://github.com/ceemv22/trickfish/actions/runs/40752709452), confirming configured checks at the 61.000-point implementation. The new fixed-suite benchmark runner has passed six local validation tests and Python legality checks for all nine roots. Execution against the C++ binary, including both new CI smoke runs, remains pending. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. Benchmark commit `f4f94ba` passed both OS jobs in [run 52](https://github.com/ceemv22/trickfish/actions/runs/40754049896), confirming configured checks at the 63.000-point implementation. The new PVS working tree has passed eight local benchmark-tool validation tests. PVS CTest execution and paired C++ PVS/full-window benchmark runs still require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -141,3 +142,7 @@ Before activity/king-term implementation, C16d was split into C16e (6.000) and C
 Before benchmark implementation, C21 was split into C21a (2.000) and C21b (6.000), preserving its 8.000-point total. C21a accepts a versioned fixed FEN suite, repeated deterministic completed searches, independent legal-PV validation, binary/suite provenance, machine-readable output, and a CI smoke run. Wall time is process-inclusive and is not an isolated search-speed metric.
 
 - C21a implementation: +2.000 points, implemented scope 63.000%. Added a versioned nine-position suite and stdlib benchmark runner for repeated diagnostic iterative searches with fresh process/TT state. Full result/PV/depth/node equality is required across repeats; the Python legal-move reference validates every PV. Reports include suite/binary SHA-256, checkout metadata, environment, parameters, scores, nodes, and process-inclusive wall-time samples/medians. Checkout metadata does not prove the binary was built from that checkout. Six local fault/validation tests and suite legality checks passed. CI runs those tests plus depth-two repeated searches on both OS runners and prints the JSON report. Real C++ benchmark execution awaits the next pushed commit; no speedup, tuning, or strength conclusion follows. C21b tactical suites and controlled matches remain pending.
+
+Before PVS implementation, C20 was split into C20a (2.000) and C20b (8.000), preserving its 10.000-point total. C20a requires null-window probes with full-window re-search where needed, a selectable full-window reference, TT/history/draw parity, legal PVs, and safe interruption. No speedup or strength acceptance threshold is implied.
+
+- C20a implementation: +2.000 points, implemented scope 65.000%. Main search uses a full window for the first move and null-window probes for later moves at wide-window nodes, with full-window re-search for an improvement below beta. Null-window nodes retain their existing window; quiescence is unchanged. Public search APIs accept a trailing use_pvs flag (default true); --search-ab runs the full-window diagnostic reference. SearchResult exposes cumulative probe/re-search attempts, including interrupted work. CTests compare fixed/iterative scores and legal PVs with TT off/on/collision storage, special moves, mate/stalemate/dead positions, history mode, move-count draws, and interrupted root/history restoration. The benchmark can compare repeated PVS and full-window runs, requiring equal scores/depths while permitting tied move/PV differences; report schema is now 2. Eight local Python validation tests pass. C++ execution, including the PVS-path exercise assertion and paired CI benchmark, remains pending; no node reduction or strength claim follows.
