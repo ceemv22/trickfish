@@ -208,7 +208,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Optional interruptible exchange ordering with comparative diagnostics
 - [x] Bounded one-ply continuation history with context-aware quiet ordering
 - [x] Reversible synthetic null-move state with key/undo fixtures
-- [ ] Correction history, null-move pruning, other pruning, and extensions
+- [x] Optional guarded null probe with full-depth real-position verification
+- [ ] Correction history, further pruning/reductions, and extensions
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -314,7 +315,11 @@ Exchange checkpoints check search deadlines, exhausted node budgets and stop req
 
 Add `--compare-exchange` to the benchmark command to repeat each fixture using `--search-see` and compare score/depth with normal search. Each mode has its own deterministic repeat/PV checks and wall-time samples; node delta is relative to default search. The tactical CI suite is configured to include this comparison. Optional exchange ordering/cancellation passed CI at `e574793`. This legal exchange calculation may cost more than the ordering saves; enabling it by default requires performance evidence.
 
-The C++ position API provides `make_null_move` / `unmake_null_move` for a synthetic search pass. It rejects an in-check side or overflowing counters before mutation, clears en passant, advances the synthetic turn counters, and flips side with an incremental Zobrist update. Undo restores side, EP, clocks and key; board state and castling rights are unchanged. This state is not a legal game move and must not enter played-game repetition history. UCI continues to reject null moves in position/searchmoves input. Search does not call the API yet: null-move pruning remains unimplemented. New null-state CTests require this change's CI.
+The C++ position API provides `make_null_move` / `unmake_null_move` for a synthetic search pass. It rejects an in-check side or overflowing counters before mutation, clears en passant, advances the synthetic turn counters, and flips side with an incremental Zobrist update. Undo restores side, EP, clocks and key; board state and castling rights are unchanged. This state is not a legal game move and must not enter played-game repetition history. UCI continues to reject null moves in position/searchmoves input. Default search does not call the API. The synthetic-state baseline passed CI at `5b967ab`; optional verified-null search is described below.
+
+`SearchOptions::use_null_move` defaults to false; `--search-null depth [fen]` enables a conservative verified mode. It probes only non-root null-window nodes at depth >=3, outside check and the mate score band, with non-pawn material, static score >= beta, and safe move counters. The probe searches depth-3 after a synthetic pass, with further null probes disabled. A fail-high must be confirmed by searching the real position at the original depth/window with null probes disabled throughout that verification subtree. Only the confirmed bound permits a cutoff.
+
+Synthetic subtrees do not use TT, played-game repetition, synthetic move-count draws or killer/history learning. Real-position verification retains normal rule/history handling. Null state unwinds on interruption, and synthetic PVs are discarded. `SearchResult` reports null probe/verification/cutoff counts. `--compare-null` adds paired diagnostic process results to the benchmark report; the shallow tactical CI smoke run checks the CLI mode while dedicated CTests exercise deeper probe paths. New verified-null C++ results await this change's CI. Full-depth verification can add work; this is an untuned safety baseline with no measured speedup or strength benefit.
 
 ## Verification standard
 

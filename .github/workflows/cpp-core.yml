@@ -232,7 +232,7 @@ jobs:
         shell: pwsh
         run: |
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
-          python cpp/bench/search_benchmark.py $binary --suite cpp/bench/tactical_suite.json --depth 1 --repeats 2 --compare-alphabeta --compare-exchange --timeout 30 --output build/tactical-regression.json
+          python cpp/bench/search_benchmark.py $binary --suite cpp/bench/tactical_suite.json --depth 1 --repeats 2 --compare-alphabeta --compare-exchange --compare-null --timeout 30 --output build/tactical-regression.json
           if ($LASTEXITCODE -ne 0) { throw "Tactical regression objectives failed" }
           Get-Content build/tactical-regression.json
       - name: Verify material exchange diagnostic

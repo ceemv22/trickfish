@@ -103,13 +103,13 @@ def parse_result(output, fen, requested_depth):
     return result
 
 
-def run_case(binary, case, depth, repeats, timeout, use_pvs=True, use_exchange=False):
+def run_case(binary, case, depth, repeats, timeout, use_pvs=True, use_exchange=False, use_null=False):
     samples = []
     expected = None
     for _ in range(repeats):
         started = time.perf_counter_ns()
         process = subprocess.run(
-            [str(binary), "--search-see" if use_exchange else "--search" if use_pvs else "--search-ab", str(depth), case["fen"]],
+            [str(binary), "--search-null" if use_null else "--search-see" if use_exchange else "--search" if use_pvs else "--search-ab", str(depth), case["fen"]],
             capture_output=True, text=True, timeout=timeout, check=True,
         )
         elapsed = (time.perf_counter_ns() - started) / 1_000_000
@@ -150,6 +150,7 @@ def main():
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--compare-alphabeta", action="store_true")
     parser.add_argument("--compare-exchange", action="store_true")
+    parser.add_argument("--compare-null", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
@@ -171,6 +172,13 @@ def main():
                 raise ValueError(f"exchange ordering score/depth mismatch: {case['id']}")
             candidate["exchange_comparison"] = {"ordered": ordered, "score_equal": True,
                 "node_delta_per_repeat": ordered["nodes"] - candidate["nodes"]}
+    if args.compare_null:
+        for case, candidate in zip(suite["positions"], results):
+            verified = run_case(binary, case, args.depth, args.repeats, args.timeout, use_null=True)
+            if verified["score"] != candidate["score"] or verified["depth"] != candidate["depth"]:
+                raise ValueError(f"verified null score/depth mismatch: {case['id']}")
+            candidate["null_comparison"] = {"verified": verified, "score_equal": True,
+                "node_delta_per_repeat": verified["nodes"] - candidate["nodes"]}
     if digest(binary) != binary_hash or digest(suite_path) != suite_hash:
         raise ValueError("binary or suite changed during benchmark")
     report = {
@@ -187,6 +195,7 @@ def main():
             "quiet_history": True, "reference_quiet_history": False,
             "continuation_history": True, "reference_continuation_history": False,
             "exchange_ordering": False, "compare_exchange": args.compare_exchange,
+            "verified_null": False, "compare_null": args.compare_null,
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,

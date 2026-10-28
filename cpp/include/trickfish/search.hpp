@@ -35,6 +35,9 @@ struct SearchResult {
     std::uint64_t exchange_cutoffs = 0;
     std::uint64_t continuation_updates = 0;
     std::uint64_t continuation_moves_searched = 0;
+    std::uint64_t null_probes = 0;
+    std::uint64_t null_verifications = 0;
+    std::uint64_t null_cutoffs = 0;
 };
 
 struct SearchOptions {
@@ -47,6 +50,7 @@ struct SearchOptions {
     bool use_exchange_ordering = false;
     bool use_continuation = true;
     std::vector<Move> root_moves;
+    bool use_null_move = false;
 };
 
 struct SearchLimits {
