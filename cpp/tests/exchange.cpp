@@ -10,6 +10,15 @@ void verify(std::string_view fen, std::string_view text, int expected) {
     const auto key = position.key();
     for (const auto& move : trickfish::generate_legal_moves(position)) {
         if (move.to_uci() == text) {
+            const auto bounded = trickfish::analyze_exchange(position, move);
+            const auto reference = trickfish::analyze_exchange(position, move, true);
+            if (bounded.score != expected || reference.score != expected || bounded.nodes == 0 ||
+                reference.nodes == 0 || reference.cutoffs != 0) {
+                throw std::runtime_error("bounded/exhaustive exchange diagnostics mismatch");
+            }
+            if (text == "e4d5" && (bounded.cutoffs == 0 || bounded.nodes >= reference.nodes)) {
+                throw std::runtime_error("competing-attacker fixture did not exercise exchange bounds");
+            }
             if (trickfish::static_exchange(position, move) != expected ||
                 trickfish::static_exchange_reference(position, move) != expected || position.to_fen() != fen || position.key() != key) {
                 throw std::runtime_error("exchange score or root preservation mismatch");
@@ -20,8 +29,32 @@ void verify(std::string_view fen, std::string_view text, int expected) {
     throw std::runtime_error("exchange fixture move is illegal");
 }
 
+void verify_all_tactical(trickfish::Position position) {
+    const auto fen = position.to_fen();
+    const auto key = position.key();
+    for (const auto& move : trickfish::generate_legal_moves(position)) {
+        if (position.piece_at(move.to) == '.' && !move.en_passant && move.promotion == '\0') continue;
+        if (trickfish::analyze_exchange(position, move).score !=
+            trickfish::analyze_exchange(position, move, true).score || position.to_fen() != fen || position.key() != key) {
+            throw std::runtime_error("tactical exchange parity/state mismatch");
+        }
+    }
+}
+
 int main() {
     try {
+        for (const auto fen : {"k7/8/2b2n2/3p4/4Q3/8/8/7K w - - 0 1",
+            "7k/8/8/8/8/1R5K/p7/1r6 w - - 0 1", "3rk3/8/8/3pP3/8/8/8/4K3 w - d6 0 1"}) {
+            auto position = trickfish::Position::from_fen(fen);
+            verify_all_tactical(position);
+            const auto legal = trickfish::generate_legal_moves(position);
+            for (std::size_t index = 0; index < legal.size() && index < 3; ++index) {
+                auto child = position;
+                const auto undo = child.make_move(legal[index]);
+                static_cast<void>(undo);
+                verify_all_tactical(child);
+            }
+        }
         verify("4k3/8/8/8/8/8/q7/R3K3 w - - 0 1", "a1a2", 900);
         verify("r3k3/Q7/8/8/8/8/8/4K3 b - - 0 1", "a8a7", 900);
         verify("k7/8/4p3/3p4/3R4/8/8/7K w - - 0 1", "d4d5", -400);

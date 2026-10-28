@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **70.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **70.750%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -49,7 +49,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C19c | Bounded quiet history rewards/penalties, selectable ordering, and search parity/restoration | 1.000 | Implemented |
 | C19e | Legal-recapture material exchange reference with special-move and pin fixtures | 0.500 | Implemented |
 | C19g | Targeted legal-recapture generation with full-generator exchange parity fixtures | 0.500 | Implemented |
-| C19h | Further SEE optimization/search integration, continuation/correction history, and ordering | 2.250 | Pending |
+| C19i | Bounded exchange search with exhaustive reference parity and work counters | 0.500 | Implemented |
+| C19j | SEE/search integration, continuation/correction history, and ordering | 1.750 | Pending |
 | C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
 | C20d | Null move, LMR, futility, razoring, and extensions | 6.500 | Pending |
@@ -64,7 +65,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Exchange-reference commit `30bda03` passed both OS jobs in [run 59](https://github.com/ceemv22/trickfish/actions/runs/40759652647), confirming configured checks at the 69.750-point implementation. Eleven tooling tests pass locally; new promotion-recapture and competing-attacker fixture lines are reference-legal. Targeted/full-generator C++ exchange parity and CLI checks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. Targeted-exchange commit `1cd22a5` passed both OS jobs in [run 60](https://github.com/ceemv22/trickfish/actions/runs/40760064554), confirming configured checks at the 70.250-point implementation. Eleven tooling tests pass locally; bounded/exhaustive C++ parity, work-counter fixtures and CLI diagnostics require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -178,3 +179,7 @@ Before exchange-reference implementation, C19d was split into C19e (0.500) and C
 Before targeted recapture implementation, C19f was split into C19g (0.500) and C19h (2.250), preserving 2.750 points. C19g requires target-attacker candidates, legal king-safety filtering, recapture promotions, retained full-generator reference, and score/state parity; no runtime speedup is an acceptance assumption.
 
 - C19g implementation: +0.500 points, implemented scope 70.250%. Exchange recaptures now use target-centric pawn/knight/king and sliding attack masks, followed by make/check/unmake legality filtering and all four recapture promotions. Occupancy is recomputed at each recursive exchange state, exposing x-rays. static_exchange_reference and --see-reference retain the full legal-generator path. All fifteen frozen fixtures compare both evaluators, adding recapture promotion and competing bishop/knight attackers. Initial move validation and restricted exchange semantics are unchanged; neither evaluator is used by search. Eleven tooling tests and new fixture legality checks pass locally; C++ parity/runtime awaits CI. This removes unrelated recapture candidates but remains exhaustive and unoptimized in other respects; no measured speedup is claimed.
+
+Before bounded exchange implementation, C19h was split into C19i (0.500) and C19j (1.750), preserving 2.250 points. C19i requires exact-score parity with exhaustive exchange search, safe optional-stop/material bounds, translated child alpha-beta windows, caller preservation and node/cutoff diagnostics. Reduced node counts do not imply measured runtime improvement.
+
+- C19i implementation: +0.500 points, implemented scope 70.750%. Targeted exchange search uses optional-stop alpha-beta bounds with gain-translated child windows and skips captures whose immediate gain cannot improve the current best. The full-generator reference remains exhaustive. analyze_exchange returns score, visited recapture states (including terminal/pruned entries), and cutoff events; --see-detail exposes these values. Frozen fixtures compare both exact scores, competing attackers must exercise reduced state count, and all tactical moves on three roots plus up to three legal children per root receive parity/state checks. Eleven tooling tests pass locally; new C++ parity and counter execution awaits CI. Neither evaluator is used by engine search; runtime speed and strength remain unmeasured.

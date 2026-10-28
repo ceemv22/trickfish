@@ -200,7 +200,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Bounded quiet history with cutoff rewards and prior-quiet penalties
 - [x] Legal-recapture material exchange diagnostic with special-move/pin fixtures
 - [x] Targeted legal recaptures with full-generator exchange reference
-- [ ] Further SEE optimization/search integration, continuation/correction history, other pruning, and extensions
+- [x] Bounded exchange search with exhaustive reference parity and work counters
+- [ ] SEE/search integration, continuation/correction history, other pruning, and extensions
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -288,13 +289,15 @@ Optional `expect.bestmoves` lists accepted legal root moves. `expect.mate_in_one
 
 The diagnostic `--see move [fen]` reports material exchange gain from the initial mover's perspective. The initial move must be a legal capture or promotion. `static_exchange` then exhaustively considers legal recaptures on the same target square, with either side allowed to stop. It includes promotion material gain and initial en passant; legal move generation excludes pinned recaptures and unsafe king captures. The caller's position is preserved.
 
-The default evaluator generates only attackers of the target using current occupancy and filters them for king safety, including all four recapture promotions. `static_exchange_reference` and `--see-reference move [fen]` retain the full legal-move generator for comparison. Both paths implement the same exhaustive restricted exchange model; further optimization remains pending. It ignores off-target tactics, mate values, and forced-check continuations, and can branch substantially. It is not used in search ordering or pruning. For example:
+The default evaluator generates only attackers of the target using current occupancy and filters them for king safety, including all four recapture promotions. `static_exchange_reference` and `--see-reference move [fen]` retain the full legal-move generator for comparison. Both paths solve the same restricted exchange model. The targeted path uses alpha-beta windows translated by each capture gain, the optional-stop lower bound of zero, and immediate-gain upper bounds. The full-generator reference remains exhaustive. It ignores off-target tactics, mate values, and forced-check continuations, and can branch substantially. It is not used in search ordering or pruning. For example:
 
 ```powershell
 .\build\Release\trickfish_cpp.exe --see a1a2 "4k3/8/8/8/8/8/q7/R3K3 w - - 0 1"
 ```
 
-The expected exchange gain is 900. The original exchange baseline passed CI at `30bda03`. New targeted/reference parity CTests and CLI checks await this package's completed CI.
+The expected exchange gain is 900. The original exchange baseline passed CI at `30bda03`. Targeted recapture generation passed CI at `1cd22a5`. New bounded/exhaustive parity and work-counter checks await this package's completed CI.
+
+`--see-detail move [fen]` reports `score`, `nodes` (visited recapture states, including entries pruned before move generation), and `cutoffs` (bound/branch pruning events). The `analyze_exchange` API returns the same fields; its reference flag selects exhaustive evaluation. These counters measure exchange work, not main-search nodes or elapsed speed. No runtime improvement is established by their presence.
 
 ## Verification standard
 

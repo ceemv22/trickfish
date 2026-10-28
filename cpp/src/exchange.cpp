@@ -53,22 +53,39 @@ MoveList legal_recaptures(Position& position, std::uint8_t target) {
     return moves;
 }
 
-int recapture_gain(const Position& position, std::uint8_t target, bool targeted) {
+int recapture_gain(const Position& position, std::uint8_t target, bool targeted,
+    int alpha, int beta, ExchangeResult& result) {
+    ++result.nodes;
+    if (targeted && beta <= 0) {
+        ++result.cutoffs;
+        return 0;
+    }
+    alpha = std::max(alpha, 0);
     auto current = position;
     const auto legal = targeted ? legal_recaptures(current, target) : generate_legal_moves(current);
     int best = 0;
     for (const auto& move : legal) {
         if (move.to != target || current.piece_at(target) == '.') continue;
         const int gain = material_gain(current, move);
+        if (targeted && gain <= best) {
+            ++result.cutoffs;
+            continue;
+        }
         auto child = current;
         const auto undo = child.make_move(move);
         static_cast<void>(undo);
-        best = std::max(best, gain - recapture_gain(child, target, targeted));
+        best = std::max(best, gain - recapture_gain(child, target, targeted,
+            gain - beta, gain - alpha, result));
+        if (targeted && best >= beta) {
+            ++result.cutoffs;
+            break;
+        }
+        alpha = std::max(alpha, best);
     }
     return best;
 }
 
-int exchange_impl(const Position& position, const Move& move, bool targeted) {
+ExchangeResult exchange_impl(const Position& position, const Move& move, bool targeted) {
     auto current = position;
     const auto legal = generate_legal_moves(current);
     if (std::find(legal.begin(), legal.end(), move) == legal.end()) {
@@ -80,17 +97,23 @@ int exchange_impl(const Position& position, const Move& move, bool targeted) {
     const int gain = material_gain(current, move);
     const auto undo = current.make_move(move);
     static_cast<void>(undo);
-    return gain - recapture_gain(current, move.to, targeted);
+    ExchangeResult result;
+    result.score = gain - recapture_gain(current, move.to, targeted, -1000000, 1000000, result);
+    return result;
 }
 
+}
+
+ExchangeResult analyze_exchange(const Position& position, const Move& move, bool reference) {
+    return exchange_impl(position, move, !reference);
 }
 
 int static_exchange_reference(const Position& position, const Move& move) {
-    return exchange_impl(position, move, false);
+    return analyze_exchange(position, move, true).score;
 }
 
 int static_exchange(const Position& position, const Move& move) {
-    return exchange_impl(position, move, true);
+    return analyze_exchange(position, move).score;
 }
 
 }
