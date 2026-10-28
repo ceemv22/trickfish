@@ -8,7 +8,7 @@ Trickfish is a chess-engine research project with a Python reference engine and 
 
 ## Current implementation
 
-Python provides the reference rules, positional evaluation, search, and the more complete clock-aware UCI interface. C++ provides mutable position state, legal move generation, perft, material, bishop-pair, and rook-file terms, and an initial search implementation with a basic asynchronous UCI frontend. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
+Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, material, bishop-pair, and rook-file terms, and an initial search implementation with a basic asynchronous UCI frontend. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
 
 ### Python reference engine
 
@@ -50,9 +50,9 @@ Python provides the reference rules, positional evaluation, search, and the more
 | TT | Full-key checks, depth-qualified exact/lower/upper bounds, mate-score normalization, and preferred-move ordering |
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
 | Perft | Recursive node count and root divide |
-| UCI | Handshake/readiness, startpos/FEN with legal moves and history, asynchronous depth/node/movetime search, stop, new game, quit, and EOF |
+| UCI | Handshake/readiness, startpos/FEN with legal moves and history, asynchronous depth/node/movetime/remaining-clock search, stop, new game, quit, and EOF |
 
-The C++ UCI frontend has no remaining-clock allocation, ponder, options, or Chess960 support yet. Phase-aware positional evaluation and advanced pruning remain pending. Both implementations include en passant in the key only when a legal capture exists. A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Diagnostic --search calls without a history retain TT/no-repetition behavior. The UCI frontend supplies the complete move list history and therefore uses history-aware search with TT disabled. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
+The C++ UCI frontend has a baseline remaining-clock allocator and Move Overhead option; ponder, configurable Hash/Threads, and Chess960 remain unsupported. Phase-aware positional evaluation and advanced pruning remain pending. Both implementations include en passant in the key only when a legal capture exists. A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Diagnostic --search calls without a history retain TT/no-repetition behavior. The UCI frontend supplies the complete move list history and therefore uses history-aware search with TT disabled. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
 
 Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns static evaluation even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
 
@@ -96,7 +96,11 @@ Supported commands are `uci`, `isready`, `ucinewgame`, `position startpos`, `pos
 
 Search runs on a worker thread with independent position/history copies. `isready` responds while search is active. `stop` joins the worker and produces one `bestmove` for that search; replacing a position/search, starting a new game, quitting, or reaching EOF also stops and joins it. Search limits can combine `depth` (1 through 64), `nodes`, and `movetime` in milliseconds. A bare `go` or `go infinite` waits for `stop` before emitting `bestmove`, including when the depth ceiling is reached. Info is emitted when search finishes, not after every iteration. A budget exhausted before depth one yields an unscored depth-zero legal fallback.
 
-The frontend is a UCI subset: `wtime`, `btime`, `winc`, `binc`, `movestogo`, `searchmoves`, and `mate` search limits are rejected. No options or pondering are advertised. Clock-controlled GUI play still requires the pending clock-allocation work; this frontend is currently intended for explicit depth/node/movetime analysis. Supplying `position ... moves` enables played-game repetition handling; FEN alone supplies no earlier history. This mode currently disables TT and uses the existing always-claim repetition search policy. It does not make the search multithreaded internally.
+The frontend accepts `wtime`/`btime`, `winc`/`binc`, and positive `movestogo`. It selects the clock and increment for the active side. An explicit `movetime` takes precedence over clock allocation; `go infinite` ignores time deadlines. If clock parameters are supplied without the active side's remaining time, the request is rejected unless movetime or infinite mode supplies the applicable policy. Unsupported `searchmoves`, `mate`, and pondering requests are not implemented. The allocator is a baseline heuristic and has not been tuned or validated by controlled matches. Supplying `position ... moves` enables played-game repetition handling; FEN alone supplies no earlier history. This mode currently disables TT and uses the existing always-claim repetition search policy. It does not make the search multithreaded internally.
+
+Clock allocation uses `remaining / movestogo + increment / 2`, with a default horizon of 30 moves. The budget is capped by remaining time after reserving the larger of 5% of the clock or `Move Overhead`. The advertised `Move Overhead` spin option ranges from 0 to 10000 ms, defaults to 10, and applies to subsequent clock-based searches. It persists across `ucinewgame`; invalid option updates preserve the old value. If usable time is exhausted, the budget is zero and search returns its depth-zero fallback. A future increment is never spent when no usable time remains. Overflow-safe allocation does not guarantee avoidance of flag losses: setup and individual node operations can still overrun the deadline.
+
+Example clock commands are `setoption name Move Overhead value 20` and `go wtime 60000 btime 60000 winc 1000 binc 1000 movestogo 30`. Explicit `movetime` is not reduced by Move Overhead. Hash/Threads and other options are not advertised.
 
 Example input after launching the binary:
 
@@ -177,7 +181,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Reference rook-file term in static evaluation and search
 - [ ] Remaining phase-aware positional evaluation and endgame scaling
 - [x] Basic asynchronous C++ UCI with legal positions, history, depth/node/movetime, and stop lifecycle
-- [ ] UCI remaining-clock allocation
+- [x] UCI remaining-clock allocation, increments, movestogo, and Move Overhead option
 - [ ] Advanced ordering, pruning, extensions, and measured optimization
 - [ ] Reproducible benchmarks, tuning, self-play, and SPRT matches
 

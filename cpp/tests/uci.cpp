@@ -41,6 +41,7 @@ int main() {
         const auto handshake = session("uci\nisready\nquit\n");
         require(handshake.find("id name Trickfish C++\n") != std::string::npos &&
             handshake.find("id author ceemv22\n") != std::string::npos &&
+            handshake.find("option name Move Overhead type spin default 10 min 0 max 10000\n") != std::string::npos &&
             handshake.find("uciok\nreadyok\n") != std::string::npos, "handshake mismatch");
         auto e4 = trickfish::parse_uci_position("position startpos moves e2e4");
         require(e4.position.side_to_move() == trickfish::Color::black && e4.history.size() == 2,
@@ -76,6 +77,16 @@ int main() {
         require(running.find("readyok\n") < running.find("bestmove ") && best_moves(running).size() == 1,
             "readiness/stop lifecycle mismatch");
         require_legal("position startpos", best_moves(running)[0]);
+        const auto clocks = session("setoption name move overhead value 10000\n"
+            "position startpos moves e2e4\ngo depth 4 wtime 1000000 btime 10000 binc 500 movestogo 20\nquit\n");
+        const auto clock_moves = best_moves(clocks);
+        require(clock_moves.size() == 1 && clocks.find("error:") == std::string::npos,
+            "clock control/overhead command failed");
+        require_legal("position startpos moves e2e4", clock_moves[0]);
+        const auto invalid_clock = session("go wtime 1000 movestogo 0\nisready\nquit\n");
+        require(invalid_clock.find("movestogo must be positive") != std::string::npos &&
+            invalid_clock.find("readyok") != std::string::npos && best_moves(invalid_clock).empty(),
+            "invalid clock parameters started a search");
         const auto eof = best_moves(session("go depth 64\n"));
         require(eof.size() == 1, "EOF did not stop and join search");
         require_legal("position startpos", eof[0]);

@@ -61,6 +61,7 @@ class UciProcessTests(unittest.TestCase):
         self.send("uci")
         self.until("uciok")
         self.assertIn("id name Trickfish C++", self.transcript)
+        self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
         self.send("isready")
         self.until("readyok")
         self.send("position startpos")
@@ -118,16 +119,47 @@ class UciProcessTests(unittest.TestCase):
         self.assertIn("readyok\n", result.stdout)
 
     def test_invalid_limits_keep_session_alive(self):
-        for command in ["go depth 0", "go nodes -1", "go movetime 18446744073709551615", "go depth"]:
+        for command in ["go depth 0", "go nodes -1", "go movetime 18446744073709551615", "go depth",
+            "go wtime 1000 movestogo 0", "go depth 1 btime 1000", "go wtime -1"]:
             self.send(command)
             self.until("info string error:")
         self.send("isready")
         self.until("readyok")
         self.assertFalse(any(line.startswith("bestmove ") for line in self.transcript))
 
-    def test_unsupported_clock_is_explicit(self):
-        self.send("go wtime 1000 btime 1000")
-        self.assertIn("unsupported go parameter: wtime", self.until("info string error:"))
+    def test_remaining_clocks_select_active_side(self):
+        for position, parameters, legal in [
+            ("position startpos", "wtime 1000000 btime 0 winc 100 binc 0 movestogo 20", WHITE_MOVES),
+            ("position startpos moves e2e4", "wtime 0 btime 1000000 winc 0 binc 100 movestogo 20", BLACK_MOVES)]:
+            self.send(position)
+            before = len(self.transcript)
+            self.send("go depth 1 " + parameters)
+            self.assertIn(self.until("bestmove ").split()[1], legal)
+            self.assertTrue(any(line.startswith("info depth 1 ") for line in self.transcript[before:]))
+            self.assertFalse(any("error:" in line for line in self.transcript[before:]))
+
+    def test_zero_remaining_does_not_spend_increment(self):
+        self.send("go depth 1 wtime 0 btime 1000000 winc 1000000")
+        self.assertIn(self.until("bestmove ").split()[1], WHITE_MOVES)
+        self.assertTrue(any(line.startswith("info depth 0 nodes 0") for line in self.transcript))
+
+    def test_movetime_overrides_remaining_clock(self):
+        self.send("go depth 1 wtime 0 btime 0 movetime 100000")
+        self.assertIn(self.until("bestmove ").split()[1], WHITE_MOVES)
+        self.assertTrue(any(line.startswith("info depth 1 ") for line in self.transcript))
+
+    def test_move_overhead_option_is_transactional(self):
+        self.send("setoption name move overhead value 10000")
+        self.send("setoption name Move Overhead value 10001")
+        self.until("info string error:")
+        self.send("ucinewgame")
+        self.send("go depth 1 wtime 10000 btime 1000000")
+        self.assertIn(self.until("bestmove ").split()[1], WHITE_MOVES)
+        self.assertTrue(any(line.startswith("info depth 0 nodes 0") for line in self.transcript))
+
+    def test_unsupported_go_parameter_is_explicit(self):
+        self.send("go searchmoves e2e4")
+        self.assertIn("unsupported go parameter: searchmoves", self.until("info string error:"))
         self.send("isready")
         self.until("readyok")
 

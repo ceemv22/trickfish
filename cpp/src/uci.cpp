@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cctype>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
@@ -21,6 +22,7 @@
 #include "trickfish/evaluation.hpp"
 #include "trickfish/movegen.hpp"
 #include "trickfish/search.hpp"
+#include "trickfish/time.hpp"
 
 namespace trickfish {
 namespace {
@@ -70,35 +72,60 @@ struct GoLimits {
     bool infinite = false;
 };
 
-GoLimits parse_go(const std::vector<std::string>& tokens) {
+std::chrono::steady_clock::time_point deadline_after(std::uint64_t milliseconds) {
+    const auto now = std::chrono::steady_clock::now();
+    const auto maximum = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::time_point::max() - now).count();
+    if (milliseconds > static_cast<std::uint64_t>(maximum)) {
+        throw std::invalid_argument("time budget is too large");
+    }
+    return now + std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(milliseconds));
+}
+
+GoLimits parse_go(const std::vector<std::string>& tokens, Color side, std::uint64_t overhead) {
     GoLimits limits;
     limits.infinite = tokens.size() == 1;
+    ClockControl clock;
+    bool has_clock_parameters = false;
+    std::optional<std::uint64_t> movetime;
     for (std::size_t index = 1; index < tokens.size(); ++index) {
         const auto& name = tokens[index];
         if (name == "infinite") {
             limits.infinite = true;
             continue;
         }
-        if (name != "depth" && name != "nodes" && name != "movetime") {
+        if (name != "depth" && name != "nodes" && name != "movetime" && name != "wtime" &&
+            name != "btime" && name != "winc" && name != "binc" && name != "movestogo") {
             throw std::invalid_argument("unsupported go parameter: " + name);
         }
-        if (++index == tokens.size()) {
-            throw std::invalid_argument("missing go parameter value");
-        }
+        if (++index == tokens.size()) throw std::invalid_argument("missing go parameter value");
         const auto value = number_for(tokens[index]);
         if (name == "depth") {
             if (value < 1 || value > 64) throw std::invalid_argument("depth must be between 1 and 64");
             limits.depth = static_cast<int>(value);
         } else if (name == "nodes") {
             limits.nodes = value;
+        } else if (name == "movetime") {
+            movetime = value;
         } else {
-            const auto now = std::chrono::steady_clock::now();
-            const auto maximum = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::time_point::max() - now).count();
-            if (value > static_cast<std::uint64_t>(maximum)) {
-                throw std::invalid_argument("movetime is too large");
+            has_clock_parameters = true;
+            if (name == "wtime") clock.white_time = value;
+            else if (name == "btime") clock.black_time = value;
+            else if (name == "winc") clock.white_increment = value;
+            else if (name == "binc") clock.black_increment = value;
+            else {
+                if (value == 0) throw std::invalid_argument("movestogo must be positive");
+                clock.moves_to_go = value;
             }
-            limits.deadline = now + std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(value));
+        }
+    }
+    if (!limits.infinite) {
+        if (movetime) {
+            limits.deadline = deadline_after(*movetime);
+        } else if (has_clock_parameters) {
+            const auto budget = allocate_clock_time(side, clock, overhead);
+            if (!budget) throw std::invalid_argument("missing time for the side to move");
+            limits.deadline = deadline_after(*budget);
         }
     }
     return limits;
@@ -118,7 +145,8 @@ public:
             try {
                 const auto& name = tokens[0];
                 if (name == "uci") {
-                    emit("id name Trickfish C++\nid author ceemv22\nuciok");
+                    emit("id name Trickfish C++\nid author ceemv22\noption name Move Overhead type spin default " +
+                        std::to_string(default_move_overhead_ms) + " min 0 max 10000\nuciok");
                 } else if (name == "isready") {
                     emit("readyok");
                 } else if (name == "quit") {
@@ -137,8 +165,10 @@ public:
                     history_ = std::move(next.history);
                 } else if (name == "go") {
                     stop_search();
-                    start_search(parse_go(tokens));
-                } else if (name == "setoption" || name == "ponderhit") {
+                    start_search(parse_go(tokens, position_.side_to_move(), move_overhead_));
+                } else if (name == "setoption") {
+                    set_option(tokens);
+                } else if (name == "ponderhit") {
                     emit("info string unsupported command: " + name);
                 }
             } catch (const std::exception& error) {
@@ -150,6 +180,26 @@ public:
     }
 
 private:
+    void set_option(const std::vector<std::string>& tokens) {
+        if (tokens.size() < 5 || tokens[1] != "name") throw std::invalid_argument("invalid setoption command");
+        const auto value = std::find(tokens.begin() + 2, tokens.end(), "value");
+        if (value == tokens.end() || value + 1 == tokens.end() || value + 2 != tokens.end()) {
+            throw std::invalid_argument("setoption requires one value");
+        }
+        std::string name;
+        for (auto word = tokens.begin() + 2; word != value; ++word) {
+            if (!name.empty()) name += ' ';
+            name += *word;
+        }
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
+        if (name != "move overhead") throw std::invalid_argument("unsupported option: " + name);
+        const auto overhead = number_for(*(value + 1));
+        if (overhead > 10000) throw std::invalid_argument("Move Overhead must be between 0 and 10000");
+        move_overhead_ = overhead;
+    }
+
     void emit(const std::string& text) {
         std::lock_guard lock(output_mutex_);
         output_ << text << '\n' << std::flush;
@@ -203,6 +253,7 @@ private:
     std::ostream& output_;
     Position position_;
     RepetitionHistory history_;
+    std::uint64_t move_overhead_ = default_move_overhead_ms;
     std::mutex output_mutex_;
     std::jthread worker_;
 };
