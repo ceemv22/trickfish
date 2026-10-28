@@ -1,6 +1,7 @@
 #include "trickfish/search.hpp"
 
 #include <algorithm>
+#include <array>
 #include <stdexcept>
 #include <utility>
 
@@ -22,6 +23,10 @@ struct SearchBudget {
     std::uint64_t hits = 0;
     std::uint64_t pvs_probes = 0;
     std::uint64_t pvs_researches = 0;
+    bool use_killers = true;
+    std::array<std::array<std::optional<Move>, 2>, 64> killers{};
+    std::uint64_t killer_cutoffs = 0;
+    std::uint64_t killer_moves_searched = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -75,6 +80,28 @@ private:
     RepetitionHistory* history_;
 };
 
+bool is_quiet(const Position& position, const Move& move) {
+    return position.piece_at(move.to) == '.' && !move.en_passant && move.promotion == '\0';
+}
+
+int killer_priority(const Position& position, const Move& move, const SearchBudget* budget, int ply) {
+    if (budget == nullptr || !budget->use_killers || ply < 0 || ply >= 64 || !is_quiet(position, move)) return 0;
+    const auto& slots = budget->killers[static_cast<std::size_t>(ply)];
+    if (move == slots[0]) return 5000;
+    if (move == slots[1]) return 4000;
+    return 0;
+}
+
+void record_killer(const Position& position, const Move& move, SearchBudget* budget, int ply) {
+    if (budget == nullptr || !budget->use_killers || ply < 0 || ply >= 64 || !is_quiet(position, move)) return;
+    ++budget->killer_cutoffs;
+    auto& slots = budget->killers[static_cast<std::size_t>(ply)];
+    if (move != slots[0]) {
+        slots[1] = slots[0];
+        slots[0] = move;
+    }
+}
+
 int move_priority(const Position& position, const Move& move) {
     int priority = 0;
     const auto victim = position.piece_at(move.to);
@@ -90,11 +117,12 @@ int move_priority(const Position& position, const Move& move) {
     return priority;
 }
 
-void order_moves(const Position& position, MoveList& moves, std::optional<Move> preferred = std::nullopt) {
-    std::sort(moves.begin(), moves.end(), [&position, preferred](const Move& left, const Move& right) {
+void order_moves(const Position& position, MoveList& moves, std::optional<Move> preferred = std::nullopt,
+    const SearchBudget* budget = nullptr, int ply = 0) {
+    std::sort(moves.begin(), moves.end(), [&position, preferred, budget, ply](const Move& left, const Move& right) {
         if ((left == preferred) != (right == preferred)) return left == preferred;
-        const auto left_priority = move_priority(position, left);
-        const auto right_priority = move_priority(position, right);
+        const auto left_priority = move_priority(position, left) + killer_priority(position, left, budget, ply);
+        const auto right_priority = move_priority(position, right) + killer_priority(position, right, budget, ply);
         if (left_priority != right_priority) {
             return left_priority > right_priority;
         }
@@ -190,10 +218,11 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             }
         }
     }
-    order_moves(position, moves, preferred);
+    order_moves(position, moves, preferred, budget, ply);
     int best = -mate_score - 1;
     std::optional<Move> selected;
     for (const auto& move : moves) {
+        if (killer_priority(position, move, budget, ply) != 0) ++budget->killer_moves_searched;
         std::vector<Move> child_pv;
         int score = 0;
         {
@@ -225,6 +254,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
         }
         alpha = std::max(alpha, score);
         if (alpha >= beta) {
+            record_killer(position, move, budget, ply);
             break;
         }
     }
@@ -238,11 +268,12 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
 }
 
 SearchResult search_impl(Position& position, int depth, TranspositionTable* table, SearchBudget* budget = nullptr, bool use_pvs = true,
-    int alpha = -mate_score - 1, int beta = mate_score + 1) {
+    int alpha = -mate_score - 1, int beta = mate_score + 1, bool use_killers = true) {
     if (depth < 1 || depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
     SearchBudget local_budget;
+    local_budget.use_killers = use_killers;
     if (budget == nullptr) budget = &local_budget;
     SearchResult result;
     result.score = negamax(position, depth, 0, alpha, beta,
@@ -250,25 +281,27 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     result.completed_depth = depth;
     result.pvs_probes = budget->pvs_probes;
     result.pvs_researches = budget->pvs_researches;
+    result.killer_cutoffs = budget->killer_cutoffs;
+    result.killer_moves_searched = budget->killer_moves_searched;
     return result;
 }
 
-SearchResult search(Position& position, int depth, bool use_table, bool use_pvs) {
+SearchResult search(Position& position, int depth, bool use_table, bool use_pvs, bool use_killers) {
     if (!use_table) {
-        return search_impl(position, depth, nullptr, nullptr, use_pvs);
+        return search_impl(position, depth, nullptr, nullptr, use_pvs, -mate_score - 1, mate_score + 1, use_killers);
     }
     TranspositionTable table;
-    return search_impl(position, depth, &table, nullptr, use_pvs);
+    return search_impl(position, depth, &table, nullptr, use_pvs, -mate_score - 1, mate_score + 1, use_killers);
 }
 
-SearchResult search(Position& position, int depth, TranspositionTable& table, bool use_pvs) {
-    return search_impl(position, depth, &table, nullptr, use_pvs);
+SearchResult search(Position& position, int depth, TranspositionTable& table, bool use_pvs, bool use_killers) {
+    return search_impl(position, depth, &table, nullptr, use_pvs, -mate_score - 1, mate_score + 1, use_killers);
 }
 
 SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::optional<std::uint64_t> node_limit,
     std::optional<std::chrono::steady_clock::time_point> deadline,
-    std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy, bool use_pvs, int aspiration_window) {
+    std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy, bool use_pvs, int aspiration_window, bool use_killers) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
@@ -287,6 +320,7 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
         table.emplace();
     }
     SearchBudget budget{node_limit, deadline, stop_requested, active_history ? &*active_history : nullptr, draw_policy};
+    budget.use_killers = use_killers;
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
@@ -332,6 +366,8 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     result.pvs_researches = budget.pvs_researches;
     result.aspiration_fail_low = fail_low;
     result.aspiration_fail_high = fail_high;
+    result.killer_cutoffs = budget.killer_cutoffs;
+    result.killer_moves_searched = budget.killer_moves_searched;
     return result;
 }
 

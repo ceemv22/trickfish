@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
             const int fen_index = budgeted_search ? 4 : 3;
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
             const auto result = trickfish::iterative_search(position, depth, true, node_limit, deadline, {}, nullptr,
-                trickfish::MoveCountDrawPolicy::automatic_only, !reference_search, reference_search ? 0 : 25);
+                trickfish::MoveCountDrawPolicy::automatic_only, !reference_search, reference_search ? 0 : 25, !reference_search);
             std::cout << "bestmove " << (result.best_move ? result.best_move->to_uci() : "0000") << '\n';
             std::cout << "score " << result.score << '\n';
             std::cout << "pv";

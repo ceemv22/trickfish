@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **66.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **67.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -45,7 +45,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C18a | UCI handshake and transactional legal startpos/FEN/move-history loading | 1.500 | Implemented |
 | C18b | Asynchronous depth/node/movetime search, stop/quit/EOF lifecycle, and protocol tests | 2.000 | Implemented |
 | C18c | Remaining-clock allocation and UCI clock-control tests | 1.500 | Implemented |
-| C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
+| C19a | Two quiet killer moves per main-search ply, selectable ordering, and parity/restoration checks | 0.750 | Implemented |
+| C19b | SEE, history, continuation/correction history, and ordering integration | 4.250 | Pending |
 | C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
 | C20d | Null move, LMR, futility, razoring, and extensions | 6.500 | Pending |
@@ -59,7 +60,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. PVS commit `2106708` passed both OS jobs in [run 53](https://github.com/ceemv22/trickfish/actions/runs/40754923019), confirming configured checks at the 65.000-point implementation. The new aspiration-window working tree passed eight local benchmark-tool validation tests. C++ aspiration/parity/interrupted-retry execution and paired process benchmarks still require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. Aspiration commit `47b3c83` passed both OS jobs in [run 54](https://github.com/ceemv22/trickfish/actions/runs/40755784042), confirming configured checks at the 66.500-point implementation. The new killer-ordering working tree passed eight local benchmark-tool tests. C++ killer storage/reuse, score/PV parity, deterministic lifetime, and interruption checks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -151,3 +152,7 @@ Before PVS implementation, C20 was split into C20a (2.000) and C20b (8.000), pre
 Before aspiration implementation, C20b was split into C20c (1.500) and C20d (6.500), preserving 8.000 points. C20c requires bounded-window retries with widening to the full score range, selectable disabling, full-window score/PV checks, and preservation of the last completed iteration on interruption.
 
 - C20c implementation: +1.500 points, implemented scope 66.500%. Iterative search starts depths above one with a symmetric 25-point radius around the previous completed score, skipping narrow windows for mate-band scores. Failed windows double their radius up to the full score range without committing a partial result. The trailing aspiration_window API argument accepts 0 (disabled) through 100001; fixed-depth search stays full-window. SearchResult counts fail-low/high attempts across retries and interrupted work. --search-ab disables both PVS and aspiration; benchmark metadata records both policies. CTests cover TT/PVS combinations, 1/25/100001-point radii, special/terminal positions, history mode, both failure directions, and interruption at retry-root entry. Eight local tooling tests and Python opening depth scores 12/0/12 passed; all new C++ execution awaits CI. Default radius is an untuned heuristic, not a measured speedup or strength improvement.
+
+Before killer-ordering implementation, C19 was split into C19a (0.750) and C19b (4.250), preserving its 5.000 points. C19a requires quiet beta-cutoff storage, two unique slots per main-search ply, tactical/TT priority, per-search lifetime, selectable disabling, score/PV parity, and interrupted root/history restoration.
+
+- C19a implementation: +0.750 points, implemented scope 67.250%. Main-search quiet beta cutoffs maintain two unique recency-ordered moves per ply (0..63). TT moves retain first priority; captures/promotions precede killer quiets, and quiescence does not use killers. Per-search state is shared across iterative depths, PVS re-searches and aspiration retries, then discarded. Public search APIs expose a trailing use_killers switch; --search-ab disables killers alongside PVS/aspiration. SearchResult counts quiet killer cutoffs and legal killer moves actually searched, including interrupted work. New CTests compare enabled/disabled/full-window scores, validate PVs, exercise storage/reuse, repeat independent searches, and check history-mode interruption restoration. Eight tooling tests pass locally; new C++ runtime and paired benchmark results await CI. No speedup or strength gain has been measured.
