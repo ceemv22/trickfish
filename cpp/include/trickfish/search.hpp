@@ -46,6 +46,7 @@ struct SearchOptions {
     bool use_history = true;
     bool use_exchange_ordering = false;
     bool use_continuation = true;
+    std::vector<Move> root_moves;
 };
 
 struct SearchLimits {

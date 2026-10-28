@@ -46,6 +46,7 @@ struct SearchBudget {
     std::vector<ContinuationEntry> continuation;
     std::uint64_t continuation_updates = 0;
     std::uint64_t continuation_moves_searched = 0;
+    const std::vector<Move>* root_moves = nullptr;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -298,6 +299,15 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     if (moves.empty()) {
         return position.in_check(position.side_to_move()) ? -mate_score + ply : 0;
     }
+    if (ply == 0 && budget->root_moves != nullptr) {
+        MoveList allowed;
+        for (const auto& move : moves) {
+            if (std::find(budget->root_moves->begin(), budget->root_moves->end(), move) != budget->root_moves->end()) {
+                allowed.push(move);
+            }
+        }
+        moves = allowed;
+    }
     if (is_move_count_draw(position, draw_policy(budget))) {
         return 0;
     }
@@ -446,6 +456,14 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     if (options.aspiration_window < 0 || options.aspiration_window > mate_score + 1) {
         throw std::invalid_argument("aspiration window must be between 0 and 100001");
     }
+    const auto root_legal = generate_legal_moves(position);
+    for (std::size_t index = 0; index < options.root_moves.size(); ++index) {
+        const auto& move = options.root_moves[index];
+        if (std::find(root_legal.begin(), root_legal.end(), move) == root_legal.end() ||
+            std::find(options.root_moves.begin(), options.root_moves.begin() + index, move) != options.root_moves.begin() + index) {
+            throw std::invalid_argument("root moves must be unique legal moves");
+        }
+    }
     std::optional<RepetitionHistory> active_history;
     if (history != nullptr) {
         if (history->current_key() != position.key()) {
@@ -454,7 +472,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         active_history.emplace(*history);
     }
     std::optional<TranspositionTable> table;
-    if (options.use_table && history == nullptr) {
+    if (options.use_table && history == nullptr && options.root_moves.empty()) {
         table.emplace();
     }
     SearchBudget budget{limits.nodes, limits.deadline, limits.stop_requested, active_history ? &*active_history : nullptr, options.draw_policy};
@@ -462,10 +480,10 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_history = options.use_history;
     budget.use_exchange_ordering = options.use_exchange_ordering;
     budget.use_continuation = options.use_continuation;
+    if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
-    const auto legal = generate_legal_moves(position);
-    if (!legal.empty()) {
-        result.best_move = legal[0];
+    if (!root_legal.empty()) {
+        result.best_move = options.root_moves.empty() ? root_legal[0] : options.root_moves.front();
     }
     result.score = evaluate_for_side_to_move(position);
     if (is_move_count_draw(position, options.draw_policy)) {

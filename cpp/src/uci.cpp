@@ -70,6 +70,7 @@ struct GoLimits {
     std::optional<std::uint64_t> nodes;
     std::optional<std::chrono::steady_clock::time_point> deadline;
     bool infinite = false;
+    std::vector<Move> root_moves;
 };
 
 std::chrono::steady_clock::time_point deadline_after(std::uint64_t milliseconds) {
@@ -82,14 +83,36 @@ std::chrono::steady_clock::time_point deadline_after(std::uint64_t milliseconds)
     return now + std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(milliseconds));
 }
 
-GoLimits parse_go(const std::vector<std::string>& tokens, Color side, std::uint64_t overhead) {
+GoLimits parse_go(const std::vector<std::string>& tokens, Position& position, std::uint64_t overhead) {
     GoLimits limits;
     limits.infinite = tokens.size() == 1;
+    const auto side = position.side_to_move();
+    bool searchmoves_seen = false;
     ClockControl clock;
     bool has_clock_parameters = false;
     std::optional<std::uint64_t> movetime;
     for (std::size_t index = 1; index < tokens.size(); ++index) {
         const auto& name = tokens[index];
+        if (name == "searchmoves") {
+            if (searchmoves_seen) throw std::invalid_argument("duplicate searchmoves parameter");
+            searchmoves_seen = true;
+            const auto legal = generate_legal_moves(position);
+            const std::vector<std::string> parameters = {"infinite", "depth", "nodes", "movetime", "wtime",
+                "btime", "winc", "binc", "movestogo", "searchmoves", "ponder", "mate"};
+            while (index + 1 < tokens.size() &&
+                std::find(parameters.begin(), parameters.end(), tokens[index + 1]) == parameters.end()) {
+                const auto& text = tokens[++index];
+                const auto found = std::find_if(legal.begin(), legal.end(), [&](const Move& move) {
+                    return move.to_uci() == text;
+                });
+                if (found == legal.end() || std::find(limits.root_moves.begin(), limits.root_moves.end(), *found) != limits.root_moves.end()) {
+                    throw std::invalid_argument("searchmoves requires unique legal root moves");
+                }
+                limits.root_moves.push_back(*found);
+            }
+            if (limits.root_moves.empty()) throw std::invalid_argument("searchmoves requires at least one move");
+            continue;
+        }
         if (name == "infinite") {
             limits.infinite = true;
             continue;
@@ -165,7 +188,7 @@ public:
                     history_ = std::move(next.history);
                 } else if (name == "go") {
                     stop_search();
-                    start_search(parse_go(tokens, position_.side_to_move(), move_overhead_));
+                    start_search(parse_go(tokens, position_, move_overhead_));
                 } else if (name == "setoption") {
                     set_option(tokens);
                 } else if (name == "ponderhit") {
@@ -236,7 +259,9 @@ private:
             try {
                 const SearchLimits search_limits{limits.nodes, limits.deadline,
                     [stop] { return stop.stop_requested(); }};
-                const auto result = iterative_search(root, limits.depth, SearchOptions{}, search_limits, &history);
+                SearchOptions options;
+                options.root_moves = limits.root_moves;
+                const auto result = iterative_search(root, limits.depth, options, search_limits, &history);
                 if (limits.infinite && !stop.stop_requested()) {
                     std::mutex wait_mutex;
                     std::unique_lock lock(wait_mutex);

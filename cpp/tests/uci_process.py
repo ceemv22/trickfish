@@ -157,11 +157,38 @@ class UciProcessTests(unittest.TestCase):
         self.assertIn(self.until("bestmove ").split()[1], WHITE_MOVES)
         self.assertTrue(any(line.startswith("info depth 0 nodes 0") for line in self.transcript))
 
-    def test_unsupported_go_parameter_is_explicit(self):
-        self.send("go searchmoves e2e4")
-        self.assertIn("unsupported go parameter: searchmoves", self.until("info string error:"))
+    def test_searchmoves_restricts_completed_search_and_fallback(self):
+        for command in ["go depth 2 searchmoves e2e4", "go searchmoves d2d4 e2e4 depth 1",
+            "go nodes 0 searchmoves e2e4"]:
+            self.send(command)
+            self.assertIn(self.until("bestmove ").split()[1], {"e2e4", "d2d4"} if "d2d4" in command else {"e2e4"})
+        self.send("position fen 4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
+        self.send("go searchmoves a7a8n depth 2")
+        self.assertEqual(self.until("bestmove "), "bestmove a7a8n")
+
+    def test_searchmoves_special_moves_and_infinite_stop(self):
+        for fen, move in [("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", "e5d6"),
+            ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "e1g1")]:
+            self.send("position fen " + fen)
+            self.send("go depth 1 searchmoves " + move)
+            self.assertEqual(self.until("bestmove "), "bestmove " + move)
+        self.send("position startpos")
+        self.send("go infinite searchmoves e2e4 depth 1")
         self.send("isready")
         self.until("readyok")
+        self.send("stop")
+        self.assertEqual(self.until("bestmove "), "bestmove e2e4")
+
+    def test_searchmoves_rejects_empty_duplicate_and_illegal_lists(self):
+        for command in ["go searchmoves", "go searchmoves depth 1", "go depth 1 searchmoves e2e5",
+            "go searchmoves e2e4 e2e4 depth 1", "go searchmoves e2e4 searchmoves d2d4 depth 1"]:
+            self.send(command)
+            self.until("info string error:")
+        self.send("isready")
+        self.until("readyok")
+        self.assertFalse(any(line.startswith("bestmove ") for line in self.transcript))
+        self.send("go depth 1 searchmoves e2e4")
+        self.assertEqual(self.until("bestmove "), "bestmove e2e4")
 
 if __name__ == "__main__":
     unittest.main()
