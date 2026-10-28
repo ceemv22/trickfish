@@ -234,8 +234,9 @@ private:
     void start_search(GoLimits limits) {
         worker_ = std::jthread([this, root = position_, history = history_, limits](std::stop_token stop) mutable {
             try {
-                const auto result = iterative_search(root, limits.depth, true, limits.nodes, limits.deadline,
-                    [stop] { return stop.stop_requested(); }, &history);
+                const SearchLimits search_limits{limits.nodes, limits.deadline,
+                    [stop] { return stop.stop_requested(); }};
+                const auto result = iterative_search(root, limits.depth, SearchOptions{}, search_limits, &history);
                 if (limits.infinite && !stop.stop_requested()) {
                     std::mutex wait_mutex;
                     std::unique_lock lock(wait_mutex);

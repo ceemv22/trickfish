@@ -29,6 +29,23 @@ struct SearchResult {
     std::uint64_t killer_moves_searched = 0;
 };
 
+struct SearchOptions {
+    bool use_table = true;
+    bool use_pvs = true;
+    bool use_killers = true;
+    int aspiration_window = 25;
+    MoveCountDrawPolicy draw_policy = MoveCountDrawPolicy::automatic_only;
+};
+
+struct SearchLimits {
+    std::optional<std::uint64_t> nodes;
+    std::optional<std::chrono::steady_clock::time_point> deadline;
+    std::function<bool()> stop_requested;
+};
+
+[[nodiscard]] SearchResult iterative_search(Position& position, int max_depth,
+    const SearchOptions& options, const SearchLimits& limits = {}, const RepetitionHistory* history = nullptr);
+
 [[nodiscard]] SearchResult search(Position& position, int depth, bool use_table = true, bool use_pvs = true, bool use_killers = true);
 [[nodiscard]] SearchResult iterative_search(Position& position, int max_depth, bool use_table = true,
     std::optional<std::uint64_t> node_limit = std::nullopt,

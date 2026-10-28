@@ -302,10 +302,22 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::optional<std::uint64_t> node_limit,
     std::optional<std::chrono::steady_clock::time_point> deadline,
     std::function<bool()> stop_requested, const RepetitionHistory* history, MoveCountDrawPolicy draw_policy, bool use_pvs, int aspiration_window, bool use_killers) {
+    SearchOptions options;
+    options.use_table = use_table;
+    options.use_pvs = use_pvs;
+    options.use_killers = use_killers;
+    options.aspiration_window = aspiration_window;
+    options.draw_policy = draw_policy;
+    const SearchLimits limits{node_limit, deadline, std::move(stop_requested)};
+    return iterative_search(position, max_depth, options, limits, history);
+}
+
+SearchResult iterative_search(Position& position, int max_depth, const SearchOptions& options,
+    const SearchLimits& limits, const RepetitionHistory* history) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
-    if (aspiration_window < 0 || aspiration_window > mate_score + 1) {
+    if (options.aspiration_window < 0 || options.aspiration_window > mate_score + 1) {
         throw std::invalid_argument("aspiration window must be between 0 and 100001");
     }
     std::optional<RepetitionHistory> active_history;
@@ -316,18 +328,18 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
         active_history.emplace(*history);
     }
     std::optional<TranspositionTable> table;
-    if (use_table && history == nullptr) {
+    if (options.use_table && history == nullptr) {
         table.emplace();
     }
-    SearchBudget budget{node_limit, deadline, stop_requested, active_history ? &*active_history : nullptr, draw_policy};
-    budget.use_killers = use_killers;
+    SearchBudget budget{limits.nodes, limits.deadline, limits.stop_requested, active_history ? &*active_history : nullptr, options.draw_policy};
+    budget.use_killers = options.use_killers;
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
         result.best_move = legal[0];
     }
     result.score = evaluate_for_side_to_move(position);
-    if (is_move_count_draw(position, draw_policy)) {
+    if (is_move_count_draw(position, options.draw_policy)) {
         result.score = 0;
         result.best_move.reset();
     }
@@ -335,13 +347,13 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
     std::uint64_t fail_high = 0;
     for (int depth = 1; depth <= max_depth; ++depth) {
         try {
-            int radius = aspiration_window;
+            int radius = options.aspiration_window;
             const int center = result.score;
             const bool narrow = depth > 1 && radius > 0 && std::abs(center) < mate_threshold;
             int alpha = narrow ? std::max(-mate_score - 1, center - radius) : -mate_score - 1;
             int beta = narrow ? std::min(mate_score + 1, center + radius) : mate_score + 1;
             while (true) {
-                auto candidate = search_impl(position, depth, table ? &*table : nullptr, &budget, use_pvs, alpha, beta);
+                auto candidate = search_impl(position, depth, table ? &*table : nullptr, &budget, options.use_pvs, alpha, beta);
                 if (candidate.score > alpha && candidate.score < beta) {
                     result = std::move(candidate);
                     break;

@@ -11,8 +11,11 @@ void require(bool condition, const char* message) {
 
 trickfish::SearchResult run(trickfish::Position& position, int depth, bool killers,
     const trickfish::RepetitionHistory* history = nullptr, std::optional<std::uint64_t> limit = std::nullopt) {
-    return trickfish::iterative_search(position, depth, true, limit, std::nullopt, {}, history,
-        trickfish::MoveCountDrawPolicy::automatic_only, true, 25, killers);
+    trickfish::SearchOptions options;
+    options.use_killers = killers;
+    trickfish::SearchLimits limits;
+    limits.nodes = limit;
+    return trickfish::iterative_search(position, depth, options, limits, history);
 }
 
 void verify_line(trickfish::Position position, const trickfish::SearchResult& result) {

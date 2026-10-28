@@ -68,8 +68,9 @@ int main() {
         }
         auto at_claim = trickfish::Position::from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 100 1");
         const auto auto_policy = trickfish::iterative_search(at_claim, 1);
-        const auto claim_policy = trickfish::iterative_search(at_claim, 1, true,
-            std::nullopt, std::nullopt, {}, nullptr, trickfish::MoveCountDrawPolicy::claim_fifty_moves);
+        trickfish::SearchOptions claim_options;
+        claim_options.draw_policy = trickfish::MoveCountDrawPolicy::claim_fifty_moves;
+        const auto claim_policy = trickfish::iterative_search(at_claim, 1, claim_options);
         if (auto_policy.score != 500 || claim_policy.score != 0 || claim_policy.best_move ||
             !claim_policy.principal_variation.empty()) {
             throw std::runtime_error("fifty-move claim incorrectly treated as automatic");

@@ -119,8 +119,9 @@ int main() {
             opening.to_fen() != opening_fen || opening.key() != opening_key) {
             throw std::runtime_error("interruption failed to restore root position");
         }
-        const auto expired = trickfish::iterative_search(opening, 4, true, std::nullopt,
-            std::chrono::steady_clock::now());
+        trickfish::SearchLimits expired_limits;
+        expired_limits.deadline = std::chrono::steady_clock::now();
+        const auto expired = trickfish::iterative_search(opening, 4, trickfish::SearchOptions{}, expired_limits);
         const auto future = trickfish::iterative_search(opening, 1, true, std::nullopt,
             std::chrono::steady_clock::time_point::max());
         if (!expired.stopped || expired.completed_depth != 0 || expired.nodes != 0 || !expired.best_move ||
