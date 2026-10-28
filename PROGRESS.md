@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **71.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **72.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -51,7 +51,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C19g | Targeted legal-recapture generation with full-generator exchange parity fixtures | 0.500 | Implemented |
 | C19i | Bounded exchange search with exhaustive reference parity and work counters | 0.500 | Implemented |
 | C19k | Optional exchange ordering with interruptible evaluation and reference parity | 0.750 | Implemented |
-| C19l | Continuation/correction history and further ordering work | 1.000 | Pending |
+| C19m | Bounded one-ply continuation history with context-aware quiet ordering and parity | 0.500 | Implemented |
+| C19n | Correction history and further ordering work | 0.500 | Pending |
 | C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
 | C20d | Null move, LMR, futility, razoring, and extensions | 6.500 | Pending |
@@ -66,7 +67,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Bounded-exchange commit `9305ef3` passed both OS jobs in [run 61](https://github.com/ceemv22/trickfish/actions/runs/40760498493), confirming configured checks at the 70.750-point implementation. Twelve tooling tests pass locally. New optional exchange-ordering C++ parity/cancellation and paired tactical process runs require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. Optional-exchange commit `e574793` passed both OS jobs in [run 62](https://github.com/ceemv22/trickfish/actions/runs/40761035064), confirming configured checks at the 71.500-point implementation. Twelve tooling tests pass locally. New continuation-ordering C++ parity/reuse/lifetime/interruption and paired process results require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -188,3 +189,7 @@ Before bounded exchange implementation, C19h was split into C19i (0.500) and C19
 Before optional exchange-ordering implementation, C19j was split into C19k (0.750) and C19l (1.000), preserving 1.750 points. C19k requires opt-in cached tactical exchange ordering, unchanged default behavior, cancellation during exchange work, legal-PV/score parity and comparative process reports. It does not require or imply a runtime speedup.
 
 - C19k implementation: +0.750 points, implemented scope 71.500%. SearchOptions::use_exchange_ordering defaults false. When enabled, main-search tactical move scores are computed once before sorting, using interruptible exchange evaluation; TT first and tactical-before-quiet policies remain, with exchange score ordering within tactical moves. Quiescence is unchanged and no moves are pruned. --search-see enables this mode; --compare-exchange records paired process results and requires equal scores/depths. SearchResult counts completed exchange evaluations and their states/cutoffs, separately from main-search nodes; interrupted exchange work is not included in those completed counters. Checkpoints inspect deadline/node exhaustion/stop requests without counting exchange states as search nodes. CTests cover enabled/default/history modes, legal PVs and interruption inside exchange work with root/history preservation. Twelve tooling tests pass locally; new C++ runtime awaits CI. This remains experimental and untuned because exhaustive legal exchange analysis may cost more than it saves.
+
+Before continuation implementation, C19l was split into C19m (0.500) and C19n (0.500), preserving 1.000 points. C19m requires a bounded full-key-checked one-ply quiet continuation table, selectable disabling, per-search lifetime, score/PV parity and interruption restoration.
+
+- C19m implementation: +0.500 points, implemented scope 72.000%. Added one-ply quiet continuation history conditioned on current side, previous moved piece type/destination and current moving type/destination. A lazy 16384-entry direct-mapped table checks full keys, resets collided entries on update, and uses bounded +/-16384 gravity rewards/penalties alongside quiet history. Previous context is passed through main search only; root and quiescence have none. Ordering priorities are preserved and history scores combined only for ties. State spans iterations/retries of one search and resets for a new search. SearchOptions::use_continuation disables it; --search-ab disables it, and benchmark metadata records the policies. CTests cover score/PV parity, disabled counters, update/reuse paths, repeatability and caller position/repetition-history restoration on interruption. Twelve tooling tests pass locally; new C++ runtime awaits CI. No tuning, speedup or strength gain is established.

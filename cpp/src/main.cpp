@@ -103,6 +103,7 @@ int main(int argc, char** argv) {
             trickfish::SearchOptions options;
             options.use_exchange_ordering = exchange_search;
             options.use_history = !reference_search;
+            options.use_continuation = !reference_search;
             options.use_pvs = !reference_search;
             options.use_killers = !reference_search;
             options.aspiration_window = reference_search ? 0 : 25;

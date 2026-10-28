@@ -14,6 +14,11 @@ namespace {
 
 struct SearchStopped {};
 
+struct ContinuationEntry {
+    std::uint32_t key = 0xffffffffU;
+    int score = 0;
+};
+
 struct SearchBudget {
     std::optional<std::uint64_t> limit;
     std::optional<std::chrono::steady_clock::time_point> deadline;
@@ -37,6 +42,10 @@ struct SearchBudget {
     std::uint64_t exchange_evaluations = 0;
     std::uint64_t exchange_nodes = 0;
     std::uint64_t exchange_cutoffs = 0;
+    bool use_continuation = true;
+    std::vector<ContinuationEntry> continuation;
+    std::uint64_t continuation_updates = 0;
+    std::uint64_t continuation_moves_searched = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -110,6 +119,44 @@ void update_history(const Position& position, const Move& move, SearchBudget* bu
     else ++budget->history_penalties;
 }
 
+std::optional<std::uint32_t> continuation_key(const Position& position, const Move& move,
+    const std::optional<Move>& previous) {
+    if (!previous || !is_quiet(position, move)) return std::nullopt;
+    const auto prior = position.piece_at(previous->to);
+    if (prior == '.') return std::nullopt;
+    const auto prior_type = static_cast<std::uint32_t>(piece_type_from_symbol(prior));
+    const auto current_type = static_cast<std::uint32_t>(piece_type_from_symbol(position.piece_at(move.from)));
+    return (static_cast<std::uint32_t>(position.side_to_move()) << 18) |
+        (prior_type << 15) | (static_cast<std::uint32_t>(previous->to) << 9) |
+        (current_type << 6) | move.to;
+}
+
+std::size_t continuation_slot(std::uint32_t key) {
+    return (key * 0x9e3779b9U) >> 18;
+}
+
+int continuation_priority(const Position& position, const Move& move, const SearchBudget* budget,
+    const std::optional<Move>& previous) {
+    if (budget == nullptr || !budget->use_continuation || budget->continuation.empty()) return 0;
+    const auto key = continuation_key(position, move, previous);
+    if (!key) return 0;
+    const auto& entry = budget->continuation[continuation_slot(*key)];
+    return entry.key == *key ? entry.score : 0;
+}
+
+void update_continuation(const Position& position, const Move& move, SearchBudget* budget,
+    const std::optional<Move>& previous, int bonus) {
+    if (budget == nullptr || !budget->use_continuation) return;
+    const auto key = continuation_key(position, move, previous);
+    if (!key) return;
+    if (budget->continuation.empty()) budget->continuation.resize(16384);
+    auto& entry = budget->continuation[continuation_slot(*key)];
+    if (entry.key != *key) entry = {*key, 0};
+    entry.score += bonus - entry.score * std::abs(bonus) / 16384;
+    entry.score = std::clamp(entry.score, -16384, 16384);
+    ++budget->continuation_updates;
+}
+
 int killer_priority(const Position& position, const Move& move, const SearchBudget* budget, int ply) {
     if (budget == nullptr || !budget->use_killers || ply < 0 || ply >= 64 || !is_quiet(position, move)) return 0;
     const auto& slots = budget->killers[static_cast<std::size_t>(ply)];
@@ -144,7 +191,7 @@ int move_priority(const Position& position, const Move& move) {
 }
 
 void order_moves(const Position& position, MoveList& moves, std::optional<Move> preferred = std::nullopt,
-    SearchBudget* budget = nullptr, int ply = 0) {
+    SearchBudget* budget = nullptr, int ply = 0, std::optional<Move> previous = std::nullopt) {
     if (budget != nullptr && budget->use_exchange_ordering) {
         struct RankedMove { Move move; int exchange = 0; bool tactical = false; };
         std::array<RankedMove, MoveList::capacity> ranked{};
@@ -160,15 +207,15 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
             }
         }
         std::sort(ranked.begin(), ranked.begin() + moves.size(),
-            [&position, preferred, budget, ply](const RankedMove& left, const RankedMove& right) {
+            [&position, preferred, budget, ply, previous](const RankedMove& left, const RankedMove& right) {
                 if ((left.move == preferred) != (right.move == preferred)) return left.move == preferred;
                 if (left.tactical != right.tactical) return left.tactical;
                 if (left.tactical && left.exchange != right.exchange) return left.exchange > right.exchange;
                 const int left_priority = move_priority(position, left.move) + killer_priority(position, left.move, budget, ply);
                 const int right_priority = move_priority(position, right.move) + killer_priority(position, right.move, budget, ply);
                 if (left_priority != right_priority) return left_priority > right_priority;
-                const int left_history = history_priority(position, left.move, budget);
-                const int right_history = history_priority(position, right.move, budget);
+                const int left_history = history_priority(position, left.move, budget) + continuation_priority(position, left.move, budget, previous);
+                const int right_history = history_priority(position, right.move, budget) + continuation_priority(position, right.move, budget, previous);
                 if (left_history != right_history) return left_history > right_history;
                 if (left.move.from != right.move.from) return left.move.from < right.move.from;
                 if (left.move.to != right.move.to) return left.move.to < right.move.to;
@@ -177,15 +224,15 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
         for (std::size_t index = 0; index < moves.size(); ++index) moves[index] = ranked[index].move;
         return;
     }
-    std::sort(moves.begin(), moves.end(), [&position, preferred, budget, ply](const Move& left, const Move& right) {
+    std::sort(moves.begin(), moves.end(), [&position, preferred, budget, ply, previous](const Move& left, const Move& right) {
         if ((left == preferred) != (right == preferred)) return left == preferred;
         const auto left_priority = move_priority(position, left) + killer_priority(position, left, budget, ply);
         const auto right_priority = move_priority(position, right) + killer_priority(position, right, budget, ply);
         if (left_priority != right_priority) {
             return left_priority > right_priority;
         }
-        const auto left_history = history_priority(position, left, budget);
-        const auto right_history = history_priority(position, right, budget);
+        const auto left_history = history_priority(position, left, budget) + continuation_priority(position, left, budget, previous);
+        const auto right_history = history_priority(position, right, budget) + continuation_priority(position, right, budget, previous);
         if (left_history != right_history) return left_history > right_history;
         if (left.from != right.from) return left.from < right.from;
         if (left.to != right.to) return left.to < right.to;
@@ -242,7 +289,7 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
 }
 
 int negamax(Position& position, int depth, int ply, int alpha, int beta,
-    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget, bool use_pvs) {
+    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget, bool use_pvs, std::optional<Move> previous) {
     if (depth == 0) {
         return quiescence(position, ply, 0, alpha, beta, nodes, budget);
     }
@@ -279,13 +326,14 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             }
         }
     }
-    order_moves(position, moves, preferred, budget, ply);
+    order_moves(position, moves, preferred, budget, ply, previous);
     int best = -mate_score - 1;
     std::optional<Move> selected;
     MoveList searched_quiets;
     for (const auto& move : moves) {
         if (killer_priority(position, move, budget, ply) != 0) ++budget->killer_moves_searched;
         if (history_priority(position, move, budget) != 0) ++budget->history_moves_searched;
+        if (continuation_priority(position, move, budget, previous) != 0) ++budget->continuation_moves_searched;
         std::vector<Move> child_pv;
         int score = 0;
         {
@@ -293,16 +341,16 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             if (use_pvs && selected && beta > alpha + 1) {
                 ++budget->pvs_probes;
                 score = -negamax(position, depth - 1, ply + 1, -alpha - 1, -alpha,
-                    nodes, hits, table, nullptr, child_pv, budget, use_pvs);
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move);
                 if (score > alpha && score < beta) {
                     ++budget->pvs_researches;
                     child_pv.clear();
                     score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
-                        nodes, hits, table, nullptr, child_pv, budget, use_pvs);
+                        nodes, hits, table, nullptr, child_pv, budget, use_pvs, move);
                 }
             } else {
                 score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
-                    nodes, hits, table, nullptr, child_pv, budget, use_pvs);
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move);
             }
         }
         if (score > best) {
@@ -321,7 +369,11 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             if (is_quiet(position, move)) {
                 const int bonus = std::min(512, depth * depth);
                 update_history(position, move, budget, bonus);
-                for (const auto& quiet : searched_quiets) update_history(position, quiet, budget, -bonus);
+                update_continuation(position, move, budget, previous, bonus);
+                for (const auto& quiet : searched_quiets) {
+                    update_history(position, quiet, budget, -bonus);
+                    update_continuation(position, quiet, budget, previous, -bonus);
+                }
             }
             break;
         }
@@ -346,7 +398,7 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     if (budget == nullptr) budget = &local_budget;
     SearchResult result;
     result.score = negamax(position, depth, 0, alpha, beta,
-        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget, use_pvs);
+        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget, use_pvs, std::nullopt);
     result.completed_depth = depth;
     result.pvs_probes = budget->pvs_probes;
     result.pvs_researches = budget->pvs_researches;
@@ -355,6 +407,8 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     result.history_rewards = budget->history_rewards;
     result.history_penalties = budget->history_penalties;
     result.history_moves_searched = budget->history_moves_searched;
+    result.continuation_updates = budget->continuation_updates;
+    result.continuation_moves_searched = budget->continuation_moves_searched;
     return result;
 }
 
@@ -407,6 +461,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_killers = options.use_killers;
     budget.use_history = options.use_history;
     budget.use_exchange_ordering = options.use_exchange_ordering;
+    budget.use_continuation = options.use_continuation;
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
@@ -460,6 +515,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.exchange_evaluations = budget.exchange_evaluations;
     result.exchange_nodes = budget.exchange_nodes;
     result.exchange_cutoffs = budget.exchange_cutoffs;
+    result.continuation_updates = budget.continuation_updates;
+    result.continuation_moves_searched = budget.continuation_moves_searched;
     return result;
 }
 

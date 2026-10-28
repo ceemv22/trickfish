@@ -185,6 +185,7 @@ def main():
             "aspiration_window": 25, "reference_aspiration_window": 0,
             "killer_moves": True, "reference_killer_moves": False,
             "quiet_history": True, "reference_quiet_history": False,
+            "continuation_history": True, "reference_continuation_history": False,
             "exchange_ordering": False, "compare_exchange": args.compare_exchange,
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
