@@ -61,11 +61,12 @@ int main(int argc, char** argv) {
         }
         const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
         const bool timed_search = argc > 1 && std::string_view(argv[1]) == "--search-time";
+        const bool exchange_search = argc > 1 && std::string_view(argv[1]) == "--search-see";
         const bool reference_search = argc > 1 && std::string_view(argv[1]) == "--search-ab";
         const bool budgeted_search = limited_search || timed_search;
-        if (argc > 1 && (std::string_view(argv[1]) == "--search" || reference_search || budgeted_search)) {
+        if (argc > 1 && (std::string_view(argv[1]) == "--search" || exchange_search || reference_search || budgeted_search)) {
             if (argc < (budgeted_search ? 4 : 3) || argc > (budgeted_search ? 5 : 4)) {
-                throw std::invalid_argument("usage: --search|--search-ab depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
+                throw std::invalid_argument("usage: --search|--search-ab|--search-see depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
             }
             int depth = 0;
             const std::string_view text(argv[2]);
@@ -100,6 +101,7 @@ int main(int argc, char** argv) {
             const int fen_index = budgeted_search ? 4 : 3;
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
             trickfish::SearchOptions options;
+            options.use_exchange_ordering = exchange_search;
             options.use_history = !reference_search;
             options.use_pvs = !reference_search;
             options.use_killers = !reference_search;

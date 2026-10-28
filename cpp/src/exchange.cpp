@@ -54,7 +54,8 @@ MoveList legal_recaptures(Position& position, std::uint8_t target) {
 }
 
 int recapture_gain(const Position& position, std::uint8_t target, bool targeted,
-    int alpha, int beta, ExchangeResult& result) {
+    int alpha, int beta, ExchangeResult& result, const std::function<void()>& checkpoint) {
+    if (checkpoint) checkpoint();
     ++result.nodes;
     if (targeted && beta <= 0) {
         ++result.cutoffs;
@@ -75,7 +76,7 @@ int recapture_gain(const Position& position, std::uint8_t target, bool targeted,
         const auto undo = child.make_move(move);
         static_cast<void>(undo);
         best = std::max(best, gain - recapture_gain(child, target, targeted,
-            gain - beta, gain - alpha, result));
+            gain - beta, gain - alpha, result, checkpoint));
         if (targeted && best >= beta) {
             ++result.cutoffs;
             break;
@@ -85,7 +86,9 @@ int recapture_gain(const Position& position, std::uint8_t target, bool targeted,
     return best;
 }
 
-ExchangeResult exchange_impl(const Position& position, const Move& move, bool targeted) {
+ExchangeResult exchange_impl(const Position& position, const Move& move, bool targeted,
+    const std::function<void()>& checkpoint) {
+    if (checkpoint) checkpoint();
     auto current = position;
     const auto legal = generate_legal_moves(current);
     if (std::find(legal.begin(), legal.end(), move) == legal.end()) {
@@ -98,14 +101,15 @@ ExchangeResult exchange_impl(const Position& position, const Move& move, bool ta
     const auto undo = current.make_move(move);
     static_cast<void>(undo);
     ExchangeResult result;
-    result.score = gain - recapture_gain(current, move.to, targeted, -1000000, 1000000, result);
+    result.score = gain - recapture_gain(current, move.to, targeted, -1000000, 1000000, result, checkpoint);
     return result;
 }
 
 }
 
-ExchangeResult analyze_exchange(const Position& position, const Move& move, bool reference) {
-    return exchange_impl(position, move, !reference);
+ExchangeResult analyze_exchange(const Position& position, const Move& move, bool reference,
+    const std::function<void()>& checkpoint) {
+    return exchange_impl(position, move, !reference, checkpoint);
 }
 
 int static_exchange_reference(const Position& position, const Move& move) {

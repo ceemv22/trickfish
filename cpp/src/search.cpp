@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "trickfish/evaluation.hpp"
+#include "trickfish/exchange.hpp"
 #include "trickfish/movegen.hpp"
 
 namespace trickfish {
@@ -32,6 +33,10 @@ struct SearchBudget {
     std::uint64_t history_rewards = 0;
     std::uint64_t history_penalties = 0;
     std::uint64_t history_moves_searched = 0;
+    bool use_exchange_ordering = false;
+    std::uint64_t exchange_evaluations = 0;
+    std::uint64_t exchange_nodes = 0;
+    std::uint64_t exchange_cutoffs = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -49,15 +54,17 @@ bool is_repetition(const SearchBudget* budget) {
     return budget != nullptr && budget->history != nullptr && budget->history->can_claim_threefold_repetition();
 }
 
-void visit(std::uint64_t& nodes, SearchBudget* budget) {
-    if (budget != nullptr) {
-        if ((budget->limit && budget->nodes >= *budget->limit) ||
-            (budget->deadline && std::chrono::steady_clock::now() >= *budget->deadline) ||
-            (budget->stop_requested && budget->stop_requested())) {
-            throw SearchStopped{};
-        }
-        ++budget->nodes;
+void check_stop(SearchBudget* budget) {
+    if (budget != nullptr && ((budget->limit && budget->nodes >= *budget->limit) ||
+        (budget->deadline && std::chrono::steady_clock::now() >= *budget->deadline) ||
+        (budget->stop_requested && budget->stop_requested()))) {
+        throw SearchStopped{};
     }
+}
+
+void visit(std::uint64_t& nodes, SearchBudget* budget) {
+    check_stop(budget);
+    if (budget != nullptr) ++budget->nodes;
     ++nodes;
 }
 
@@ -137,7 +144,39 @@ int move_priority(const Position& position, const Move& move) {
 }
 
 void order_moves(const Position& position, MoveList& moves, std::optional<Move> preferred = std::nullopt,
-    const SearchBudget* budget = nullptr, int ply = 0) {
+    SearchBudget* budget = nullptr, int ply = 0) {
+    if (budget != nullptr && budget->use_exchange_ordering) {
+        struct RankedMove { Move move; int exchange = 0; bool tactical = false; };
+        std::array<RankedMove, MoveList::capacity> ranked{};
+        for (std::size_t index = 0; index < moves.size(); ++index) {
+            const auto& move = moves[index];
+            ranked[index] = {move, 0, !is_quiet(position, move)};
+            if (ranked[index].tactical) {
+                const auto exchange = analyze_exchange(position, move, false, [budget] { check_stop(budget); });
+                ranked[index].exchange = exchange.score;
+                ++budget->exchange_evaluations;
+                budget->exchange_nodes += exchange.nodes;
+                budget->exchange_cutoffs += exchange.cutoffs;
+            }
+        }
+        std::sort(ranked.begin(), ranked.begin() + moves.size(),
+            [&position, preferred, budget, ply](const RankedMove& left, const RankedMove& right) {
+                if ((left.move == preferred) != (right.move == preferred)) return left.move == preferred;
+                if (left.tactical != right.tactical) return left.tactical;
+                if (left.tactical && left.exchange != right.exchange) return left.exchange > right.exchange;
+                const int left_priority = move_priority(position, left.move) + killer_priority(position, left.move, budget, ply);
+                const int right_priority = move_priority(position, right.move) + killer_priority(position, right.move, budget, ply);
+                if (left_priority != right_priority) return left_priority > right_priority;
+                const int left_history = history_priority(position, left.move, budget);
+                const int right_history = history_priority(position, right.move, budget);
+                if (left_history != right_history) return left_history > right_history;
+                if (left.move.from != right.move.from) return left.move.from < right.move.from;
+                if (left.move.to != right.move.to) return left.move.to < right.move.to;
+                return left.move.promotion < right.move.promotion;
+            });
+        for (std::size_t index = 0; index < moves.size(); ++index) moves[index] = ranked[index].move;
+        return;
+    }
     std::sort(moves.begin(), moves.end(), [&position, preferred, budget, ply](const Move& left, const Move& right) {
         if ((left == preferred) != (right == preferred)) return left == preferred;
         const auto left_priority = move_priority(position, left) + killer_priority(position, left, budget, ply);
@@ -367,6 +406,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     SearchBudget budget{limits.nodes, limits.deadline, limits.stop_requested, active_history ? &*active_history : nullptr, options.draw_policy};
     budget.use_killers = options.use_killers;
     budget.use_history = options.use_history;
+    budget.use_exchange_ordering = options.use_exchange_ordering;
     SearchResult result;
     const auto legal = generate_legal_moves(position);
     if (!legal.empty()) {
@@ -417,6 +457,9 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.history_rewards = budget.history_rewards;
     result.history_penalties = budget.history_penalties;
     result.history_moves_searched = budget.history_moves_searched;
+    result.exchange_evaluations = budget.exchange_evaluations;
+    result.exchange_nodes = budget.exchange_nodes;
+    result.exchange_cutoffs = budget.exchange_cutoffs;
     return result;
 }
 

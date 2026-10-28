@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "trickfish/position.hpp"
 
 namespace trickfish {
@@ -10,7 +12,8 @@ struct ExchangeResult {
     std::uint64_t cutoffs = 0;
 };
 
-[[nodiscard]] ExchangeResult analyze_exchange(const Position& position, const Move& move, bool reference = false);
+[[nodiscard]] ExchangeResult analyze_exchange(const Position& position, const Move& move, bool reference = false,
+    const std::function<void()>& checkpoint = {});
 
 [[nodiscard]] int static_exchange_reference(const Position& position, const Move& move);
 

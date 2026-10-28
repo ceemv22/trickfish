@@ -82,6 +82,12 @@ class BenchmarkTest(unittest.TestCase):
             with self.subTest(expect=expect), self.assertRaises(ValueError):
                 benchmark.validate_objective({"id": "invalid", "fen": FEN, "expect": expect})
 
+    def test_exchange_runner_selects_opt_in_cli(self):
+        process = subprocess.CompletedProcess([], 0, OUTPUT)
+        with patch.object(benchmark.subprocess, "run", return_value=process) as execute:
+            benchmark.run_case(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, 2, 10, use_exchange=True)
+            self.assertEqual(execute.call_args.args[0][1], "--search-see")
+
     def test_suite_rejects_duplicates_and_checked_nonmoving_king(self):
         path = Mock()
         case = {"id": "capture", "fen": FEN}
