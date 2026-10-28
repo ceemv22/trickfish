@@ -21,6 +21,19 @@ int main(int argc, char** argv) {
         if (argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--uci")) {
             return trickfish::run_uci(std::cin, std::cout);
         }
+        if (argc > 1 && std::string_view(argv[1]) == "--eval-detail") {
+            if (argc > 3) throw std::invalid_argument("usage: --eval-detail [fen]");
+            auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
+            const auto detail = trickfish::evaluate_breakdown(position);
+            std::cout << "phase " << detail.phase << '\n';
+            std::cout << "material " << detail.material << '\n';
+            std::cout << "pawn_structure " << detail.pawn_structure << '\n';
+            std::cout << "bishop_pair " << detail.bishop_pair << '\n';
+            std::cout << "rook_files " << detail.rook_files << '\n';
+            std::cout << "static_total " << detail.total() << '\n';
+            std::cout << "evaluation " << trickfish::evaluate(position) << '\n';
+            return 0;
+        }
         const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
         const bool timed_search = argc > 1 && std::string_view(argv[1]) == "--search-time";
         const bool budgeted_search = limited_search || timed_search;

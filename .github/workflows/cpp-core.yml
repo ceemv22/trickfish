@@ -186,9 +186,9 @@ jobs:
             @{ Fen = "8/8/8/8/8/6k1/6q1/7K w - - 0 1"; White = "-100000"; Side = "-100000" },
             @{ Fen = "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"; White = "0"; Side = "0" },
             @{ Fen = "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1"; White = "0"; Side = "0" },
-            @{ Fen = "4k3/8/8/8/8/8/P7/4K3 w - - 0 1"; White = "100"; Side = "100" },
-            @{ Fen = "4k3/8/8/8/8/8/P7/4K3 b - - 0 1"; White = "100"; Side = "-100" },
-            @{ Fen = "4k3/8/8/8/8/8/p7/4K3 b - - 0 1"; White = "-100"; Side = "100" }
+            @{ Fen = "4k3/8/8/8/8/8/P7/4K3 w - - 0 1"; White = "96"; Side = "96" },
+            @{ Fen = "4k3/8/8/8/8/8/P7/4K3 b - - 0 1"; White = "96"; Side = "-96" },
+            @{ Fen = "4k3/8/8/8/8/8/p7/4K3 b - - 0 1"; White = "-146"; Side = "146" }
           )
           foreach ($case in $cases) {
             $white = & $binary --eval $case.Fen
@@ -207,3 +207,10 @@ jobs:
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           python cpp/tests/uci_process.py $binary
           if ($LASTEXITCODE -ne 0) { throw "Interactive UCI checks failed" }
+      - name: Verify C++ evaluation terms against Python reference
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/tests/evaluation_parity.py $binary
+          if ($LASTEXITCODE -ne 0) { throw "C++/Python evaluation term parity failed" }

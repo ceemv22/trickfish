@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **52.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **55.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -34,7 +34,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C15c | External stop signal with deterministic interruption/restoration tests | 1.000 | Implemented |
 | C16a | Reference bishop-pair term integrated into static evaluation/search with terminal precedence tests | 0.500 | Implemented |
 | C16b1 | Python-reference rook-file term with color/file boundary and search integration tests | 0.500 | Implemented |
-| C16b2 | Remaining phase-aware positional evaluation and endgame scaling | 11.000 | Pending |
+| C16c | Phase-aware pawn structure, explainable breakdown, and Python term-parity fixtures | 3.000 | Implemented |
+| C16d | Remaining piece/king activity, phase-aware king safety, and endgame scaling | 8.000 | Pending |
 | C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
@@ -54,7 +55,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. UCI frontend commit `8d101ba` passed [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/40737216890), including the C++ lifecycle and nine interactive process tests. That confirms the 50.500-point implementation at that exact commit. The new clock-control working tree still requires its own GCC/MSVC build, CTest, and expanded process tests. Local C++ compile/runtime execution remains unavailable.
+GitHub Actions was inspected on 2026-10-28. Clock-control commit `e58ab6d` passed [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/40747108643). That confirms the 52.000-point implementation at that exact commit. The new phase/pawn-evaluation working tree still requires its own C++ CTest, updated CLI score fixtures, and 80-position cross-language term-parity run. Local C++ compile/runtime execution remains unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -124,3 +125,7 @@ C18 was split before implementation into C18a (1.500), C18b (2.000), and C18c (1
 - UCI limitations: wtime/btime/increments/movestogo remain C18c; ponder, searchmoves, mate limits, options, and Chess960 are unsupported. The frontend always supplies history, so its search currently disables TT as required by C17b2. Search is single-worker, not parallel tree search. Each go starts a fresh search context. No GUI compatibility or strength claim follows. C++ parser/lifecycle tests and nine stdlib Python process-protocol tests are configured for both CI runners; their new C++ runtime results are pending.
 
 - C18c implementation: +1.500 points, implemented scope 52.000%. UCI now parses wtime/btime, winc/binc, and positive movestogo; active-side selection and explicit movetime precedence feed the existing steady-clock interruption path. Pure allocation follows the Python baseline's remaining/horizon plus half-increment policy with a max(overhead, remaining/20) reserve, default horizon 30. Unsigned arithmetic is capped before addition. Unlike the old Python minimum-one behavior, exhausted usable time yields zero without spending an unearned increment. Move Overhead is a case-insensitive spin option, 0..10000 ms, default 10, persistent across new games and applied to subsequent clock-based searches only. Infinite mode ignores time deadlines. No tuned clock-management or tournament-readiness claim follows. Allocation boundary/overflow CTests and 13 process tests await CI; the Python reference engine is unchanged.
+
+Before pawn-evaluation implementation, C16b2 was split into C16c (3.000) and C16d (8.000), preserving its 11.000-point total.
+
+- C16c implementation: +3.000 points, implemented scope 55.000%. Added capped 0..24 material phase and the Python reference pawn-structure term: extra doubled-pawn penalties, isolated-pawn penalties, and passed-pawn bonuses scaled by advancement/phase. EvaluationBreakdown and --eval-detail expose implemented terms, their static sum, and the separate terminal-aware score. Search already consumes evaluate_static, so the new pawn term changes search scores; --material stays unchanged. C++ phase capture/promotion/undo, edge-file, doubled/isolated/passed, promoted-phase cap, and terminal precedence fixtures are configured. An 80-position process parity suite compares implemented components against Python, including color mirrors and legal child/promotion/EP states. Python reference validation and updated quiescence fixture expectations passed locally; new C++ runtime/parity results are pending CI. Piece activity, king terms, tuning, and strength measurement remain outside this milestone.

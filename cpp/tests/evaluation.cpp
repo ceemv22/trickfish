@@ -30,15 +30,47 @@ void verify_rook_files(std::string_view fen, int rook_files, int expected) {
     }
 }
 
+void verify_pawns(std::string_view fen, int phase, int pawns, int total, int final_score) {
+    auto position = trickfish::Position::from_fen(fen);
+    const auto key = position.key();
+    const auto detail = trickfish::evaluate_breakdown(position);
+    if (trickfish::game_phase(position) != phase || detail.phase != phase ||
+        trickfish::evaluate_pawn_structure(position) != pawns || detail.pawn_structure != pawns ||
+        detail.total() != total || trickfish::evaluate_static(position) != total ||
+        trickfish::evaluate(position) != final_score || position.to_fen() != fen || position.key() != key) {
+        throw std::runtime_error("phase/pawn breakdown or terminal precedence mismatch");
+    }
+}
+
 int main() {
     try {
-        verify_rook_files("4k3/8/8/8/8/8/1P6/R3K3 w - - 0 1", 20, 620);
+        verify_pawns("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 24, 0, 0, 0);
+        verify_pawns("4k3/8/8/8/8/8/P7/4K3 w - - 0 1", 0, -4, 96, 96);
+        verify_pawns("4k3/8/8/P7/8/8/8/4K3 w - - 0 1", 0, 26, 126, 126);
+        verify_pawns("4k3/8/8/8/8/8/PP6/4K3 w - - 0 1", 0, 16, 216, 216);
+        verify_pawns("4k3/8/8/8/8/P7/P7/4K3 w - - 0 1", 0, -13, 187, 187);
+        verify_pawns("4k3/p7/8/8/8/8/P7/4K3 w - - 0 1", 0, 0, 0, 0);
+        verify_pawns("4k3/8/1p6/8/P7/8/8/4K3 w - - 0 1", 0, 0, 0, 0);
+        verify_pawns("4k3/8/8/P7/8/1p6/8/4K3 w - - 0 1", 0, -10, -10, -10);
+        verify_pawns("4k3/8/8/P7/8/8/8/1Q2K3 w - - 0 1", 4, 25, 1025, 1025);
+        verify_pawns("3qk3/8/8/P7/8/8/8/3QK3 w - - 0 1", 8, 24, 124, 124);
+        verify_pawns("rnbqkbnr/pppppppp/8/8/8/8/QQPPPPPP/RNBQKBNR w KQkq - 0 1", 24, -8, 1592, 1592);
+        verify_pawns("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", 0, 10, 10, 10);
+        verify_pawns("4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1", 0, -10, -10, -10);
+        verify_pawns("4k3/8/8/8/8/8/1P6/R3K3 w - - 0 1", 2, -4, 616, 616);
+        verify_pawns("4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1", 2, 0, 690, 690);
+        verify_pawns("4k3/8/8/8/8/8/8/2B1K3 w - - 0 1", 1, 0, 330, 0);
+        verify_pawns("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1", 4, 0, 900, 100000);
+        verify_pawns("8/8/8/8/8/6k1/6q1/7K w - - 0 1", 4, 0, -900, -100000);
+        verify_pawns("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", 4, 0, 900, 0);
+
+        verify_rook_files("4k3/8/8/8/8/8/1P6/R3K3 w - - 0 1", 20, 616);
         verify_rook_files("4k3/p7/8/8/8/8/1P6/R3K3 w - - 0 1", 10, 510);
         verify_rook_files("4k3/p7/8/8/8/8/P7/R3K3 w - - 0 1", 0, 500);
-        verify_rook_files("4k3/8/8/8/8/8/P7/R3K3 w - - 0 1", 10, 610);
-        verify_rook_files("r3k3/1p6/8/8/8/8/8/4K3 w - - 0 1", -20, -620);
+        verify_rook_files("4k3/8/8/8/8/8/P7/R3K3 w - - 0 1", 10, 606);
+        verify_rook_files("r3k3/1p6/8/8/8/8/8/4K3 w - - 0 1", -20, -616);
         verify_rook_files("r3k3/1p6/8/8/8/8/1P6/R3K3 w - - 0 1", 0, 0);
-        verify_rook_files("4k3/8/8/8/8/R7/1P6/R3K3 w - - 0 1", 40, 1140);
+        verify_rook_files("4k3/8/8/8/8/R7/1P6/R3K3 w - - 0 1", 40, 1136);
         verify_rook_files("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 0, 500);
 
         verify("4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1", 660, 30, 690);
@@ -54,8 +86,29 @@ int main() {
         }
         auto rook_position = trickfish::Position::from_fen("4k3/8/8/8/8/8/1P6/R3K3 w - - 0 1");
         const auto rook_search = trickfish::search(rook_position, 1);
-        if (rook_search.score != 620 || !rook_search.best_move) {
+        if (rook_search.score != 635 || !rook_search.best_move) {
             throw std::runtime_error("search did not use rook-file term");
+        }
+        auto promotion = trickfish::Position::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");
+        const auto promotion_fen = promotion.to_fen();
+        const auto promotion_key = promotion.key();
+        const trickfish::Move promote(8, 0, 'q');
+        const auto undo = promotion.make_move(promote);
+        if (trickfish::game_phase(promotion) != 4) throw std::runtime_error("promotion did not update phase");
+        promotion.unmake_move(promote, undo);
+        if (trickfish::game_phase(promotion) != 0 || promotion.to_fen() != promotion_fen || promotion.key() != promotion_key) {
+            throw std::runtime_error("promotion undo failed to restore phase/state");
+        }
+        auto capture_phase = trickfish::Position::from_fen("4k3/8/8/8/8/8/q7/R3K3 w - - 0 1");
+        const auto capture_fen = capture_phase.to_fen();
+        const auto capture_key = capture_phase.key();
+        if (trickfish::game_phase(capture_phase) != 6) throw std::runtime_error("pre-capture phase mismatch");
+        const trickfish::Move capture(56, 48);
+        const auto capture_undo = capture_phase.make_move(capture);
+        if (trickfish::game_phase(capture_phase) != 2) throw std::runtime_error("capture did not update phase");
+        capture_phase.unmake_move(capture, capture_undo);
+        if (trickfish::game_phase(capture_phase) != 6 || capture_phase.to_fen() != capture_fen || capture_phase.key() != capture_key) {
+            throw std::runtime_error("capture undo failed to restore phase/state");
         }
         return 0;
     } catch (const std::exception& error) {

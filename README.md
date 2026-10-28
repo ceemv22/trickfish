@@ -8,7 +8,7 @@ Trickfish is a chess-engine research project with a Python reference engine and 
 
 ## Current implementation
 
-Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, material, bishop-pair, and rook-file terms, and an initial search implementation with a basic asynchronous UCI frontend. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
+Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, material, bishop-pair, rook-file, and phase-aware pawn-structure terms, and an initial search implementation with a basic asynchronous UCI frontend. The two evaluators are not equivalent. No playing-strength or Elo claim has been established.
 
 ### Python reference engine
 
@@ -45,18 +45,26 @@ Python provides the reference rules, positional evaluation, search, and a clock-
 | Attacks | Compile-time pawn/knight/king tables, blocker-aware sliding attacks, aggregate attack maps, and targeted king check detection |
 | Position key | Incremental deterministic 64-bit Zobrist key with undo restoration; only legal en passant availability is hashed |
 | Game state | Check, checkmate, stalemate, and conservative insufficient-material detection |
-| Evaluation | White-positive material plus reference bishop-pair and rook-file terms, mate/stalemate/insufficient-material handling, and side-to-move score conversion |
+| Evaluation | White-positive material plus reference bishop-pair, rook-file, and phase-aware pawn-structure terms, mate/stalemate/insufficient-material handling, and side-to-move score conversion |
 | Search | Negamax, alpha-beta, mate-distance scores, capture/promotion ordering, quiescence, bounded TT, and iterative deepening |
 | TT | Full-key checks, depth-qualified exact/lower/upper bounds, mate-score normalization, and preferred-move ordering |
 | Output | Best root move, legal main-search PV, side-to-move score, completed depth, and accumulated node count |
 | Perft | Recursive node count and root divide |
 | UCI | Handshake/readiness, startpos/FEN with legal moves and history, asynchronous depth/node/movetime/remaining-clock search, stop, new game, quit, and EOF |
 
-The C++ UCI frontend has a baseline remaining-clock allocator and Move Overhead option; ponder, configurable Hash/Threads, and Chess960 remain unsupported. Phase-aware positional evaluation and advanced pruning remain pending. Both implementations include en passant in the key only when a legal capture exists. A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Diagnostic --search calls without a history retain TT/no-repetition behavior. The UCI frontend supplies the complete move list history and therefore uses history-aware search with TT disabled. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
+The C++ UCI frontend has a baseline remaining-clock allocator and Move Overhead option; ponder, configurable Hash/Threads, and Chess960 remain unsupported. Piece activity, king evaluation terms, and advanced pruning remain pending; only pawn-structure bonuses currently use material phase. Both implementations include en passant in the key only when a legal capture exists. A separate C++ repetition-key history container supports push/pop and current-position occurrence counts; iterative search optionally accepts this history. It validates the root key, uses a local copy, and scores three occurrences as zero under an always-claim policy. Main and quiescence moves update the copy with safe unwind. This mode disables TT because scores depend on the played history. Diagnostic --search calls without a history retain TT/no-repetition behavior. The UCI frontend supplies the complete move list history and therefore uses history-aware search with TT disabled. A standalone FEN cannot reconstruct played-game history. Their deterministic key tables differ, so numeric Python/C++ key equality is not an acceptance criterion.
 
 Quiescence searches captures, en passant, and promotions. In check it searches all legal evasions and disables stand-pat. It is capped at 32 quiescence plies; after checking terminal states, the cap returns static evaluation even if the position is still in check. This is a safety truncation, not a guarantee of tactical completeness. Main search accepts depths 1 through 64. TT entries are used by main search, not quiescence.
 
 `--search` runs depths successively with a shared TT and reports the last completed depth. It stops terminal roots after the first iteration. The reported PV covers selected main-search moves, excludes quiescence continuations, and may truncate at TT cutoffs or terminal/draw states. It is not guaranteed to reach the reported depth. `--search-time` accepts a depth and a non-negative millisecond budget using a steady-clock deadline. Deadline checks occur before main/quiescence node visits; setup and individual node operations can overrun the budget. The iterative-search API also accepts a stop predicate. It runs synchronously before node visits; a true result preserves the same completed-iteration fallback. Callers must synchronize any predicate state changed from another thread. The diagnostic CLI remains a one-shot command; the UCI frontend maps its stop command to the search stop predicate. `--search-nodes` caps main/quiescence node visits across all iterations. On node-budget or deadline exhaustion it restores position state and returns the last completed iteration; before depth one completes it returns a legal fallback with depth 0, an empty PV, and `stopped true`. Root fallback preparation is outside the node budget. `--divide` prints the node count under each legal root move and the total.
+
+### Evaluation detail and parity
+
+`--eval-detail [fen]` reports `phase`, `material`, `pawn_structure`, `bishop_pair`, `rook_files`, `static_total`, and `evaluation`. Terms and totals are white-positive. Phase is a 0..24 index, not an added score: knights/bishops contribute 1, rooks 2, and queens 4, summed across both sides and capped at 24 for promoted material. Pawn advancement bonuses increase toward the endgame.
+
+The pawn term matches the current Python reference: -15 per extra pawn on a file, -12 per pawn without a friendly pawn on an adjacent file, and a passed-pawn bonus when no enemy pawn lies ahead on the same/adjacent file. The passed bonus is `8 + 8 * advance + floor((24 - phase) * 2 * advance / 24)`. These are reference heuristics, not tuned parameters. `static_total` sums implemented components; `evaluation` applies mate/stalemate/recognized-insufficient-material precedence, so the two may differ in finished positions. Static evaluation does not apply search move-count/repetition draw policy.
+
+CI is configured to compare each implemented C++ component against the Python component on 80 positions, including color mirrors and legal children, promotions, and en passant. This checks selected terms and fixtures; it does not establish parity with the full Python evaluator, which still contains additional activity and king terms, or prove a playing-strength improvement.
 
 ### Verification coverage
 
@@ -179,7 +187,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Automatic seventy-five-move search draws, optional fifty-move claim policy, and clock-aware TT keys
 - [x] Reference bishop-pair term in static evaluation and search
 - [x] Reference rook-file term in static evaluation and search
-- [ ] Remaining phase-aware positional evaluation and endgame scaling
+- [x] Phase-aware pawn structure and explainable implemented-term breakdown
+- [ ] Remaining piece/king activity, phase-aware king safety, and endgame scaling
 - [x] Basic asynchronous C++ UCI with legal positions, history, depth/node/movetime, and stop lifecycle
 - [x] UCI remaining-clock allocation, increments, movestogo, and Move Overhead option
 - [ ] Advanced ordering, pruning, extensions, and measured optimization
@@ -211,6 +220,7 @@ ctest --test-dir build -C Release --output-on-failure
 .\build\Release\trickfish_cpp.exe --divide 3
 .\build\Release\trickfish_cpp.exe --material
 .\build\Release\trickfish_cpp.exe --eval
+.\build\Release\trickfish_cpp.exe --eval-detail
 .\build\Release\trickfish_cpp.exe --status
 .\build\Release\trickfish_cpp.exe --search 3
 .\build\Release\trickfish_cpp.exe --search-nodes 6 10000
@@ -227,9 +237,9 @@ ctest --test-dir build --output-on-failure
 ./build/trickfish_cpp --search 3
 ```
 
-`--material`, `--eval`, `--eval-stm`, `--status`, and `--insufficient-material` accept an optional quoted FEN. `--perft`, `--divide`, and `--search` accept a depth followed by an optional quoted FEN. `--search-nodes` accepts depth, a non-negative node limit, and an optional quoted FEN. `--search-time` accepts depth, a non-negative millisecond budget, and an optional quoted FEN. Without a FEN, commands use the initial position. `--eval` is white-positive; `--eval-stm` and search scores are side-to-move positive. Mate scores use a separate magnitude of 100,000, with search adjusting for distance. Diagnostic search output is separate from UCI mode, which is selected with --uci or by launching with no arguments.
+`--material`, `--eval`, `--eval-detail`, `--eval-stm`, `--status`, and `--insufficient-material` accept an optional quoted FEN. `--perft`, `--divide`, and `--search` accept a depth followed by an optional quoted FEN. `--search-nodes` accepts depth, a non-negative node limit, and an optional quoted FEN. `--search-time` accepts depth, a non-negative millisecond budget, and an optional quoted FEN. Without a FEN, commands use the initial position. `--eval` is white-positive; `--eval-stm` and search scores are side-to-move positive. Mate scores use a separate magnitude of 100,000, with search adjusting for distance. Diagnostic search output is separate from UCI mode, which is selected with --uci or by launching with no arguments.
 
-The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. Search now adjudicates automatic seventy-five-move draws in main and quiescence nodes, with mate checked first. The iterative API optionally always claims an available fifty-move draw; the default CLI policy does not claim it automatically. Intended-move claims and selecting a win instead of an optional claim remain unmodeled. Search TT keys include halfmove clock and draw policy; repetition keys still omit clocks. Static `--eval` does not apply this search draw policy. Its non-terminal score combines material, a one-time 30-point bonus per side with at least two bishops, and the Python rook-file term. Each rook gets 10 points if its file lacks a friendly pawn and another 10 if it lacks an enemy pawn; the entire rook-file term is disabled when no pawns remain. `--material` remains material-only; other Python positional terms are still absent. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
+The C++ `move_count_draw_status` API reports claim availability at 100 halfmoves and automatic draw at 150. It returns no additional move-count classification for positions already finished by mate, stalemate, or recognized insufficient material. Search now adjudicates automatic seventy-five-move draws in main and quiescence nodes, with mate checked first. The iterative API optionally always claims an available fifty-move draw; the default CLI policy does not claim it automatically. Intended-move claims and selecting a win instead of an optional claim remain unmodeled. Search TT keys include halfmove clock and draw policy; repetition keys still omit clocks. Static `--eval` does not apply this search draw policy. Its non-terminal score combines material, a one-time 30-point bonus per side with at least two bishops, the Python rook-file term, and phase-aware pawn structure. Each rook gets 10 points if its file lacks a friendly pawn and another 10 if it lacks an enemy pawn; the entire rook-file term is disabled when no pawns remain. `--material` remains material-only; other Python positional terms such as piece activity and king evaluation are still absent. See [FIDE Laws, articles 9.3 and 9.6.2](https://handbook.fide.com/chapter/E012023).
 
 ## Verification standard
 
