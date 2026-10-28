@@ -235,3 +235,11 @@ jobs:
           python cpp/bench/search_benchmark.py $binary --suite cpp/bench/tactical_suite.json --depth 1 --repeats 2 --compare-alphabeta --timeout 30 --output build/tactical-regression.json
           if ($LASTEXITCODE -ne 0) { throw "Tactical regression objectives failed" }
           Get-Content build/tactical-regression.json
+      - name: Verify material exchange diagnostic
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $gain = & $binary --see a1a2 "4k3/8/8/8/8/8/q7/R3K3 w - - 0 1"
+          if ($LASTEXITCODE -ne 0 -or $gain -ne "900") { throw "Exchange capture mismatch" }
+          $loss = & $binary --see d4d5 "k7/8/4p3/3p4/3R4/8/8/7K w - - 0 1"
+          if ($LASTEXITCODE -ne 0 -or $loss -ne "-400") { throw "Exchange recapture mismatch" }

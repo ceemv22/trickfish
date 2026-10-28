@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(trickfish LANGUAGES CXX)
 
 add_library(trickfish_core
+    cpp/src/exchange.cpp
     cpp/src/movegen.cpp
     cpp/src/perft.cpp
     cpp/src/position.cpp
@@ -36,6 +37,9 @@ if(BUILD_TESTING)
     add_executable(trickfish_zobrist_test cpp/tests/zobrist.cpp)
     target_link_libraries(trickfish_zobrist_test PRIVATE trickfish_core)
     add_test(NAME zobrist_updates COMMAND trickfish_zobrist_test)
+    add_executable(trickfish_exchange_test cpp/tests/exchange.cpp)
+    target_link_libraries(trickfish_exchange_test PRIVATE trickfish_core)
+    add_test(NAME exchange_reference COMMAND trickfish_exchange_test)
     add_executable(trickfish_quiet_history_test cpp/tests/quiet_history.cpp)
     target_link_libraries(trickfish_quiet_history_test PRIVATE trickfish_core)
     add_test(NAME quiet_history_ordering COMMAND trickfish_quiet_history_test)

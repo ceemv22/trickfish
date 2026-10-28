@@ -7,6 +7,7 @@
 
 #include "trickfish/attacks.hpp"
 #include "trickfish/evaluation.hpp"
+#include "trickfish/exchange.hpp"
 #include "trickfish/game_status.hpp"
 #include "trickfish/move_list.hpp"
 #include "trickfish/movegen.hpp"
@@ -20,6 +21,17 @@ int main(int argc, char** argv) {
     try {
         if (argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--uci")) {
             return trickfish::run_uci(std::cin, std::cout);
+        }
+        if (argc > 1 && std::string_view(argv[1]) == "--see") {
+            if (argc < 3 || argc > 4) throw std::invalid_argument("usage: --see move [fen]");
+            auto position = trickfish::Position::from_fen(argc == 4 ? argv[3] : start_fen);
+            for (const auto& move : trickfish::generate_legal_moves(position)) {
+                if (move.to_uci() == argv[2]) {
+                    std::cout << trickfish::static_exchange(position, move) << '\n';
+                    return 0;
+                }
+            }
+            throw std::invalid_argument("exchange move must be legal");
         }
         if (argc > 1 && std::string_view(argv[1]) == "--eval-detail") {
             if (argc > 3) throw std::invalid_argument("usage: --eval-detail [fen]");

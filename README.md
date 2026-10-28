@@ -198,7 +198,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Iterative aspiration windows with widening and interrupted-retry fixtures
 - [x] Quiet killer ordering with per-search lifetime and selectable disabling
 - [x] Bounded quiet history with cutoff rewards and prior-quiet penalties
-- [ ] SEE/continuation/correction history, other pruning, extensions, and measured optimization
+- [x] Legal-recapture material exchange diagnostic with special-move/pin fixtures
+- [ ] Optimized SEE/search integration, continuation/correction history, other pruning, and extensions
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -283,6 +284,16 @@ python cpp/bench/search_benchmark.py .\build\Release\trickfish_cpp.exe --suite c
 ```
 
 Optional `expect.bestmoves` lists accepted legal root moves. `expect.mate_in_one` requires a checkmating root move, independently verified by the Python rules reference, and the C++ one-ply mate score of 99999. Fixtures are validated before search, and every repeat in both algorithms must satisfy its objective. Objective failures abort report generation. The JSON report retains the objectives alongside results and provenance. CI is configured to execute this suite on both runners; the new process results await this package's completed CI. This is a bounded correctness smoke suite, not a tactical rating or playing-strength benchmark.
+
+The diagnostic `--see move [fen]` reports material exchange gain from the initial mover's perspective. The initial move must be a legal capture or promotion. `static_exchange` then exhaustively considers legal recaptures on the same target square, with either side allowed to stop. It includes promotion material gain and initial en passant; legal move generation excludes pinned recaptures and unsafe king captures. The caller's position is preserved.
+
+This is an unoptimized reference for a restricted exchange model. It ignores off-target tactics, mate values, and forced-check continuations, and can branch substantially. It is not used in search ordering or pruning. For example:
+
+```powershell
+.\build\Release\trickfish_cpp.exe --see a1a2 "4k3/8/8/8/8/8/q7/R3K3 w - - 0 1"
+```
+
+The expected exchange gain is 900. New C++ exchange CTests and CLI smoke checks await this package's completed CI.
 
 ## Verification standard
 
