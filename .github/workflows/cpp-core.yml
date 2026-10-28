@@ -214,3 +214,16 @@ jobs:
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           python cpp/tests/evaluation_parity.py $binary
           if ($LASTEXITCODE -ne 0) { throw "C++/Python evaluation term parity failed" }
+      - name: Validate search benchmark runner
+        shell: pwsh
+        run: |
+          python cpp/bench/test_search_benchmark.py
+          if ($LASTEXITCODE -ne 0) { throw "Search benchmark runner checks failed" }
+      - name: Repeat fixed-suite search benchmark
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/search_benchmark.py $binary --depth 2 --repeats 2 --timeout 30 --output build/search-benchmark.json
+          if ($LASTEXITCODE -ne 0) { throw "Search benchmark failed" }
+          Get-Content build/search-benchmark.json

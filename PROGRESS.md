@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **61.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **63.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -47,7 +47,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C18c | Remaining-clock allocation and UCI clock-control tests | 1.500 | Implemented |
 | C19 | SEE, killer/history, continuation/correction history, and ordering integration | 5.000 | Pending |
 | C20 | PVS, aspiration, null move, LMR, futility, razoring, and extensions | 10.000 | Pending |
-| C21 | Reproducible search/tactical benchmarks and controlled match infrastructure | 8.000 | Pending |
+| C21a | Fixed-suite search benchmark, deterministic repeats, legal PV validation, and provenance reports | 2.000 | Implemented |
+| C21b | Tactical suites and controlled match infrastructure | 6.000 | Pending |
 | C22 | Profile-guided movegen/state optimization with measured regressions | 6.000 | Pending |
 | C23 | Tablebase integration and score/draw handling | 3.000 | Pending |
 | C24 | Reproducible evaluation tuning, self-play, and SPRT workflow | 5.000 | Pending |
@@ -56,7 +57,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Phase/pawn commit `075dc39` passed [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/40750906373), confirming the configured checks at the 55.000-point implementation. The new activity/king-evaluation working tree requires its own C++ CTest, updated CLI score fixtures, and 118-position full reference-evaluator parity run. Local C++ compile/runtime execution remains unavailable.
+GitHub Actions was inspected on 2026-10-28. Reference-evaluation commit `c89686f` passed both OS jobs in [run 51](https://github.com/ceemv22/trickfish/actions/runs/40752709452), confirming configured checks at the 61.000-point implementation. The new fixed-suite benchmark runner has passed six local validation tests and Python legality checks for all nine roots. Execution against the C++ binary, including both new CI smoke runs, remains pending. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -136,3 +137,7 @@ Before activity/king-term implementation, C16d was split into C16e (6.000) and C
 - C16e implementation: +6.000 points, implemented scope 61.000%. Ported the remaining current Python static terms: pawn advancement/central-file and minor-piece centrality, conditional seventh-rank rook activity, phase-scaled home-square/pawn-shield king safety, and king centrality when no heavy pieces remain. The c/g-square bonus is positional, not a castling-history assertion. Breakdown/CLI expose all seven score components; terminal precedence is separate. The parity suite now uses the public Python evaluator and validates 118 reference positions, with vertical color reflections preserving castled files. New frozen component and search fixtures cover activity, king safety, low-phase rounding, and heavy-piece gating. Python fixture validation and reference depth-one scores passed locally; all new C++ execution awaits CI. C16f additional endgame/drawish scaling remains pending. Reference parity is neither tuned evaluation nor measured playing strength.
 
 - Additional local audit: the unchanged Python suite ran 92 tests; 90 passed and two existing search/CLI expectations asserted 900 while the reference returned 897. No Python source or test files were changed in this package. The 118-state reference fixture/symmetry validation passed; this does not execute C++. Git staging was blocked by permission denied on .git/index.lock, so no local commit was created by the agent.
+
+Before benchmark implementation, C21 was split into C21a (2.000) and C21b (6.000), preserving its 8.000-point total. C21a accepts a versioned fixed FEN suite, repeated deterministic completed searches, independent legal-PV validation, binary/suite provenance, machine-readable output, and a CI smoke run. Wall time is process-inclusive and is not an isolated search-speed metric.
+
+- C21a implementation: +2.000 points, implemented scope 63.000%. Added a versioned nine-position suite and stdlib benchmark runner for repeated diagnostic iterative searches with fresh process/TT state. Full result/PV/depth/node equality is required across repeats; the Python legal-move reference validates every PV. Reports include suite/binary SHA-256, checkout metadata, environment, parameters, scores, nodes, and process-inclusive wall-time samples/medians. Checkout metadata does not prove the binary was built from that checkout. Six local fault/validation tests and suite legality checks passed. CI runs those tests plus depth-two repeated searches on both OS runners and prints the JSON report. Real C++ benchmark execution awaits the next pushed commit; no speedup, tuning, or strength conclusion follows. C21b tactical suites and controlled matches remain pending.

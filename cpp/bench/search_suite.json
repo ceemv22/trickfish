@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "positions": [
+    {"id": "initial", "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"},
+    {"id": "castling", "fen": "r3k2r/ppp2ppp/2n5/3pp3/3PP3/2N5/PPP2PPP/R3K2R w KQkq - 0 1"},
+    {"id": "queen-capture", "fen": "4k3/8/8/8/8/8/q7/R3K3 w - - 0 1"},
+    {"id": "recapture", "fen": "r3k3/8/8/8/8/8/q7/R3K3 w - - 0 1"},
+    {"id": "en-passant", "fen": "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1"},
+    {"id": "promotion", "fen": "4k3/P7/8/8/8/8/8/4K3 w - - 0 1"},
+    {"id": "pawn-ending", "fen": "k7/8/8/8/3K4/8/P7/8 w - - 0 1"},
+    {"id": "mate-in-one", "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1"},
+    {"id": "stalemate", "fen": "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"}
+  ]
+}
