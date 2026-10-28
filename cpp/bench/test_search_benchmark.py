@@ -63,6 +63,25 @@ class BenchmarkTest(unittest.TestCase):
             benchmark.run_case(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, 2, 10, False)
             self.assertEqual(execute.call_args.args[0][1], "--search-ab")
 
+    def test_tactical_move_objective_rejects_legal_wrong_move(self):
+        case = {"id": "capture", "fen": FEN, "expect": {"bestmoves": ["a1a2"]}}
+        benchmark.validate_objective(case, {"bestmove": "a1a2", "score": 500})
+        with self.assertRaisesRegex(ValueError, "tactical move objective failed"):
+            benchmark.validate_objective(case, {"bestmove": "a1b1", "score": 500})
+
+    def test_mate_objective_requires_actual_mate_and_score_distance(self):
+        case = {"id": "mate", "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1", "expect": {"mate_in_one": True}}
+        benchmark.validate_objective(case, {"bestmove": "g6g7", "score": 99999})
+        for result in [{"bestmove": "g6g5", "score": 99999}, {"bestmove": "g6g7", "score": 99998}]:
+            with self.assertRaisesRegex(ValueError, "mate-in-one objective failed"):
+                benchmark.validate_objective(case, result)
+
+    def test_invalid_objectives_are_rejected_before_search(self):
+        for expect in [{}, {"unknown": True}, {"bestmoves": []}, {"bestmoves": ["a1a8"]},
+            {"bestmoves": ["a1a2", "a1a2"]}, {"mate_in_one": False}, {"mate_in_one": True}]:
+            with self.subTest(expect=expect), self.assertRaises(ValueError):
+                benchmark.validate_objective({"id": "invalid", "fen": FEN, "expect": expect})
+
     def test_suite_rejects_duplicates_and_checked_nonmoving_king(self):
         path = Mock()
         case = {"id": "capture", "fen": FEN}

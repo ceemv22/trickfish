@@ -20,6 +20,34 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def validate_objective(case, result=None):
+    objective = case.get("expect")
+    if objective is None:
+        return
+    if not isinstance(objective, dict) or not objective or set(objective) - {"bestmoves", "mate_in_one"}:
+        raise ValueError(f"invalid tactical objective: {case['id']}")
+    position = Position.from_fen(case["fen"])
+    legal = {move.to_uci(): move for move in position.legal_moves()}
+    accepted = objective.get("bestmoves")
+    if accepted is not None:
+        if not isinstance(accepted, list) or not accepted or any(not isinstance(m, str) or m not in legal for m in accepted):
+            raise ValueError(f"illegal expected move: {case['id']}")
+        if len(set(accepted)) != len(accepted):
+            raise ValueError(f"duplicate expected move: {case['id']}")
+    if "mate_in_one" in objective:
+        if objective["mate_in_one"] is not True:
+            raise ValueError("mate_in_one objective must be true")
+        mates = {text for text, move in legal.items() if position.make_move(move).game_status() == "checkmate"}
+        if not mates or (accepted is not None and not set(accepted) <= mates):
+            raise ValueError(f"reference mate objective is unsatisfied: {case['id']}")
+    if result is not None:
+        selected = result["bestmove"]
+        if accepted is not None and selected not in accepted:
+            raise ValueError(f"tactical move objective failed: {case['id']}: {selected}")
+        if objective.get("mate_in_one") and (selected not in mates or result["score"] != 99999):
+            raise ValueError(f"mate-in-one objective failed: {case['id']}")
+
+
 def load_suite(path):
     suite = json.loads(path.read_text(encoding="utf-8"))
     if suite.get("version") != 1 or not suite.get("positions"):
@@ -34,6 +62,7 @@ def load_suite(path):
         opposite = "b" if position.side_to_move == "w" else "w"
         if position.is_square_attacked(position._king_square(opposite), position.side_to_move):
             raise ValueError(f"nonmoving king is checked: {name}")
+        validate_objective(case)
     return suite
 
 
@@ -85,6 +114,7 @@ def run_case(binary, case, depth, repeats, timeout, use_pvs=True):
         )
         elapsed = (time.perf_counter_ns() - started) / 1_000_000
         result = parse_result(process.stdout, case["fen"], depth)
+        validate_objective(case, result)
         if expected is not None and result != expected:
             raise ValueError(f"nondeterministic search output: {case['id']}")
         expected = result

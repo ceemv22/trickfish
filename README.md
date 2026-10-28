@@ -200,7 +200,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Bounded quiet history with cutoff rewards and prior-quiet penalties
 - [ ] SEE/continuation/correction history, other pruning, extensions, and measured optimization
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
-- [ ] Tactical benchmark suites, tuning, self-play, and SPRT matches
+- [x] Bounded tactical regression objectives with mirrored-color fixtures
+- [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
 
 ### Research layers
 
@@ -274,6 +275,14 @@ The runner rejects interrupted searches, unexpected output, illegal principal va
 Add `--compare-alphabeta` to repeat each fixture through `--search-ab` as well. The reference disables PVS, aspiration, killer and quiet-history ordering. Report schema 2 records aspiration, killer and quiet-history policies and includes the reference run and PVS-minus-reference node delta, requiring equal scores and completed depths while allowing tied move/PV differences. Both runs are independently checked for legal PVs and deterministic repetition.
 
 CI is configured to run depth-two PVS and full-window searches twice for every fixture on both OS runners and print the JSON report in the job log. It checks repeatability within each job; it imposes no timing threshold or cross-machine performance comparison. New benchmark runtime results require the next commit's completed CI run.
+
+The separate `cpp/bench/tactical_suite.json` contains ten shallow regression cases: queen capture, queen promotion, en passant, mate in one, and forced check evasion, each for both colors. Run it with:
+
+```powershell
+python cpp/bench/search_benchmark.py .\build\Release\trickfish_cpp.exe --suite cpp/bench/tactical_suite.json --depth 1 --repeats 2 --compare-alphabeta --output build/tactical-regression.json
+```
+
+Optional `expect.bestmoves` lists accepted legal root moves. `expect.mate_in_one` requires a checkmating root move, independently verified by the Python rules reference, and the C++ one-ply mate score of 99999. Fixtures are validated before search, and every repeat in both algorithms must satisfy its objective. Objective failures abort report generation. The JSON report retains the objectives alongside results and provenance. CI is configured to execute this suite on both runners; the new process results await this package's completed CI. This is a bounded correctness smoke suite, not a tactical rating or playing-strength benchmark.
 
 ## Verification standard
 

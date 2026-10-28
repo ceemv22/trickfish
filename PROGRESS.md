@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **68.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **69.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -52,7 +52,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
 | C20d | Null move, LMR, futility, razoring, and extensions | 6.500 | Pending |
 | C21a | Fixed-suite search benchmark, deterministic repeats, legal PV validation, and provenance reports | 2.000 | Implemented |
-| C21b | Tactical suites and controlled match infrastructure | 6.000 | Pending |
+| C21c | Bounded tactical regression suite with explicit objectives, mirrored colors, and CI process checks | 1.000 | Implemented |
+| C21d | Broader tactical suites and controlled match infrastructure | 5.000 | Pending |
 | C22 | Profile-guided movegen/state optimization with measured regressions | 6.000 | Pending |
 | C23 | Tablebase integration and score/draw handling | 3.000 | Pending |
 | C24 | Reproducible evaluation tuning, self-play, and SPRT workflow | 5.000 | Pending |
@@ -61,7 +62,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-28. Named-configuration commit `1602584` passed both OS jobs in [run 56](https://github.com/ceemv22/trickfish/actions/runs/40758270638), confirming configured checks at the 67.250-point implementation. The new quiet-history working tree passed eight local benchmark-tool tests; all new C++ ordering/parity/lifetime/interruption checks and paired benchmarks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-28. Quiet-history commit `5bcb28d` passed both OS jobs in [run 57](https://github.com/ceemv22/trickfish/actions/runs/40758686619), confirming configured checks at the 68.250-point implementation. The new tactical-regression package passed eleven local tooling tests and Python reference checks for ten positions. C++ process execution against both search policies requires CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -163,3 +164,7 @@ Before killer-ordering implementation, C19 was split into C19a (0.750) and C19b 
 Before quiet-history implementation, C19b was split into C19c (1.000) and C19d (3.250), preserving 4.250 points. C19c requires bounded side/from/to history, cutoff rewards and prior-quiet penalties, tactical/killer precedence, per-search lifetime, selectable disabling, and score/PV/interruption checks.
 
 - C19c implementation: +1.000 points, implemented scope 68.250%. Added side/from/to quiet history bounded to +/-16384 with gravity updates. Quiet beta cutoffs earn min(512, depth squared); prior searched quiets on that node receive the negative bonus. History only breaks ties within existing ordering priorities, preserving TT/tactical/killer precedence; quiescence receives no history state. Per-search lifetime spans iterative depths/retries and resets for each new search. SearchOptions::use_history disables it; --search-ab disables it as part of the reference policy. Result counters report rewards, penalties and nonzero-history moves searched. New CTests exercise reference score/PV agreement, enabled/disabled behavior, update/reuse paths, deterministic fresh searches and played-history interruption restoration. Eight tooling tests pass locally; new C++ execution awaits CI. No speedup, tuning or strength gain is established.
+
+Before tactical-regression implementation, C21b was split into C21c (1.000) and C21d (5.000), preserving 6.000 points. C21c covers a small versioned ten-position smoke suite with explicit move/mate objectives, independent reference legality/objective validation, deterministic repeats, and both diagnostic search policies in CI; it is not a strength benchmark.
+
+- C21c implementation: +1.000 points, implemented scope 69.250%. Added optional explicit best-move/mate-in-one objectives to the benchmark runner and a ten-position suite: queen capture, promotion, en passant, mate in one, and forced check evasion, each with a vertical color reflection. Expected moves are reference-legal; mate objectives require an actual checkmating move and the C++ 99999 one-ply mate score. Every repetition and both search policies must satisfy the objective, legal PV checks, and existing score/depth parity. Reports retain objective data and binary/suite provenance; failures stop report generation. Eleven local validation tests and Python reference outcomes pass. New C++ tactical runtime awaits CI. This shallow smoke suite is not broad tactical coverage or a strength measurement; C21d remains pending.
