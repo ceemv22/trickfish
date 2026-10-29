@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(trickfish LANGUAGES CXX)
 
 add_library(trickfish_core
+    cpp/src/correction.cpp
     cpp/src/exchange.cpp
     cpp/src/movegen.cpp
     cpp/src/perft.cpp
@@ -43,6 +44,10 @@ if(BUILD_TESTING)
     add_executable(trickfish_exchange_test cpp/tests/exchange.cpp)
     target_link_libraries(trickfish_exchange_test PRIVATE trickfish_core)
     add_test(NAME exchange_reference COMMAND trickfish_exchange_test)
+    add_executable(trickfish_correction_test cpp/tests/correction.cpp)
+    target_link_libraries(trickfish_correction_test PRIVATE trickfish_core)
+    add_test(NAME correction_history COMMAND trickfish_correction_test)
+    set_tests_properties(correction_history PROPERTIES TIMEOUT 90)
     add_executable(trickfish_check_extensions_test cpp/tests/check_extensions.cpp)
     target_link_libraries(trickfish_check_extensions_test PRIVATE trickfish_core)
     add_test(NAME bounded_check_extensions COMMAND trickfish_check_extensions_test)

@@ -44,6 +44,8 @@ struct SearchResult {
     std::uint64_t razor_probes = 0;
     std::uint64_t razor_cutoffs = 0;
     std::uint64_t check_extensions = 0;
+    std::uint64_t correction_updates = 0;
+    std::uint64_t correction_applications = 0;
 };
 
 struct SearchOptions {
@@ -64,6 +66,7 @@ struct SearchOptions {
     int razor_margin = 200;
     bool use_check_extensions = false;
     int check_extension_limit = 1;
+    bool use_correction = false;
 };
 
 struct SearchLimits {

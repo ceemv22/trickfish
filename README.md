@@ -213,7 +213,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Optional guarded frontier futility with selective-score diagnostics
 - [x] Optional guarded frontier razoring with quiescence confirmation
 - [x] Optional bounded check extensions with effective-PV validation
-- [ ] Correction history and further extension/pruning optimization
+- [x] Optional bounded pawn-structure correction history with per-search lifetime
+- [ ] Further extension/pruning optimization
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -341,7 +342,11 @@ Checked/mate-window nodes, synthetic null branches, full-depth verifications and
 
 `SearchOptions::use_check_extensions` defaults to false; `--search-check depth [fen]` enables checked-node extensions. A nonterminal checked main-search node with remaining depth gains one ply and consumes one unit of a per-line budget. `check_extension_limit` accepts 0..4, default 1; zero disables extensions. The main-search ceiling remains 64 plies, and depth-zero quiescence is unchanged. Synthetic null branches do not extend; real-position null verification receives the same remaining extension context.
 
-TT is disabled while a positive extension budget is active because the effective horizon depends on that budget. Reported completed depth remains nominal; PV length can exceed it by the allowed per-line budget. The diagnostic CLI uses one extra ply, and benchmark PV validation accounts for it only in `--search-check` mode. `--compare-check` records score equality/delta with the different horizon and TT policy explicitly identified. `SearchResult::check_extensions` counts applied extensions. New C++ horizon/PV/limit/interruption tests await this change's CI; default search/UCI behavior is unchanged and no strength or speed benefit is established.
+TT is disabled while a positive extension budget is active because the effective horizon depends on that budget. Reported completed depth remains nominal; PV length can exceed it by the allowed per-line budget. The diagnostic CLI uses one extra ply, and benchmark PV validation accounts for it only in `--search-check` mode. `--compare-check` records score equality/delta with the different horizon and TT policy explicitly identified. `SearchResult::check_extensions` counts applied extensions. Check-extension commit `2342522` passed its configured C++ checks; default search/UCI behavior is unchanged and no strength or speed benefit is established.
+
+`SearchOptions::use_correction` defaults to false; `--search-correction depth [fen]` enables an experimental adaptive correction to search-local static scores. A lazy 1,024-slot table uses full pawn/side keys with collision replacement and adjustments bounded to +/-256. Quiet best moves at non-checked exact-window main nodes supply ordinary score-error samples; mate-band samples are ignored. The update blends the existing value and clamped error with a depth weight capped at 16 out of 32. This coarse pawn context intentionally shares information across different piece placements.
+
+The table resets per search. Public `evaluate_static`, `--eval-detail`, and the Python reference are unchanged. Terminal/draw handling runs before search correction, and adjusted scores are clamped outside the mate band. Synthetic null branches and real-position null verifications do not train it. TT is disabled in correction mode because the evaluator changes during search. `SearchResult` counts accepted updates and nonzero correction applications. `--compare-correction` records score drift and the different TT policy. New C++ context/bounds/lifetime/interruption checks await this change's CI; no evaluation-accuracy, speed or strength improvement is established.
 
 ## Verification standard
 

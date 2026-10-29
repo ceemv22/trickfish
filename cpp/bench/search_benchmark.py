@@ -103,7 +103,7 @@ def parse_result(output, fen, requested_depth, pv_extra=0):
     return result
 
 
-MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check"}
+MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction"}
 
 
 def run_sample(binary, case, depth, timeout, mode):
@@ -182,6 +182,7 @@ def main():
     parser.add_argument("--compare-futility", action="store_true")
     parser.add_argument("--compare-razor", action="store_true")
     parser.add_argument("--compare-check", action="store_true")
+    parser.add_argument("--compare-correction", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
@@ -199,6 +200,7 @@ def main():
     if args.compare_futility: modes.append("futility")
     if args.compare_razor: modes.append("razor")
     if args.compare_check: modes.append("check")
+    if args.compare_correction: modes.append("correction")
     results = []
     for case in suite["positions"]:
         measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes)
@@ -208,10 +210,10 @@ def main():
             reference = measured["alphabeta"]
             candidate["alphabeta_comparison"] = compare_reference(candidate, reference)
             candidate["alphabeta_comparison"]["median_paired_wall_ratio"] = paired_wall_ratio(candidate, reference)
-        for mode, label in [("exchange", "ordered"), ("null", "verified"), ("lmr", "selective"), ("futility", "selective"), ("razor", "selective"), ("check", "extended")]:
+        for mode, label in [("exchange", "ordered"), ("null", "verified"), ("lmr", "selective"), ("futility", "selective"), ("razor", "selective"), ("check", "extended"), ("correction", "adjusted")]:
             if mode not in measured: continue
             alternative = measured[mode]
-            if alternative["depth"] != candidate["depth"] or (mode not in {"lmr", "futility", "razor", "check"} and alternative["score"] != candidate["score"]):
+            if alternative["depth"] != candidate["depth"] or (mode not in {"lmr", "futility", "razor", "check", "correction"} and alternative["score"] != candidate["score"]):
                 raise ValueError(f"{mode} score/depth mismatch: {case['id']}")
             candidate[mode + "_comparison"] = {label: alternative, "score_equal": alternative["score"] == candidate["score"],
                 "score_delta": alternative["score"] - candidate["score"],
@@ -240,6 +242,8 @@ def main():
             "razoring": False, "razor_margin": 200, "compare_razor": args.compare_razor,
             "check_extensions": False, "comparison_check_extension_limit": 1,
             "comparison_check_table": False, "compare_check": args.compare_check,
+            "correction_history": False, "comparison_correction_table": False,
+            "compare_correction": args.compare_correction,
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,

@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "trickfish/evaluation.hpp"
+#include "trickfish/correction.hpp"
 #include "trickfish/exchange.hpp"
 #include "trickfish/movegen.hpp"
 
@@ -66,6 +67,10 @@ struct SearchBudget {
     bool use_check_extensions = false;
     int check_extension_limit = 1;
     std::uint64_t check_extensions = 0;
+    bool use_correction = false;
+    CorrectionHistory correction{};
+    std::uint64_t correction_updates = 0;
+    std::uint64_t correction_applications = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -273,9 +278,15 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
     });
 }
 
-int static_for_side(const Position& position) {
+int static_for_side(const Position& position, SearchBudget* budget) {
     const auto score = evaluate_static(position);
-    return position.side_to_move() == Color::white ? score : -score;
+    const int raw = position.side_to_move() == Color::white ? score : -score;
+    if (budget != nullptr && budget->use_correction && budget->synthetic_null == 0) {
+        const int adjustment = budget->correction.adjustment(position);
+        if (adjustment != 0) ++budget->correction_applications;
+        return std::clamp(raw + adjustment, -mate_threshold + 1, mate_threshold - 1);
+    }
+    return raw;
 }
 
 bool razor_protected(Position& position, const MoveList& moves, SearchBudget* budget) {
@@ -311,11 +322,11 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
         return 0;
     }
     if (qdepth >= 32) {
-        return static_for_side(position);
+        return static_for_side(position, budget);
     }
     int best = -mate_score - 1;
     if (!in_check) {
-        best = static_for_side(position);
+        best = static_for_side(position, budget);
         if (best >= beta) {
             return best;
         }
@@ -396,7 +407,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     if (budget->use_razoring && allow_selective && budget->synthetic_null == 0 && ply > 0 && depth == 1 &&
         beta == alpha + 1 && std::abs(alpha) < mate_threshold && !position.in_check(position.side_to_move()) &&
         position.halfmove_clock() < (draw_policy(budget) == MoveCountDrawPolicy::claim_fifty_moves ? 99 : 149) &&
-        static_for_side(position) + budget->razor_margin <= alpha && !razor_protected(position, moves, budget)) {
+        static_for_side(position, budget) + budget->razor_margin <= alpha && !razor_protected(position, moves, budget)) {
         ++budget->razor_probes;
         const int score = quiescence(position, ply, 0, alpha, alpha + 1, nodes, budget);
         if (score <= alpha) {
@@ -411,7 +422,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     if (budget->use_null_move && allow_selective && budget->synthetic_null == 0 && ply > 0 && depth >= 3 &&
         beta == alpha + 1 && std::abs(beta) < mate_threshold && !position.in_check(color) && non_pawns != 0 &&
         position.halfmove_clock() < draw_limit - depth - 32 &&
-        position.fullmove_number() < std::numeric_limits<int>::max() - 128 && static_for_side(position) >= beta) {
+        position.fullmove_number() < std::numeric_limits<int>::max() - 128 && static_for_side(position, budget) >= beta) {
         ++budget->null_probes;
         std::vector<Move> ignored;
         int probe = 0;
@@ -447,7 +458,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             position.halfmove_clock() < draw_limit - 1 &&
             is_quiet(position, move) && !advanced_pawn && killer_priority(position, move, budget, ply) == 0 &&
             history_priority(position, move, budget) <= 0 && continuation_priority(position, move, budget, previous) <= 0 &&
-            static_for_side(position) + budget->futility_margin <= alpha) {
+            static_for_side(position, budget) + budget->futility_margin <= alpha) {
             MoveScope scope(position, move, budget->history);
             if (!position.in_check(position.side_to_move()) && !is_repetition(budget) &&
                 !is_move_count_draw(position, draw_policy(budget)) && !position.is_insufficient_material() &&
@@ -519,6 +530,11 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             break;
         }
         if (is_quiet(position, move)) searched_quiets.push(move);
+    }
+    if (budget->use_correction && budget->synthetic_null == 0 && allow_selective && !in_check &&
+        selected && is_quiet(position, *selected) && best > original_alpha && best < beta) {
+        const int raw = evaluate_static(position) * (position.side_to_move() == Color::white ? 1 : -1);
+        if (budget->correction.update(position, best, raw, depth)) ++budget->correction_updates;
     }
     if (table != nullptr) {
         const auto bound = best <= original_alpha ? Bound::upper : best >= beta ? Bound::lower : Bound::exact;
@@ -613,7 +629,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         active_history.emplace(*history);
     }
     std::optional<TranspositionTable> table;
-    if (options.use_table && history == nullptr && options.root_moves.empty() &&
+    if (options.use_table && history == nullptr && options.root_moves.empty() && !options.use_correction &&
         !(options.use_check_extensions && options.check_extension_limit > 0)) {
         table.emplace();
     }
@@ -630,6 +646,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.razor_margin = options.razor_margin;
     budget.use_check_extensions = options.use_check_extensions;
     budget.check_extension_limit = options.check_extension_limit;
+    budget.use_correction = options.use_correction;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
@@ -694,6 +711,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.razor_probes = budget.razor_probes;
     result.razor_cutoffs = budget.razor_cutoffs;
     result.check_extensions = budget.check_extensions;
+    result.correction_updates = budget.correction_updates;
+    result.correction_applications = budget.correction_applications;
     return result;
 }
 

@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **78.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **78.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -52,7 +52,7 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C19i | Bounded exchange search with exhaustive reference parity and work counters | 0.500 | Implemented |
 | C19k | Optional exchange ordering with interruptible evaluation and reference parity | 0.750 | Implemented |
 | C19m | Bounded one-ply continuation history with context-aware quiet ordering and parity | 0.500 | Implemented |
-| C19n | Correction history and further ordering work | 0.500 | Pending |
+| C19n | Optional bounded pawn-structure correction history with search lifetime/terminal safeguards | 0.500 | Implemented |
 | C20a | PVS with full-window reference path, score/PV parity, and interruption regression checks | 2.000 | Implemented |
 | C20c | Aspiration windows with widening, reference parity, and interrupted retry restoration | 1.500 | Implemented |
 | C20e | Reversible synthetic null-move state with incremental keys, guards, and undo fixtures | 0.500 | Implemented |
@@ -73,7 +73,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-29. Razoring commit `3423759` passed both OS jobs in [run 70](https://github.com/ceemv22/trickfish/actions/runs/40912816678), confirming configured checks at the 77.000-point implementation. Twenty tooling tests and the forced-evasion/mate line pass local reference checks. New C++ extension horizon/PV/limit/terminal/interruption checks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-29. Check-extension commit `2342522` passed both OS jobs in [run 71](https://github.com/ceemv22/trickfish/actions/runs/40913736805), confirming configured checks at the 78.000-point implementation. Twenty tooling tests pass locally. New C++ correction context/bounds/lifetime/public-evaluator/terminal/interruption checks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -227,3 +227,7 @@ Before razoring implementation, C20l was split into C20m (1.000) and C20n (1.500
 Before check-extension implementation, C20n was split into C20o (1.000) and C20p (0.500), preserving 1.500 points. C20o requires disabled-by-default checked-node extensions with a per-line cap and 64-main-ply ceiling, effective-depth-aware PV validation, context-safe TT isolation and state-safe interruption. It does not imply a runtime or strength gain.
 
 - C20o implementation: +1.000 points, implemented scope 78.000%. Added disabled-by-default SearchOptions::use_check_extensions and --search-check. Nonterminal checked main-search nodes with remaining depth gain one ply, consume a per-line budget (0..4, default 1), and cannot exceed 64 main plies. Depth-zero quiescence behavior is unchanged. TT is disabled whenever a positive extension budget is active because horizon depends on remaining budget. Real-position null verification inherits the remaining extension context; synthetic null branches do not extend. Nominal completed depth remains requested depth; extended PV validation allows the CLI one-ply budget. --compare-check records score drift and identifies its TT policy. CTests cover a forced evasion exposing mate beyond the base horizon, zero/one/four budgets, terminal handling, invalid limits and interrupted root/history restoration. Twenty tooling tests and the independent mating line pass locally; new C++ runtime awaits CI. No speed/strength improvement is established.
+
+Before correction implementation, the C19n completion boundary was clarified as a bounded, selectable pawn-structure correction baseline, with per-search lifetime, non-mate learning and public-evaluator isolation. Its weight remains 0.500, with zero recalibration effect. This boundary does not claim completion of all future correction/ordering research.
+
+- C19n implementation: +0.500 points, implemented scope 78.500%. Added a lazy 1024-slot full-key-checked pawn/side correction table with +/-256 adjustment and weighted error averaging (depth weight capped at 16 out of 32). Mate-band samples and invalid depths are excluded/rejected. SearchOptions::use_correction defaults false; --search-correction enables learning from quiet best moves at ordinary exact-window, non-checked main nodes. Public evaluate_static/breakdown and Python remain unchanged. Only search-local ordinary scores are adjusted/clamped outside mate bands; terminal/draw adjudication precedes application. TT is disabled in this adaptive mode, and synthetic/null-verification branches do not train the table. New searches start empty. --compare-correction records score drift and its distinct TT policy. CTests cover pawn/side contexts, bounds, clear, mate rejection, training/application, fresh determinism, TT isolation, interruption and public-score/root preservation. Twenty tooling tests pass locally; new C++ runtime awaits CI. This untuned baseline establishes no strength benefit or statistical evaluation accuracy.
