@@ -210,7 +210,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Reversible synthetic null-move state with key/undo fixtures
 - [x] Optional guarded null probe with full-depth real-position verification
 - [x] Optional guarded late move reductions with score-drift diagnostics
-- [ ] Correction history, futility/razoring, and extensions
+- [x] Optional guarded frontier futility with selective-score diagnostics
+- [ ] Correction history, razoring, and extensions
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -326,7 +327,11 @@ Synthetic subtrees do not use TT, played-game repetition, synthetic move-count d
 
 `SearchOptions::use_lmr` defaults to false; `--search-lmr depth [fen]` enables experimental late move reductions. At non-root null-window nodes with depth >=3, the fourth and later moves may be searched one ply shallower if quiet, non-checking, outside check/mate windows, not a killer, and without positive quiet/continuation history. Synthetic null branches and full-depth null verifications do not use LMR. A reduced result above alpha is re-searched at the original depth; a reduced fail-low can stand.
 
-LMR is selective: it can change score or miss a deeper tactical improvement. `--compare-lmr` records `score_equal` and `score_delta` against default search without treating a score difference alone as runner failure. Completed depth, legal PV, deterministic repeats and explicit tactical objectives remain checked. `SearchResult` counts reductions/re-searches. The default UCI/search behavior is unchanged. New C++ guard/activation/interruption tests await this change's CI; the one-ply policy is untuned and has no established speed or strength benefit.
+LMR is selective: it can change score or miss a deeper tactical improvement. `--compare-lmr` records `score_equal` and `score_delta` against default search without treating a score difference alone as runner failure. Completed depth, legal PV, deterministic repeats and explicit tactical objectives remain checked. `SearchResult` counts reductions/re-searches. The default UCI/search behavior is unchanged. LMR commit `73c3793` passed its configured C++ checks; the one-ply policy is untuned and has no established speed or strength benefit.
+
+`SearchOptions::use_futility` defaults to false; `--search-futility depth [fen]` enables an experimental depth-one frontier policy. At non-root null-window nodes, a later quiet move can be skipped if static score plus `futility_margin` does not reach alpha. Margin accepts 0..10000, default 150. The first move, checked/mate-window nodes, captures/promotions, checking moves, killers, positive history/continuations and pawn pushes to the sixth rank or beyond are protected. Synthetic null branches and full-depth verifications do not use it.
+
+Child-state checks also protect repetition/move-count draws, insufficient material and terminal positions; near move-count thresholds the policy is disabled. These checks have computational cost. `SearchResult::futility_pruned` counts skipped moves. `--compare-futility` records score equality/delta instead of demanding exact parity, while legal PVs, deterministic repeats, completed depth and tactical objectives remain checked. Default search/UCI behavior is unchanged. New C++ activation/guard/interruption fixtures await this change's CI; the margin is untuned and no speed or strength gain is established.
 
 ## Verification standard
 

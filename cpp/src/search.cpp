@@ -56,6 +56,9 @@ struct SearchBudget {
     bool use_lmr = false;
     std::uint64_t lmr_reductions = 0;
     std::uint64_t lmr_researches = 0;
+    bool use_futility = false;
+    int futility_margin = 150;
+    std::uint64_t futility_pruned = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -394,6 +397,22 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     const bool in_check = position.in_check(color);
     for (const auto& move : moves) {
         ++move_number;
+        const bool advanced_pawn = budget->use_futility && piece_type_from_symbol(position.piece_at(move.from)) == PieceType::pawn &&
+            (color == Color::white ? move.to / 8 <= 2 : move.to / 8 >= 5);
+        if (budget->use_futility && budget->synthetic_null == 0 && allow_selective && selected &&
+            ply > 0 && depth == 1 && beta == alpha + 1 && !in_check && std::abs(alpha) < mate_threshold &&
+            position.halfmove_clock() < draw_limit - 1 &&
+            is_quiet(position, move) && !advanced_pawn && killer_priority(position, move, budget, ply) == 0 &&
+            history_priority(position, move, budget) <= 0 && continuation_priority(position, move, budget, previous) <= 0 &&
+            static_for_side(position) + budget->futility_margin <= alpha) {
+            MoveScope scope(position, move, budget->history);
+            if (!position.in_check(position.side_to_move()) && !is_repetition(budget) &&
+                !is_move_count_draw(position, draw_policy(budget)) && !position.is_insufficient_material() &&
+                !generate_legal_moves(position).empty()) {
+                ++budget->futility_pruned;
+                continue;
+            }
+        }
         if (killer_priority(position, move, budget, ply) != 0) ++budget->killer_moves_searched;
         if (history_priority(position, move, budget) != 0) ++budget->history_moves_searched;
         if (continuation_priority(position, move, budget, previous) != 0) ++budget->continuation_moves_searched;
@@ -525,6 +544,9 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     if (options.aspiration_window < 0 || options.aspiration_window > mate_score + 1) {
         throw std::invalid_argument("aspiration window must be between 0 and 100001");
     }
+    if (options.futility_margin < 0 || options.futility_margin > 10000) {
+        throw std::invalid_argument("futility margin must be between 0 and 10000");
+    }
     const auto root_legal = generate_legal_moves(position);
     for (std::size_t index = 0; index < options.root_moves.size(); ++index) {
         const auto& move = options.root_moves[index];
@@ -551,6 +573,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_continuation = options.use_continuation;
     budget.use_null_move = options.use_null_move;
     budget.use_lmr = options.use_lmr;
+    budget.use_futility = options.use_futility;
+    budget.futility_margin = options.futility_margin;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
@@ -611,6 +635,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.null_cutoffs = budget.null_cutoffs;
     result.lmr_reductions = budget.lmr_reductions;
     result.lmr_researches = budget.lmr_researches;
+    result.futility_pruned = budget.futility_pruned;
     return result;
 }
 
