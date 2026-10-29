@@ -103,24 +103,51 @@ def parse_result(output, fen, requested_depth):
     return result
 
 
+MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null"}
+
+
+def run_sample(binary, case, depth, timeout, mode):
+    started = time.perf_counter_ns()
+    process = subprocess.run([str(binary), MODES[mode], str(depth), case["fen"]],
+        capture_output=True, text=True, timeout=timeout, check=True)
+    elapsed = (time.perf_counter_ns() - started) / 1_000_000
+    result = parse_result(process.stdout, case["fen"], depth)
+    validate_objective(case, result)
+    return result, elapsed
+
+
+def run_modes(binary, case, depth, repeats, timeout, modes):
+    if repeats < 2 or not modes or len(set(modes)) != len(modes) or any(mode not in MODES for mode in modes):
+        raise ValueError("benchmark requires at least two repeats and unique supported modes")
+    expected = {}
+    samples = {mode: [] for mode in modes}
+    execution_order = []
+    for repeat in range(repeats):
+        order = list(modes if repeat % 2 == 0 else reversed(modes))
+        execution_order.append(order)
+        for mode in order:
+            result, elapsed = run_sample(binary, case, depth, timeout, mode)
+            if mode in expected and result != expected[mode]:
+                raise ValueError(f"nondeterministic search output: {case['id']} ({mode})")
+            expected[mode] = result
+            samples[mode].append(elapsed)
+    results = {mode: dict(case, **expected[mode], process_wall_ms=samples[mode],
+        median_process_wall_ms=statistics.median(samples[mode]),
+        min_process_wall_ms=min(samples[mode]), max_process_wall_ms=max(samples[mode])) for mode in modes}
+    return results, execution_order
+
+
 def run_case(binary, case, depth, repeats, timeout, use_pvs=True, use_exchange=False, use_null=False):
-    samples = []
-    expected = None
-    for _ in range(repeats):
-        started = time.perf_counter_ns()
-        process = subprocess.run(
-            [str(binary), "--search-null" if use_null else "--search-see" if use_exchange else "--search" if use_pvs else "--search-ab", str(depth), case["fen"]],
-            capture_output=True, text=True, timeout=timeout, check=True,
-        )
-        elapsed = (time.perf_counter_ns() - started) / 1_000_000
-        result = parse_result(process.stdout, case["fen"], depth)
-        validate_objective(case, result)
-        if expected is not None and result != expected:
-            raise ValueError(f"nondeterministic search output: {case['id']}")
-        expected = result
-        samples.append(elapsed)
-    return dict(case, **expected, process_wall_ms=samples,
-        median_process_wall_ms=statistics.median(samples))
+    mode = "null" if use_null else "exchange" if use_exchange else "default" if use_pvs else "alphabeta"
+    results, _ = run_modes(binary, case, depth, repeats, timeout, [mode])
+    return results[mode]
+
+
+def paired_wall_ratio(candidate, baseline):
+    if len(candidate["process_wall_ms"]) != len(baseline["process_wall_ms"]):
+        raise ValueError("paired timing sample counts differ")
+    ratios = [value / base for value, base in zip(candidate["process_wall_ms"], baseline["process_wall_ms"]) if base > 0]
+    return statistics.median(ratios) if len(ratios) == len(baseline["process_wall_ms"]) and ratios else None
 
 
 def compare_reference(candidate, reference):
@@ -146,7 +173,7 @@ def main():
     parser.add_argument("binary", type=pathlib.Path)
     parser.add_argument("--suite", type=pathlib.Path, default=pathlib.Path(__file__).with_name("search_suite.json"))
     parser.add_argument("--depth", type=int, default=3)
-    parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--repeats", type=int, default=4)
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--compare-alphabeta", action="store_true")
     parser.add_argument("--compare-exchange", action="store_true")
@@ -160,29 +187,32 @@ def main():
     suite_hash = digest(suite_path)
     suite = load_suite(suite_path)
     binary_hash = digest(binary)
-    results = [run_case(binary, case, args.depth, args.repeats, args.timeout) for case in suite["positions"]]
-    if args.compare_alphabeta:
-        for case, candidate in zip(suite["positions"], results):
-            reference = run_case(binary, case, args.depth, args.repeats, args.timeout, False)
+    modes = ["default"]
+    if args.compare_alphabeta: modes.append("alphabeta")
+    if args.compare_exchange: modes.append("exchange")
+    if args.compare_null: modes.append("null")
+    results = []
+    for case in suite["positions"]:
+        measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes)
+        candidate = measured["default"]
+        candidate["execution_order"] = order
+        if args.compare_alphabeta:
+            reference = measured["alphabeta"]
             candidate["alphabeta_comparison"] = compare_reference(candidate, reference)
-    if args.compare_exchange:
-        for case, candidate in zip(suite["positions"], results):
-            ordered = run_case(binary, case, args.depth, args.repeats, args.timeout, use_exchange=True)
-            if ordered["score"] != candidate["score"] or ordered["depth"] != candidate["depth"]:
-                raise ValueError(f"exchange ordering score/depth mismatch: {case['id']}")
-            candidate["exchange_comparison"] = {"ordered": ordered, "score_equal": True,
-                "node_delta_per_repeat": ordered["nodes"] - candidate["nodes"]}
-    if args.compare_null:
-        for case, candidate in zip(suite["positions"], results):
-            verified = run_case(binary, case, args.depth, args.repeats, args.timeout, use_null=True)
-            if verified["score"] != candidate["score"] or verified["depth"] != candidate["depth"]:
-                raise ValueError(f"verified null score/depth mismatch: {case['id']}")
-            candidate["null_comparison"] = {"verified": verified, "score_equal": True,
-                "node_delta_per_repeat": verified["nodes"] - candidate["nodes"]}
+            candidate["alphabeta_comparison"]["median_paired_wall_ratio"] = paired_wall_ratio(candidate, reference)
+        for mode, label in [("exchange", "ordered"), ("null", "verified")]:
+            if mode not in measured: continue
+            alternative = measured[mode]
+            if alternative["score"] != candidate["score"] or alternative["depth"] != candidate["depth"]:
+                raise ValueError(f"{mode} score/depth mismatch: {case['id']}")
+            candidate[mode + "_comparison"] = {label: alternative, "score_equal": True,
+                "node_delta_per_repeat": alternative["nodes"] - candidate["nodes"],
+                "median_paired_wall_ratio": paired_wall_ratio(alternative, candidate)}
+        results.append(candidate)
     if digest(binary) != binary_hash or digest(suite_path) != suite_hash:
         raise ValueError("binary or suite changed during benchmark")
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "binary": str(binary), "binary_sha256": binary_hash,
         "suite": str(suite_path), "suite_sha256": suite_hash,
@@ -199,7 +229,9 @@ def main():
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,
-            "draw_policy": "automatic_only", "timing": "process-inclusive wall time"},
+            "draw_policy": "automatic_only", "timing": "process-inclusive wall time",
+            "execution_schedule": "forward/reverse alternation per fixture",
+            "mode_order": modes},
         "results": results,
         "total_nodes_per_repeat": sum(case["nodes"] for case in results),
     }

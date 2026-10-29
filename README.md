@@ -278,16 +278,18 @@ One-ply continuation history adds context to quiet ordering: current side, previ
 Run from the repository root after a Release build:
 
 ```powershell
-python cpp/bench/search_benchmark.py .\build\Release\trickfish_cpp.exe --depth 3 --repeats 3 --output build/search-benchmark.json
+python cpp/bench/search_benchmark.py .\build\Release\trickfish_cpp.exe --depth 3 --repeats 4 --output build/search-benchmark.json
 ```
 
 On Linux, use `./build/trickfish_cpp` as the binary path. The versioned nine-position suite covers opening/castling, captures/recaptures, en passant, promotion, a pawn ending, mate, and stalemate. Each repeat launches a fresh diagnostic iterative PVS search with aspiration windows, killer and quiet-history ordering, a fresh transposition table, automatic move-count draw policy, and no played-game repetition history. This differs from history-aware UCI search, which currently disables TT.
 
 The runner rejects interrupted searches, unexpected output, illegal principal variations, and differences in score, move, PV, depth, or node count between repeats. The Python legal-move reference checks PV legality; it does not independently certify search scores. JSON records binary/suite SHA-256, checkout state, platform, parameters, results, node counts, and wall-time samples/medians. Checkout metadata identifies the working checkout, not the source provenance of an arbitrary supplied binary. Timing includes process startup and initialization; compare the same suite/depth/build settings on the same machine. These are diagnostic measurements, not Elo or controlled match results.
 
-Add `--compare-alphabeta` to repeat each fixture through `--search-ab` as well. The reference disables PVS, aspiration, killer, quiet-history and continuation ordering. Report schema 2 records aspiration, killer, quiet-history and continuation policies and includes the reference run and PVS-minus-reference node delta, requiring equal scores and completed depths while allowing tied move/PV differences. Both runs are independently checked for legal PVs and deterministic repetition.
+Add `--compare-alphabeta` to repeat each fixture through `--search-ab` as well. The reference disables PVS, aspiration, killer, quiet-history and continuation ordering. Report schema 3 records aspiration, killer, quiet-history and continuation policies and includes the reference run and PVS-minus-reference node delta, requiring equal scores and completed depths while allowing tied move/PV differences. Both runs are independently checked for legal PVs and deterministic repetition.
 
 CI is configured to run depth-two PVS and full-window searches twice for every fixture on both OS runners and print the JSON report in the job log. It checks repeatability within each job; it imposes no timing threshold or cross-machine performance comparison. New benchmark runtime results require the next commit's completed CI run.
+
+Comparative runs alternate forward/reverse mode order on each repetition within a fixture. Even repeat counts balance the order; the default is four. An odd count has one extra forward round. Each mode retains independent determinism checks, raw wall-time samples and min/max/median values. Schema 3 also records actual execution order and the schedule. `median_paired_wall_ratio` is the median of within-round duration ratios: default/alpha-beta for the alpha-beta comparison, and optional/default for exchange or verified-null comparisons. Values below one mean the numerator took less process-inclusive time in those samples; they are not statistical confidence or isolated search throughput. A nonpositive denominator produces JSON null.
 
 The separate `cpp/bench/tactical_suite.json` contains ten shallow regression cases: queen capture, queen promotion, en passant, mate in one, and forced check evasion, each for both colors. Run it with:
 
@@ -319,7 +321,7 @@ The C++ position API provides `make_null_move` / `unmake_null_move` for a synthe
 
 `SearchOptions::use_null_move` defaults to false; `--search-null depth [fen]` enables a conservative verified mode. It probes only non-root null-window nodes at depth >=3, outside check and the mate score band, with non-pawn material, static score >= beta, and safe move counters. The probe searches depth-3 after a synthetic pass, with further null probes disabled. A fail-high must be confirmed by searching the real position at the original depth/window with null probes disabled throughout that verification subtree. Only the confirmed bound permits a cutoff.
 
-Synthetic subtrees do not use TT, played-game repetition, synthetic move-count draws or killer/history learning. Real-position verification retains normal rule/history handling. Null state unwinds on interruption, and synthetic PVs are discarded. `SearchResult` reports null probe/verification/cutoff counts. `--compare-null` adds paired diagnostic process results to the benchmark report; the shallow tactical CI smoke run checks the CLI mode while dedicated CTests exercise deeper probe paths. New verified-null C++ results await this change's CI. Full-depth verification can add work; this is an untuned safety baseline with no measured speedup or strength benefit.
+Synthetic subtrees do not use TT, played-game repetition, synthetic move-count draws or killer/history learning. Real-position verification retains normal rule/history handling. Null state unwinds on interruption, and synthetic PVs are discarded. `SearchResult` reports null probe/verification/cutoff counts. `--compare-null` adds paired diagnostic process results to the benchmark report; the shallow tactical CI smoke run checks the CLI mode while dedicated CTests exercise deeper probe paths. Verified-null commit `0513b7c` passed its configured C++ checks. Full-depth verification can add work; this is an untuned safety baseline with no measured speedup or strength benefit.
 
 ## Verification standard
 

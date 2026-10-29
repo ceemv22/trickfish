@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import json
 import pathlib
 import subprocess
@@ -93,6 +94,67 @@ class BenchmarkTest(unittest.TestCase):
         with patch.object(benchmark.subprocess, "run", return_value=process) as execute:
             benchmark.run_case(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, 2, 10, use_null=True)
             self.assertEqual(execute.call_args.args[0][1], "--search-null")
+
+    def test_paired_modes_alternate_and_keep_results_separate(self):
+        normal = subprocess.CompletedProcess([], 0, OUTPUT)
+        alternate = subprocess.CompletedProcess([], 0, OUTPUT.replace("nodes 23", "nodes 30"))
+        ticks = [0, 10000000, 20000000, 40000000, 50000000, 80000000, 90000000, 110000000]
+        with patch.object(benchmark.subprocess, "run", side_effect=[normal, alternate, alternate, normal]) as execute:
+            with patch.object(benchmark.time, "perf_counter_ns", side_effect=ticks):
+                results, order = benchmark.run_modes(pathlib.Path("engine"), {"id": "capture", "fen": FEN},
+                    1, 2, 10, ["default", "alphabeta"])
+        self.assertEqual(order, [["default", "alphabeta"], ["alphabeta", "default"]])
+        self.assertEqual([call.args[0][1] for call in execute.call_args_list],
+            ["--search", "--search-ab", "--search-ab", "--search"])
+        self.assertEqual(results["default"]["nodes"], 23)
+        self.assertEqual(results["alphabeta"]["nodes"], 30)
+        self.assertEqual(results["default"]["process_wall_ms"], [10, 20])
+        self.assertEqual(results["alphabeta"]["process_wall_ms"], [20, 30])
+        self.assertEqual(results["default"]["median_process_wall_ms"], 15)
+
+    def test_interleaved_drift_is_detected_within_its_mode(self):
+        outputs = [OUTPUT, OUTPUT.replace("nodes 23", "nodes 30"), OUTPUT.replace("nodes 23", "nodes 31")]
+        processes = [subprocess.CompletedProcess([], 0, text) for text in outputs]
+        with patch.object(benchmark.subprocess, "run", side_effect=processes):
+            with self.assertRaisesRegex(ValueError, "nondeterministic.*alphabeta"):
+                benchmark.run_modes(pathlib.Path("engine"), {"id": "capture", "fen": FEN},
+                    1, 2, 10, ["default", "alphabeta"])
+
+    def test_paired_ratios_and_undefined_timing(self):
+        self.assertEqual(benchmark.paired_wall_ratio({"process_wall_ms": [20, 30]},
+            {"process_wall_ms": [10, 20]}), 1.75)
+        self.assertIsNone(benchmark.paired_wall_ratio({"process_wall_ms": [20, 30]},
+            {"process_wall_ms": [0, 20]}))
+        with self.assertRaises(ValueError):
+            benchmark.paired_wall_ratio({"process_wall_ms": [20]}, {"process_wall_ms": [10, 20]})
+
+    def test_invalid_mode_schedules_are_rejected(self):
+        for repeats, modes in [(1, ["default"]), (2, []), (2, ["default", "default"]), (2, ["unknown"])]:
+            with self.assertRaises(ValueError):
+                benchmark.run_modes(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, repeats, 10, modes)
+
+    def test_report_composes_paired_mode_ratios_and_schedule(self):
+        nodes = {"default": 23, "alphabeta": 30, "exchange": 20, "null": 40}
+        elapsed = {"default": 10, "alphabeta": 20, "exchange": 5, "null": 30}
+        def sample(binary, case, depth, timeout, mode):
+            return {"score": 500, "depth": depth, "nodes": nodes[mode], "bestmove": "a1a2", "pv": ["a1a2"]}, elapsed[mode]
+        output = io.StringIO()
+        arguments = [str(SOURCE), str(SOURCE), "--suite", str(SOURCE.with_name("search_suite.json")),
+            "--repeats", "2", "--compare-alphabeta", "--compare-exchange", "--compare-null"]
+        with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark.sys, "stdout", output):
+            with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
+                benchmark.main()
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["schema_version"], 3)
+        modes = ["default", "alphabeta", "exchange", "null"]
+        self.assertEqual(report["search"]["mode_order"], modes)
+        for result in report["results"]:
+            self.assertEqual(result["execution_order"], [modes, list(reversed(modes))])
+            self.assertEqual(result["alphabeta_comparison"]["median_paired_wall_ratio"], 0.5)
+            self.assertEqual(result["exchange_comparison"]["median_paired_wall_ratio"], 0.5)
+            self.assertEqual(result["null_comparison"]["median_paired_wall_ratio"], 3)
+            self.assertEqual(result["exchange_comparison"]["node_delta_per_repeat"], -3)
+            self.assertEqual(result["null_comparison"]["node_delta_per_repeat"], 17)
 
     def test_suite_rejects_duplicates_and_checked_nonmoving_king(self):
         path = Mock()
