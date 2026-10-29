@@ -61,13 +61,14 @@ int main(int argc, char** argv) {
         }
         const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
         const bool timed_search = argc > 1 && std::string_view(argv[1]) == "--search-time";
+        const bool lmr_search = argc > 1 && std::string_view(argv[1]) == "--search-lmr";
         const bool null_search = argc > 1 && std::string_view(argv[1]) == "--search-null";
         const bool exchange_search = argc > 1 && std::string_view(argv[1]) == "--search-see";
         const bool reference_search = argc > 1 && std::string_view(argv[1]) == "--search-ab";
         const bool budgeted_search = limited_search || timed_search;
-        if (argc > 1 && (std::string_view(argv[1]) == "--search" || null_search || exchange_search || reference_search || budgeted_search)) {
+        if (argc > 1 && (std::string_view(argv[1]) == "--search" || lmr_search || null_search || exchange_search || reference_search || budgeted_search)) {
             if (argc < (budgeted_search ? 4 : 3) || argc > (budgeted_search ? 5 : 4)) {
-                throw std::invalid_argument("usage: --search|--search-ab|--search-see|--search-null depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
+                throw std::invalid_argument("usage: --search|--search-ab|--search-see|--search-null|--search-lmr depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
             }
             int depth = 0;
             const std::string_view text(argv[2]);
@@ -102,6 +103,7 @@ int main(int argc, char** argv) {
             const int fen_index = budgeted_search ? 4 : 3;
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
             trickfish::SearchOptions options;
+            options.use_lmr = lmr_search;
             options.use_null_move = null_search;
             options.use_exchange_ordering = exchange_search;
             options.use_history = !reference_search;

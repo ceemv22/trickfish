@@ -156,6 +156,22 @@ class BenchmarkTest(unittest.TestCase):
             self.assertEqual(result["exchange_comparison"]["node_delta_per_repeat"], -3)
             self.assertEqual(result["null_comparison"]["node_delta_per_repeat"], 17)
 
+    def test_lmr_score_drift_is_reported_without_claiming_parity(self):
+        output = io.StringIO()
+        arguments = [str(SOURCE), str(SOURCE), "--suite", str(SOURCE.with_name("search_suite.json")),
+            "--repeats", "2", "--compare-lmr"]
+        def sample(binary, case, depth, timeout, mode):
+            return {"score": 1 if mode == "lmr" else 0, "depth": depth, "nodes": 10,
+                "bestmove": "a1a2", "pv": ["a1a2"]}, 10
+        with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark.sys, "stdout", output):
+            with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
+                benchmark.main()
+        report = json.loads(output.getvalue())
+        for result in report["results"]:
+            self.assertFalse(result["lmr_comparison"]["score_equal"])
+            self.assertEqual(result["lmr_comparison"]["score_delta"], 1)
+        self.assertEqual(benchmark.MODES["lmr"], "--search-lmr")
+
     def test_suite_rejects_duplicates_and_checked_nonmoving_king(self):
         path = Mock()
         case = {"id": "capture", "fen": FEN}

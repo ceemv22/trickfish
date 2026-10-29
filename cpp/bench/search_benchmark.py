@@ -103,7 +103,7 @@ def parse_result(output, fen, requested_depth):
     return result
 
 
-MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null"}
+MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr"}
 
 
 def run_sample(binary, case, depth, timeout, mode):
@@ -178,6 +178,7 @@ def main():
     parser.add_argument("--compare-alphabeta", action="store_true")
     parser.add_argument("--compare-exchange", action="store_true")
     parser.add_argument("--compare-null", action="store_true")
+    parser.add_argument("--compare-lmr", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
@@ -191,6 +192,7 @@ def main():
     if args.compare_alphabeta: modes.append("alphabeta")
     if args.compare_exchange: modes.append("exchange")
     if args.compare_null: modes.append("null")
+    if args.compare_lmr: modes.append("lmr")
     results = []
     for case in suite["positions"]:
         measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes)
@@ -200,12 +202,13 @@ def main():
             reference = measured["alphabeta"]
             candidate["alphabeta_comparison"] = compare_reference(candidate, reference)
             candidate["alphabeta_comparison"]["median_paired_wall_ratio"] = paired_wall_ratio(candidate, reference)
-        for mode, label in [("exchange", "ordered"), ("null", "verified")]:
+        for mode, label in [("exchange", "ordered"), ("null", "verified"), ("lmr", "selective")]:
             if mode not in measured: continue
             alternative = measured[mode]
-            if alternative["score"] != candidate["score"] or alternative["depth"] != candidate["depth"]:
+            if alternative["depth"] != candidate["depth"] or (mode != "lmr" and alternative["score"] != candidate["score"]):
                 raise ValueError(f"{mode} score/depth mismatch: {case['id']}")
-            candidate[mode + "_comparison"] = {label: alternative, "score_equal": True,
+            candidate[mode + "_comparison"] = {label: alternative, "score_equal": alternative["score"] == candidate["score"],
+                "score_delta": alternative["score"] - candidate["score"],
                 "node_delta_per_repeat": alternative["nodes"] - candidate["nodes"],
                 "median_paired_wall_ratio": paired_wall_ratio(alternative, candidate)}
         results.append(candidate)
@@ -226,6 +229,7 @@ def main():
             "continuation_history": True, "reference_continuation_history": False,
             "exchange_ordering": False, "compare_exchange": args.compare_exchange,
             "verified_null": False, "compare_null": args.compare_null,
+            "lmr": False, "compare_lmr": args.compare_lmr,
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,

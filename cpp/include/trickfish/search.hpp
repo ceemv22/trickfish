@@ -38,6 +38,8 @@ struct SearchResult {
     std::uint64_t null_probes = 0;
     std::uint64_t null_verifications = 0;
     std::uint64_t null_cutoffs = 0;
+    std::uint64_t lmr_reductions = 0;
+    std::uint64_t lmr_researches = 0;
 };
 
 struct SearchOptions {
@@ -51,6 +53,7 @@ struct SearchOptions {
     bool use_continuation = true;
     std::vector<Move> root_moves;
     bool use_null_move = false;
+    bool use_lmr = false;
 };
 
 struct SearchLimits {

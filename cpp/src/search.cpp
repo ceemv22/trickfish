@@ -53,6 +53,9 @@ struct SearchBudget {
     std::uint64_t null_probes = 0;
     std::uint64_t null_verifications = 0;
     std::uint64_t null_cutoffs = 0;
+    bool use_lmr = false;
+    std::uint64_t lmr_reductions = 0;
+    std::uint64_t lmr_researches = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -309,7 +312,7 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
 }
 
 int negamax(Position& position, int depth, int ply, int alpha, int beta,
-    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget, bool use_pvs, std::optional<Move> previous, bool allow_null) {
+    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget, bool use_pvs, std::optional<Move> previous, bool allow_selective) {
     if (depth == 0) {
         return quiescence(position, ply, 0, alpha, beta, nodes, budget);
     }
@@ -359,7 +362,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     const auto non_pawns = position.pieces(color, PieceType::knight) | position.pieces(color, PieceType::bishop) |
         position.pieces(color, PieceType::rook) | position.pieces(color, PieceType::queen);
     const int draw_limit = draw_policy(budget) == MoveCountDrawPolicy::claim_fifty_moves ? 100 : 150;
-    if (budget->use_null_move && allow_null && budget->synthetic_null == 0 && ply > 0 && depth >= 3 &&
+    if (budget->use_null_move && allow_selective && budget->synthetic_null == 0 && ply > 0 && depth >= 3 &&
         beta == alpha + 1 && std::abs(beta) < mate_threshold && !position.in_check(color) && non_pawns != 0 &&
         position.halfmove_clock() < draw_limit - depth - 32 &&
         position.fullmove_number() < std::numeric_limits<int>::max() - 128 && static_for_side(position) >= beta) {
@@ -387,27 +390,46 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     int best = -mate_score - 1;
     std::optional<Move> selected;
     MoveList searched_quiets;
+    std::size_t move_number = 0;
+    const bool in_check = position.in_check(color);
     for (const auto& move : moves) {
+        ++move_number;
         if (killer_priority(position, move, budget, ply) != 0) ++budget->killer_moves_searched;
         if (history_priority(position, move, budget) != 0) ++budget->history_moves_searched;
         if (continuation_priority(position, move, budget, previous) != 0) ++budget->continuation_moves_searched;
+        const bool reduce = budget->use_lmr && budget->synthetic_null == 0 && allow_selective &&
+            ply > 0 && depth >= 3 && move_number >= 4 && beta == alpha + 1 && !in_check &&
+            std::abs(beta) < mate_threshold && is_quiet(position, move) &&
+            killer_priority(position, move, budget, ply) == 0 && history_priority(position, move, budget) <= 0 &&
+            continuation_priority(position, move, budget, previous) <= 0;
         std::vector<Move> child_pv;
         int score = 0;
         {
             MoveScope scope(position, move, budget != nullptr && budget->synthetic_null == 0 ? budget->history : nullptr);
-            if (use_pvs && selected && beta > alpha + 1) {
+            bool full_search = true;
+            if (reduce && !position.in_check(position.side_to_move())) {
+                ++budget->lmr_reductions;
+                score = -negamax(position, depth - 2, ply + 1, -alpha - 1, -alpha,
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
+                full_search = score > alpha;
+                if (full_search) {
+                    ++budget->lmr_researches;
+                    child_pv.clear();
+                }
+            }
+            if (full_search && use_pvs && selected && beta > alpha + 1) {
                 ++budget->pvs_probes;
                 score = -negamax(position, depth - 1, ply + 1, -alpha - 1, -alpha,
-                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_null);
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
                 if (score > alpha && score < beta) {
                     ++budget->pvs_researches;
                     child_pv.clear();
                     score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
-                        nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_null);
+                        nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
                 }
-            } else {
+            } else if (full_search) {
                 score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
-                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_null);
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
             }
         }
         if (score > best) {
@@ -528,6 +550,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_exchange_ordering = options.use_exchange_ordering;
     budget.use_continuation = options.use_continuation;
     budget.use_null_move = options.use_null_move;
+    budget.use_lmr = options.use_lmr;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
@@ -586,6 +609,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.null_probes = budget.null_probes;
     result.null_verifications = budget.null_verifications;
     result.null_cutoffs = budget.null_cutoffs;
+    result.lmr_reductions = budget.lmr_reductions;
+    result.lmr_researches = budget.lmr_researches;
     return result;
 }
 
