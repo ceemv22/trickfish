@@ -86,7 +86,7 @@ def validate_profile(profile):
         raise ValueError("engine profile must be an option object")
     names = set()
     for name, value in profile.items():
-        if not isinstance(name, str) or not name or name.casefold() in names or type(value) not in (bool, int):
+        if not isinstance(name, str) or not name.strip() or name != name.strip() or any(ord(c) < 32 or ord(c) == 127 for c in name) or name.casefold() in names or type(value) not in (bool, int):
             raise ValueError("profile requires unique option names and boolean/integer values")
         names.add(name.casefold())
     return dict(profile)

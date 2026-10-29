@@ -83,6 +83,34 @@ class ExportTests(unittest.TestCase):
         self.assertIn(r'[WhiteUCIProfile "{\"Experimental LMR\":true}"]', pgn)
         self.assertIn(r'[BlackUCIProfile "{\"Experimental LMR\":false}"]', pgn)
 
+    def test_requested_profiles_match_canonical_applied_names(self):
+        report = make_report(exporter.INITIAL, ["e2e4"])
+        report["profiles"] = {"a": {"experimental lmr": True}, "b": {}}
+        report["games"][0]["applied_options"] = {"a": {"Experimental LMR": True}, "b": {}}
+        self.assertIn("WhiteUCIProfile", exporter.export_report(report))
+        for change in ("value", "type", "missing_game", "missing_engine", "extra_engine", "missing_option", "null"):
+            broken = copy.deepcopy(report)
+            applied = broken["games"][0]["applied_options"]
+            if change == "value": applied["a"]["Experimental LMR"] = False
+            elif change == "type": applied["a"]["Experimental LMR"] = 1
+            elif change == "missing_game": del broken["games"][0]["applied_options"]
+            elif change == "missing_engine": del applied["b"]
+            elif change == "extra_engine": applied["c"] = {}
+            elif change == "missing_option": applied["a"] = {}
+            else: broken["profiles"] = None
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                exporter.export_report(broken)
+
+    def test_profile_validation_checks_every_game_before_output(self):
+        report = make_report(exporter.INITIAL, ["e2e4"])
+        report["profiles"] = {"a": {}, "b": {}}
+        report["games"][0]["applied_options"] = {"a": {}, "b": {}}
+        report["games"].append(copy.deepcopy(report["games"][0]))
+        report["games"][1]["applied_options"]["b"] = {"Unexpected": True}
+        report["scores"] = matches.score_games(report["games"])
+        with self.assertRaisesRegex(ValueError, "profiles disagree"):
+            exporter.export_report(report)
+
     def test_corrupted_replay_decisions_summary_and_cap_are_rejected(self):
         original = make_report(exporter.INITIAL, ["e2e4"])
         for change in ("fen", "move", "decision", "summary", "cap", "hash", "result"):

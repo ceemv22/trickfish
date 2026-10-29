@@ -151,6 +151,11 @@ class MatchTests(unittest.TestCase):
         path.read_text.return_value = json.dumps({"version": 1, "engines": {"c": {}}})
         with self.assertRaises(ValueError): matches.load_profiles(path)
 
+    def test_profile_names_cannot_add_protocol_lines_or_ambiguous_padding(self):
+        for name in ("", " ", " Foo", "Foo ", "Foo\nquit", "Foo\rBar", "Foo\tBar", "Foo\x7f"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                matches.validate_profile({name: True})
+
     def test_game_records_each_engine_profile(self):
         profiles = {"a": {"Experimental LMR": True}, "b": {"Experimental LMR": False}}
         game = matches.play_game({"id": "start", "fen": INITIAL}, {"a": "A", "b": "B"},

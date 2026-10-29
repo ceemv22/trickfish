@@ -122,9 +122,33 @@ def render_game(game, engines, policy):
         break_long_words=False, break_on_hyphens=False) + "\n\n"
 
 
+def validate_profile_provenance(report):
+    def normalized(profile):
+        return {name.casefold(): (type(value).__name__, value) for name, value in validate_profile(profile).items()}
+    requested = report.get("profiles")
+    if requested is not None:
+        if not isinstance(requested, dict) or set(requested) != {"a", "b"}:
+            raise ValueError("report profiles require exactly engine keys a/b")
+        requested = {label: normalized(profile) for label, profile in requested.items()}
+    elif "profiles" in report:
+        raise ValueError("report profiles must be an object")
+    for game in report["games"]:
+        if "applied_options" not in game:
+            if requested is not None:
+                raise ValueError("profiled report is missing game applied options")
+            continue
+        applied = game["applied_options"]
+        if not isinstance(applied, dict) or set(applied) != {"a", "b"}:
+            raise ValueError("game applied options require exactly engine keys a/b")
+        applied = {label: normalized(profile) for label, profile in applied.items()}
+        if requested is not None and applied != requested:
+            raise ValueError("requested and applied UCI profiles disagree")
+
+
 def export_report(report):
     if report.get("schema_version") != 1 or not report.get("games"):
         raise ValueError("expected a nonempty schema-1 match report")
+    validate_profile_provenance(report)
     policy = report["policy"]
     if policy["draws"] != DRAW_POLICY or type(policy["searched_ply_limit"]) is not int or policy["searched_ply_limit"] < 1:
         raise ValueError("unsupported match adjudication/ply-cap policy")
