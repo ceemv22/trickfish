@@ -159,20 +159,21 @@ class BenchmarkTest(unittest.TestCase):
     def test_selective_score_drift_is_reported_without_claiming_parity(self):
         output = io.StringIO()
         arguments = [str(SOURCE), str(SOURCE), "--suite", str(SOURCE.with_name("search_suite.json")),
-            "--repeats", "2", "--compare-lmr", "--compare-futility"]
+            "--repeats", "2", "--compare-lmr", "--compare-futility", "--compare-razor"]
         def sample(binary, case, depth, timeout, mode):
-            return {"score": 1 if mode in {"lmr", "futility"} else 0, "depth": depth, "nodes": 10,
+            return {"score": 1 if mode in {"lmr", "futility", "razor"} else 0, "depth": depth, "nodes": 10,
                 "bestmove": "a1a2", "pv": ["a1a2"]}, 10
         with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark.sys, "stdout", output):
             with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
                 benchmark.main()
         report = json.loads(output.getvalue())
         for result in report["results"]:
-            for mode in ("lmr", "futility"):
+            for mode in ("lmr", "futility", "razor"):
                 self.assertFalse(result[mode + "_comparison"]["score_equal"])
                 self.assertEqual(result[mode + "_comparison"]["score_delta"], 1)
         self.assertEqual(benchmark.MODES["lmr"], "--search-lmr")
         self.assertEqual(benchmark.MODES["futility"], "--search-futility")
+        self.assertEqual(benchmark.MODES["razor"], "--search-razor")
 
     def test_suite_rejects_duplicates_and_checked_nonmoving_king(self):
         path = Mock()

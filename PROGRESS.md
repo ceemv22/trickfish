@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **76.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **77.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -59,7 +59,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C20g | Optional guarded null probe with full-depth real-position verification and safe cancellation | 1.000 | Implemented |
 | C20i | Optional guarded LMR with full-depth re-search on improvement and drift diagnostics | 1.500 | Implemented |
 | C20k | Optional guarded frontier futility pruning with explicit selective-drift diagnostics | 1.000 | Implemented |
-| C20l | Razoring, extensions, and further pruning optimization | 2.500 | Pending |
+| C20m | Optional guarded depth-one razoring with quiescence confirmation and drift diagnostics | 1.000 | Implemented |
+| C20n | Extensions and further pruning optimization | 1.500 | Pending |
 | C21a | Fixed-suite search benchmark, deterministic repeats, legal PV validation, and provenance reports | 2.000 | Implemented |
 | C21c | Bounded tactical regression suite with explicit objectives, mirrored colors, and CI process checks | 1.000 | Implemented |
 | C21d | Broader tactical suites and controlled match infrastructure | 5.000 | Pending |
@@ -71,7 +72,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-29. LMR commit `73c3793` passed both OS jobs in [run 68](https://github.com/ceemv22/trickfish/actions/runs/40911062471), confirming configured checks at the 75.000-point implementation. Nineteen tooling tests pass locally. New optional futility C++ activation/guard/PV/repeatability/interruption and process diagnostics require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-29. Futility commit `bb16e3a` passed both OS jobs in [run 69](https://github.com/ceemv22/trickfish/actions/runs/40912066723), confirming configured checks at the 76.000-point implementation. Nineteen tooling tests pass locally. New optional razoring C++ activation/guards/PV/repeatability/interruption and process diagnostics require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -217,3 +218,7 @@ Before LMR implementation, C20h was split into C20i (1.500) and C20j (3.500), pr
 Before frontier-futility implementation, C20j was split into C20k (1.000) and C20l (2.500), preserving 3.500 points. C20k requires disabled-by-default depth-one quiet pruning with a previously searched move, tactical/check/root guards, configurable bounded margin, interruption safety and explicit score-drift reporting. It does not imply exact-score parity or a strength gain.
 
 - C20k implementation: +1.000 points, implemented scope 76.000%. Added disabled-by-default SearchOptions::use_futility and --search-futility. At depth-one non-root null-window nodes outside check/mate/synthetic/verification contexts, later quiet moves may be skipped when static score plus bounded margin <=alpha. The first searched move, checking/tactical moves, killers, positive history/continuations and sixth-rank-or-further pawn pushes are protected. Near draw clocks and child repetition/move-count/dead/stalemate outcomes are protected with real child-state checks. Margin accepts 0..10000, default 150, untuned. Result counters report pruned moves; --compare-futility reports selective score drift without assuming parity. CTests cover default/root guards, zero-margin activation, deterministic fresh searches, interruption/root/history restoration, immediate mate and invalid-margin rejection. Nineteen tooling tests pass locally; new C++ runtime awaits CI. Conservative child checks have cost; no runtime or strength improvement is established.
+
+Before razoring implementation, C20l was split into C20m (1.000) and C20n (1.500), preserving 2.500 points. C20m requires disabled-by-default non-root depth-one quiescence confirmation, check/pawn/draw safeguards, bounded configurable margin, state-safe interruption and explicit selective-score diagnostics. No runtime or strength gain is assumed.
+
+- C20m implementation: +1.000 points, implemented scope 77.000%. Added disabled-by-default SearchOptions::use_razoring and --search-razor. Depth-one non-root null-window nodes can probe quiescence at alpha/alpha+1 when static score plus bounded margin <=alpha, outside check/mate/synthetic/verification/near-draw contexts. Cutoff requires the quiescence result <=alpha. Advanced pawns of either color and quiet moves giving check or producing recognized draws/terminal states protect the node. Margin accepts 0..10000, default 200, untuned. Result counters expose probes/cutoffs; --compare-razor records selective score drift while retaining PV/depth/repeat/objective validation. CTests cover root/default guards, zero-margin activation, deterministic work, advanced-pawn protection, immediate mate, margin rejection and interrupted caller/history restoration. Nineteen tooling tests pass locally; new C++ runtime awaits CI. Protection scans have cost and no speed/strength improvement is established.

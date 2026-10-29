@@ -41,6 +41,8 @@ struct SearchResult {
     std::uint64_t lmr_reductions = 0;
     std::uint64_t lmr_researches = 0;
     std::uint64_t futility_pruned = 0;
+    std::uint64_t razor_probes = 0;
+    std::uint64_t razor_cutoffs = 0;
 };
 
 struct SearchOptions {
@@ -57,6 +59,8 @@ struct SearchOptions {
     bool use_lmr = false;
     bool use_futility = false;
     int futility_margin = 150;
+    bool use_razoring = false;
+    int razor_margin = 200;
 };
 
 struct SearchLimits {

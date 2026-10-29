@@ -59,6 +59,10 @@ struct SearchBudget {
     bool use_futility = false;
     int futility_margin = 150;
     std::uint64_t futility_pruned = 0;
+    bool use_razoring = false;
+    int razor_margin = 200;
+    std::uint64_t razor_probes = 0;
+    std::uint64_t razor_cutoffs = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -271,6 +275,25 @@ int static_for_side(const Position& position) {
     return position.side_to_move() == Color::white ? score : -score;
 }
 
+bool razor_protected(Position& position, const MoveList& moves, SearchBudget* budget) {
+    for (const auto color : {Color::white, Color::black}) {
+        auto pawns = position.pieces(color, PieceType::pawn);
+        while (pawns != 0) {
+            const auto rank = pop_lsb(pawns) / 8;
+            if (color == Color::white ? rank <= 2 : rank >= 5) return true;
+        }
+    }
+    for (const auto& move : moves) {
+        if (!is_quiet(position, move)) continue;
+        MoveScope scope(position, move, budget->history);
+        check_stop(budget);
+        if (position.in_check(position.side_to_move()) || is_repetition(budget) ||
+            is_move_count_draw(position, draw_policy(budget)) || position.is_insufficient_material() ||
+            generate_legal_moves(position).empty()) return true;
+    }
+    return false;
+}
+
 int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std::uint64_t& nodes, SearchBudget* budget) {
     visit(nodes, budget);
     auto moves = generate_legal_moves(position);
@@ -359,6 +382,17 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
                 if (legal_preferred) pv.push_back(*preferred);
                 return score;
             }
+        }
+    }
+    if (budget->use_razoring && allow_selective && budget->synthetic_null == 0 && ply > 0 && depth == 1 &&
+        beta == alpha + 1 && std::abs(alpha) < mate_threshold && !position.in_check(position.side_to_move()) &&
+        position.halfmove_clock() < (draw_policy(budget) == MoveCountDrawPolicy::claim_fifty_moves ? 99 : 149) &&
+        static_for_side(position) + budget->razor_margin <= alpha && !razor_protected(position, moves, budget)) {
+        ++budget->razor_probes;
+        const int score = quiescence(position, ply, 0, alpha, alpha + 1, nodes, budget);
+        if (score <= alpha) {
+            ++budget->razor_cutoffs;
+            return score;
         }
     }
     const auto color = position.side_to_move();
@@ -547,6 +581,9 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     if (options.futility_margin < 0 || options.futility_margin > 10000) {
         throw std::invalid_argument("futility margin must be between 0 and 10000");
     }
+    if (options.razor_margin < 0 || options.razor_margin > 10000) {
+        throw std::invalid_argument("razor margin must be between 0 and 10000");
+    }
     const auto root_legal = generate_legal_moves(position);
     for (std::size_t index = 0; index < options.root_moves.size(); ++index) {
         const auto& move = options.root_moves[index];
@@ -575,6 +612,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_lmr = options.use_lmr;
     budget.use_futility = options.use_futility;
     budget.futility_margin = options.futility_margin;
+    budget.use_razoring = options.use_razoring;
+    budget.razor_margin = options.razor_margin;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
@@ -636,6 +675,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.lmr_reductions = budget.lmr_reductions;
     result.lmr_researches = budget.lmr_researches;
     result.futility_pruned = budget.futility_pruned;
+    result.razor_probes = budget.razor_probes;
+    result.razor_cutoffs = budget.razor_cutoffs;
     return result;
 }
 

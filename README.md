@@ -211,7 +211,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Optional guarded null probe with full-depth real-position verification
 - [x] Optional guarded late move reductions with score-drift diagnostics
 - [x] Optional guarded frontier futility with selective-score diagnostics
-- [ ] Correction history, razoring, and extensions
+- [x] Optional guarded frontier razoring with quiescence confirmation
+- [ ] Correction history and extensions
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -331,7 +332,11 @@ LMR is selective: it can change score or miss a deeper tactical improvement. `--
 
 `SearchOptions::use_futility` defaults to false; `--search-futility depth [fen]` enables an experimental depth-one frontier policy. At non-root null-window nodes, a later quiet move can be skipped if static score plus `futility_margin` does not reach alpha. Margin accepts 0..10000, default 150. The first move, checked/mate-window nodes, captures/promotions, checking moves, killers, positive history/continuations and pawn pushes to the sixth rank or beyond are protected. Synthetic null branches and full-depth verifications do not use it.
 
-Child-state checks also protect repetition/move-count draws, insufficient material and terminal positions; near move-count thresholds the policy is disabled. These checks have computational cost. `SearchResult::futility_pruned` counts skipped moves. `--compare-futility` records score equality/delta instead of demanding exact parity, while legal PVs, deterministic repeats, completed depth and tactical objectives remain checked. Default search/UCI behavior is unchanged. New C++ activation/guard/interruption fixtures await this change's CI; the margin is untuned and no speed or strength gain is established.
+Child-state checks also protect repetition/move-count draws, insufficient material and terminal positions; near move-count thresholds the policy is disabled. These checks have computational cost. `SearchResult::futility_pruned` counts skipped moves. `--compare-futility` records score equality/delta instead of demanding exact parity, while legal PVs, deterministic repeats, completed depth and tactical objectives remain checked. Default search/UCI behavior is unchanged. Futility commit `bb16e3a` passed its configured C++ checks; the margin is untuned and no speed or strength gain is established.
+
+`SearchOptions::use_razoring` defaults to false; `--search-razor depth [fen]` enables an experimental depth-one policy. A non-root null-window node can switch to a quiescence confirmation when static score plus `razor_margin` does not reach alpha. Margin accepts 0..10000, default 200. A cutoff requires the quiescence score <= alpha; otherwise normal search continues.
+
+Checked/mate-window nodes, synthetic null branches, full-depth verifications and near-draw clocks are excluded. A pawn on the sixth rank or beyond, for either color, protects the node. Quiet checking moves and quiet moves producing recognized draw/terminal outcomes also protect it, using child-state checks. These scans have computational cost. Razoring remains selective and can miss a non-forcing improvement; `--compare-razor` records score equality/delta rather than assuming parity. `SearchResult` counts probes/cutoffs. Default search/UCI behavior is unchanged. New C++ activation/protection/interruption checks await this change's CI; no measured speedup or strength gain is established.
 
 ## Verification standard
 
