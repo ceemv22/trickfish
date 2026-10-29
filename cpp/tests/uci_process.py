@@ -62,7 +62,7 @@ class UciProcessTests(unittest.TestCase):
         self.until("uciok")
         self.assertIn("id name Trickfish C++", self.transcript)
         self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
-        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History"]:
+        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling"]:
             self.assertIn("option name Experimental " + name + " type check default false", self.transcript)
         for name, default, maximum in [("Futility Margin", 150, 10000), ("Razor Margin", 200, 10000),
             ("Check Extension Limit", 1, 4)]:
@@ -74,6 +74,19 @@ class UciProcessTests(unittest.TestCase):
         best = self.until("bestmove ").split()[1]
         self.assertIn(best, WHITE_MOVES)
         self.assertTrue(any(line.startswith("info depth 1 ") and " score cp " in line for line in self.transcript))
+
+    def test_optional_endgame_scaling_round_trip(self):
+        scores = []
+        for enabled in ("false", "true", "false"):
+            self.send("setoption name Experimental Endgame Scaling value " + enabled)
+            self.send("position fen 2b1k3/7p/8/8/8/8/PP6/2B1K3 w - - 0 1")
+            self.send("go depth 1")
+            self.until("bestmove ")
+            line = next(line for line in reversed(self.transcript) if line.startswith("info depth 1 "))
+            scores.append(int(line.split(" score cp ")[1].split()[0]))
+        self.assertGreater(scores[0], 0)
+        self.assertEqual(scores[1], scores[0] // 2)
+        self.assertEqual(scores[2], scores[0])
 
     def test_readiness_during_infinite_search(self):
         self.send("go infinite")

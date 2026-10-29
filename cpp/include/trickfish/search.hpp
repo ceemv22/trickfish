@@ -67,6 +67,7 @@ struct SearchOptions {
     bool use_check_extensions = false;
     int check_extension_limit = 1;
     bool use_correction = false;
+    bool use_endgame_scaling = false;
 };
 
 struct SearchLimits {

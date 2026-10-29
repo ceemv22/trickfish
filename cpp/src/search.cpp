@@ -68,6 +68,7 @@ struct SearchBudget {
     int check_extension_limit = 1;
     std::uint64_t check_extensions = 0;
     bool use_correction = false;
+    bool use_endgame_scaling = false;
     CorrectionHistory correction{};
     std::uint64_t correction_updates = 0;
     std::uint64_t correction_applications = 0;
@@ -81,7 +82,8 @@ std::uint64_t search_key(const Position& position, const SearchBudget* budget) {
     const auto clock = static_cast<std::uint64_t>(std::min(position.halfmove_clock(), 150));
     const auto policy = draw_policy(budget) == MoveCountDrawPolicy::claim_fifty_moves
         ? 0xd1b54a32d192ed03ULL : 0ULL;
-    return position.key() ^ (clock * 0x9e3779b97f4a7c15ULL) ^ policy;
+    const auto scaling = budget != nullptr && budget->use_endgame_scaling ? 0x94d049bb133111ebULL : 0ULL;
+    return position.key() ^ (clock * 0x9e3779b97f4a7c15ULL) ^ policy ^ scaling;
 }
 
 bool is_repetition(const SearchBudget* budget) {
@@ -278,9 +280,14 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
     });
 }
 
+int raw_static_for_side(const Position& position, const SearchBudget* budget) {
+    const auto score = budget != nullptr && budget->use_endgame_scaling
+        ? evaluate_scaled_static(position) : evaluate_static(position);
+    return position.side_to_move() == Color::white ? score : -score;
+}
+
 int static_for_side(const Position& position, SearchBudget* budget) {
-    const auto score = evaluate_static(position);
-    const int raw = position.side_to_move() == Color::white ? score : -score;
+    const int raw = raw_static_for_side(position, budget);
     if (budget != nullptr && budget->use_correction && budget->synthetic_null == 0) {
         const int adjustment = budget->correction.adjustment(position);
         if (adjustment != 0) ++budget->correction_applications;
@@ -533,7 +540,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     }
     if (budget->use_correction && budget->synthetic_null == 0 && allow_selective && !in_check &&
         selected && is_quiet(position, *selected) && best > original_alpha && best < beta) {
-        const int raw = evaluate_static(position) * (position.side_to_move() == Color::white ? 1 : -1);
+        const int raw = raw_static_for_side(position, budget);
         if (budget->correction.update(position, best, raw, depth)) ++budget->correction_updates;
     }
     if (table != nullptr) {
@@ -647,12 +654,16 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_check_extensions = options.use_check_extensions;
     budget.check_extension_limit = options.check_extension_limit;
     budget.use_correction = options.use_correction;
+    budget.use_endgame_scaling = options.use_endgame_scaling;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
         result.best_move = options.root_moves.empty() ? root_legal[0] : options.root_moves.front();
     }
     result.score = evaluate_for_side_to_move(position);
+    if (options.use_endgame_scaling && !root_legal.empty() && !position.is_insufficient_material()) {
+        result.score = raw_static_for_side(position, &budget);
+    }
     if (is_move_count_draw(position, options.draw_policy)) {
         result.score = 0;
         result.best_move.reset();

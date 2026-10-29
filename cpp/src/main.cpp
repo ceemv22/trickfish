@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
         }
         const bool limited_search = argc > 1 && std::string_view(argv[1]) == "--search-nodes";
         const bool timed_search = argc > 1 && std::string_view(argv[1]) == "--search-time";
+        const bool scaling_search = argc > 1 && std::string_view(argv[1]) == "--search-scale";
         const bool correction_search = argc > 1 && std::string_view(argv[1]) == "--search-correction";
         const bool check_search = argc > 1 && std::string_view(argv[1]) == "--search-check";
         const bool razor_search = argc > 1 && std::string_view(argv[1]) == "--search-razor";
@@ -70,9 +71,9 @@ int main(int argc, char** argv) {
         const bool exchange_search = argc > 1 && std::string_view(argv[1]) == "--search-see";
         const bool reference_search = argc > 1 && std::string_view(argv[1]) == "--search-ab";
         const bool budgeted_search = limited_search || timed_search;
-        if (argc > 1 && (std::string_view(argv[1]) == "--search" || correction_search || check_search || razor_search || futility_search || lmr_search || null_search || exchange_search || reference_search || budgeted_search)) {
+        if (argc > 1 && (std::string_view(argv[1]) == "--search" || scaling_search || correction_search || check_search || razor_search || futility_search || lmr_search || null_search || exchange_search || reference_search || budgeted_search)) {
             if (argc < (budgeted_search ? 4 : 3) || argc > (budgeted_search ? 5 : 4)) {
-                throw std::invalid_argument("usage: --search|--search-ab|--search-see|--search-null|--search-lmr|--search-futility|--search-razor|--search-check|--search-correction depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
+                throw std::invalid_argument("usage: --search|--search-ab|--search-see|--search-null|--search-lmr|--search-futility|--search-razor|--search-check|--search-correction|--search-scale depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
             }
             int depth = 0;
             const std::string_view text(argv[2]);
@@ -108,6 +109,7 @@ int main(int argc, char** argv) {
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
             trickfish::SearchOptions options;
             options.use_correction = correction_search;
+            options.use_endgame_scaling = scaling_search;
             options.use_check_extensions = check_search;
             options.use_razoring = razor_search;
             options.use_futility = futility_search;

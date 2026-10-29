@@ -236,6 +236,32 @@ struct EvaluationBreakdown {
     return evaluate_breakdown(position).total();
 }
 
+inline constexpr int endgame_scale_normal = 256;
+
+[[nodiscard]] inline int endgame_scale(const Position& position) {
+    for (const auto color : {Color::white, Color::black}) {
+        if (position.pieces(color, PieceType::knight) != 0 ||
+            position.pieces(color, PieceType::rook) != 0 || position.pieces(color, PieceType::queen) != 0) {
+            return endgame_scale_normal;
+        }
+    }
+    auto white = position.pieces(Color::white, PieceType::bishop);
+    auto black = position.pieces(Color::black, PieceType::bishop);
+    if (std::popcount(white) != 1 || std::popcount(black) != 1 ||
+        (position.pieces(Color::white, PieceType::pawn) | position.pieces(Color::black, PieceType::pawn)) == 0) {
+        return endgame_scale_normal;
+    }
+    const auto white_square = pop_lsb(white);
+    const auto black_square = pop_lsb(black);
+    const auto white_color = (white_square / 8 + white_square % 8) % 2;
+    const auto black_color = (black_square / 8 + black_square % 8) % 2;
+    return white_color != black_color ? 128 : endgame_scale_normal;
+}
+
+[[nodiscard]] inline int evaluate_scaled_static(const Position& position) {
+    return evaluate_static(position) * endgame_scale(position) / endgame_scale_normal;
+}
+
 [[nodiscard]] inline int evaluate(Position& position) {
     const auto status = game_status(position);
     if (status == GameStatus::checkmate) {
