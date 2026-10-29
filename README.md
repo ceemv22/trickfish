@@ -212,7 +212,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Optional guarded late move reductions with score-drift diagnostics
 - [x] Optional guarded frontier futility with selective-score diagnostics
 - [x] Optional guarded frontier razoring with quiescence confirmation
-- [ ] Correction history and extensions
+- [x] Optional bounded check extensions with effective-PV validation
+- [ ] Correction history and further extension/pruning optimization
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
@@ -336,7 +337,11 @@ Child-state checks also protect repetition/move-count draws, insufficient materi
 
 `SearchOptions::use_razoring` defaults to false; `--search-razor depth [fen]` enables an experimental depth-one policy. A non-root null-window node can switch to a quiescence confirmation when static score plus `razor_margin` does not reach alpha. Margin accepts 0..10000, default 200. A cutoff requires the quiescence score <= alpha; otherwise normal search continues.
 
-Checked/mate-window nodes, synthetic null branches, full-depth verifications and near-draw clocks are excluded. A pawn on the sixth rank or beyond, for either color, protects the node. Quiet checking moves and quiet moves producing recognized draw/terminal outcomes also protect it, using child-state checks. These scans have computational cost. Razoring remains selective and can miss a non-forcing improvement; `--compare-razor` records score equality/delta rather than assuming parity. `SearchResult` counts probes/cutoffs. Default search/UCI behavior is unchanged. New C++ activation/protection/interruption checks await this change's CI; no measured speedup or strength gain is established.
+Checked/mate-window nodes, synthetic null branches, full-depth verifications and near-draw clocks are excluded. A pawn on the sixth rank or beyond, for either color, protects the node. Quiet checking moves and quiet moves producing recognized draw/terminal outcomes also protect it, using child-state checks. These scans have computational cost. Razoring remains selective and can miss a non-forcing improvement; `--compare-razor` records score equality/delta rather than assuming parity. `SearchResult` counts probes/cutoffs. Default search/UCI behavior is unchanged. Razoring commit `3423759` passed its configured C++ checks; no measured speedup or strength gain is established.
+
+`SearchOptions::use_check_extensions` defaults to false; `--search-check depth [fen]` enables checked-node extensions. A nonterminal checked main-search node with remaining depth gains one ply and consumes one unit of a per-line budget. `check_extension_limit` accepts 0..4, default 1; zero disables extensions. The main-search ceiling remains 64 plies, and depth-zero quiescence is unchanged. Synthetic null branches do not extend; real-position null verification receives the same remaining extension context.
+
+TT is disabled while a positive extension budget is active because the effective horizon depends on that budget. Reported completed depth remains nominal; PV length can exceed it by the allowed per-line budget. The diagnostic CLI uses one extra ply, and benchmark PV validation accounts for it only in `--search-check` mode. `--compare-check` records score equality/delta with the different horizon and TT policy explicitly identified. `SearchResult::check_extensions` counts applied extensions. New C++ horizon/PV/limit/interruption tests await this change's CI; default search/UCI behavior is unchanged and no strength or speed benefit is established.
 
 ## Verification standard
 

@@ -63,6 +63,9 @@ struct SearchBudget {
     int razor_margin = 200;
     std::uint64_t razor_probes = 0;
     std::uint64_t razor_cutoffs = 0;
+    bool use_check_extensions = false;
+    int check_extension_limit = 1;
+    std::uint64_t check_extensions = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -338,7 +341,7 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
 }
 
 int negamax(Position& position, int depth, int ply, int alpha, int beta,
-    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget, bool use_pvs, std::optional<Move> previous, bool allow_selective) {
+    std::uint64_t& nodes, std::uint64_t& hits, TranspositionTable* table, std::optional<Move>* best_move, std::vector<Move>& pv, SearchBudget* budget, bool use_pvs, std::optional<Move> previous, bool allow_selective, int extensions_left) {
     if (depth == 0) {
         return quiescence(position, ply, 0, alpha, beta, nodes, budget);
     }
@@ -365,6 +368,12 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             pv.push_back(moves[0]);
         }
         return 0;
+    }
+    if (budget->use_check_extensions && budget->synthetic_null == 0 && extensions_left > 0 &&
+        ply + depth < 64 && position.in_check(position.side_to_move())) {
+        ++depth;
+        --extensions_left;
+        ++budget->check_extensions;
     }
     const int original_alpha = alpha;
     std::optional<Move> preferred;
@@ -409,13 +418,13 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
         {
             NullScope scope(position, *budget);
             probe = -negamax(position, depth - 3, ply + 1, -beta, -beta + 1,
-                nodes, hits, nullptr, nullptr, ignored, budget, use_pvs, std::nullopt, false);
+                nodes, hits, nullptr, nullptr, ignored, budget, use_pvs, std::nullopt, false, 0);
         }
         if (probe >= beta) {
             ++budget->null_verifications;
             ignored.clear();
             const int verified = negamax(position, depth, ply, alpha, beta,
-                nodes, hits, nullptr, nullptr, ignored, budget, use_pvs, previous, false);
+                nodes, hits, nullptr, nullptr, ignored, budget, use_pvs, previous, false, extensions_left);
             if (verified >= beta) {
                 ++budget->null_cutoffs;
                 pv = std::move(ignored);
@@ -463,7 +472,7 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             if (reduce && !position.in_check(position.side_to_move())) {
                 ++budget->lmr_reductions;
                 score = -negamax(position, depth - 2, ply + 1, -alpha - 1, -alpha,
-                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective, extensions_left);
                 full_search = score > alpha;
                 if (full_search) {
                     ++budget->lmr_researches;
@@ -473,16 +482,16 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             if (full_search && use_pvs && selected && beta > alpha + 1) {
                 ++budget->pvs_probes;
                 score = -negamax(position, depth - 1, ply + 1, -alpha - 1, -alpha,
-                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective, extensions_left);
                 if (score > alpha && score < beta) {
                     ++budget->pvs_researches;
                     child_pv.clear();
                     score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
-                        nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
+                        nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective, extensions_left);
                 }
             } else if (full_search) {
                 score = -negamax(position, depth - 1, ply + 1, -beta, -alpha,
-                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective);
+                    nodes, hits, table, nullptr, child_pv, budget, use_pvs, move, allow_selective, extensions_left);
             }
         }
         if (score > best) {
@@ -530,7 +539,8 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     if (budget == nullptr) budget = &local_budget;
     SearchResult result;
     result.score = negamax(position, depth, 0, alpha, beta,
-        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget, use_pvs, std::nullopt, true);
+        result.nodes, result.transposition_hits, table, &result.best_move, result.principal_variation, budget, use_pvs, std::nullopt, true,
+        budget->use_check_extensions ? budget->check_extension_limit : 0);
     result.completed_depth = depth;
     result.pvs_probes = budget->pvs_probes;
     result.pvs_researches = budget->pvs_researches;
@@ -584,6 +594,9 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     if (options.razor_margin < 0 || options.razor_margin > 10000) {
         throw std::invalid_argument("razor margin must be between 0 and 10000");
     }
+    if (options.check_extension_limit < 0 || options.check_extension_limit > 4) {
+        throw std::invalid_argument("check extension limit must be between 0 and 4");
+    }
     const auto root_legal = generate_legal_moves(position);
     for (std::size_t index = 0; index < options.root_moves.size(); ++index) {
         const auto& move = options.root_moves[index];
@@ -600,7 +613,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         active_history.emplace(*history);
     }
     std::optional<TranspositionTable> table;
-    if (options.use_table && history == nullptr && options.root_moves.empty()) {
+    if (options.use_table && history == nullptr && options.root_moves.empty() &&
+        !(options.use_check_extensions && options.check_extension_limit > 0)) {
         table.emplace();
     }
     SearchBudget budget{limits.nodes, limits.deadline, limits.stop_requested, active_history ? &*active_history : nullptr, options.draw_policy};
@@ -614,6 +628,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.futility_margin = options.futility_margin;
     budget.use_razoring = options.use_razoring;
     budget.razor_margin = options.razor_margin;
+    budget.use_check_extensions = options.use_check_extensions;
+    budget.check_extension_limit = options.check_extension_limit;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
@@ -677,6 +693,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.futility_pruned = budget.futility_pruned;
     result.razor_probes = budget.razor_probes;
     result.razor_cutoffs = budget.razor_cutoffs;
+    result.check_extensions = budget.check_extensions;
     return result;
 }
 
