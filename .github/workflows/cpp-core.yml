@@ -247,3 +247,16 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $reference -ne $gain) { throw "Exchange reference mismatch" }
           $detail = & $binary --see-detail a1a2 "4k3/8/8/8/8/8/q7/R3K3 w - - 0 1"
           if ($LASTEXITCODE -ne 0 -or ($detail -join "`n") -ne "score 900`nnodes 1`ncutoffs 0") { throw "Exchange detail mismatch" }
+      - name: Validate UCI match runner
+        shell: pwsh
+        run: |
+          python cpp/bench/test_uci_matches.py
+          if ($LASTEXITCODE -ne 0) { throw "UCI match runner checks failed" }
+      - name: Smoke test paired UCI games
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/uci_matches.py $binary $binary --depth 1 --max-plies 2 --output build/match-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "Paired UCI process smoke failed" }
+          Get-Content build/match-smoke.json

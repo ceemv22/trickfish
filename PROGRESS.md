@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **78.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **80.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -64,7 +64,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C20p | Further extensions and pruning optimization | 0.500 | Pending |
 | C21a | Fixed-suite search benchmark, deterministic repeats, legal PV validation, and provenance reports | 2.000 | Implemented |
 | C21c | Bounded tactical regression suite with explicit objectives, mirrored colors, and CI process checks | 1.000 | Implemented |
-| C21d | Broader tactical suites and controlled match infrastructure | 5.000 | Pending |
+| C21e | Sequential color-paired UCI match baseline with legal arbitration and provenance/replay reports | 1.500 | Implemented |
+| C21f | Broader tactical suites and controlled match methodology | 3.500 | Pending |
 | C22 | Profile-guided movegen/state optimization with measured regressions | 6.000 | Pending |
 | C23 | Tablebase integration and score/draw handling | 3.000 | Pending |
 | C24 | Reproducible evaluation tuning, self-play, and SPRT workflow | 5.000 | Pending |
@@ -73,7 +74,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-29. Check-extension commit `2342522` passed both OS jobs in [run 71](https://github.com/ceemv22/trickfish/actions/runs/40913736805), confirming configured checks at the 78.000-point implementation. Twenty tooling tests pass locally. New C++ correction context/bounds/lifetime/public-evaluator/terminal/interruption checks require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-29. Correction-history commit `9f1e451` passed both OS jobs in [run 72](https://github.com/ceemv22/trickfish/actions/runs/40916193002), confirming configured checks at the 78.500-point implementation. Ten local match-runner tests, twenty benchmark-tool tests and three opening replays pass. Actual paired UCI process smoke execution requires CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -231,3 +232,7 @@ Before check-extension implementation, C20n was split into C20o (1.000) and C20p
 Before correction implementation, the C19n completion boundary was clarified as a bounded, selectable pawn-structure correction baseline, with per-search lifetime, non-mate learning and public-evaluator isolation. Its weight remains 0.500, with zero recalibration effect. This boundary does not claim completion of all future correction/ordering research.
 
 - C19n implementation: +0.500 points, implemented scope 78.500%. Added a lazy 1024-slot full-key-checked pawn/side correction table with +/-256 adjustment and weighted error averaging (depth weight capped at 16 out of 32). Mate-band samples and invalid depths are excluded/rejected. SearchOptions::use_correction defaults false; --search-correction enables learning from quiet best moves at ordinary exact-window, non-checked main nodes. Public evaluate_static/breakdown and Python remain unchanged. Only search-local ordinary scores are adjusted/clamped outside mate bands; terminal/draw adjudication precedes application. TT is disabled in this adaptive mode, and synthetic/null-verification branches do not train the table. New searches start empty. --compare-correction records score drift and its distinct TT policy. CTests cover pawn/side contexts, bounds, clear, mate rejection, training/application, fresh determinism, TT isolation, interruption and public-score/root preservation. Twenty tooling tests pass locally; new C++ runtime awaits CI. This untuned baseline establishes no strength benefit or statistical evaluation accuracy.
+
+Before UCI match-runner implementation, C21d was split into C21e (1.500) and C21f (3.500), preserving 5.000 points. C21e requires two UCI processes per game, legal replay/history, same-opening color swaps, explicit draw/unfinished/error policy, bounded process lifecycle and binary/opening provenance. It is not SPRT, Elo estimation, PGN export or a tournament-strength certification.
+
+- C21e implementation: +1.500 points, implemented scope 80.000%. Added a sequential two-binary UCI match baseline with fresh processes per game, fixed-depth or fixed-movetime requests, three versioned opening prefixes and same-opening color swaps. Python legal-move replay adjudicates terminal/dead positions, automatic 75/fivefold and explicit always-claim 50/threefold policy, with mate checked first. The searched-ply cap records unfinished games rather than draws; engine protocol/timeout/illegal-move failures abort without a forfeit result. JSON records binary/opening hashes, policies, names, moves, final FENs, decisions and separate W/L/D/unfinished counts. Watchdogs and joined/terminated process cleanup bound failures. Ten local unit tests and twenty existing tooling tests pass; CI will run six same-binary, two-searched-ply smoke games. No actual new C++ matches ran locally. This is infrastructure, not PGN/SPRT/Elo inference or broad opening/tournament methodology; C21f remains pending.

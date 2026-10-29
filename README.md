@@ -217,7 +217,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [ ] Further extension/pruning optimization
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
-- [ ] Broader tactical benchmark suites, tuning, self-play, and SPRT matches
+- [x] Sequential color-paired UCI match baseline with legal replay and provenance
+- [ ] Broader tactical/opening methodology, tuning, and SPRT matches
 
 ### Research layers
 
@@ -346,7 +347,21 @@ TT is disabled while a positive extension budget is active because the effective
 
 `SearchOptions::use_correction` defaults to false; `--search-correction depth [fen]` enables an experimental adaptive correction to search-local static scores. A lazy 1,024-slot table uses full pawn/side keys with collision replacement and adjustments bounded to +/-256. Quiet best moves at non-checked exact-window main nodes supply ordinary score-error samples; mate-band samples are ignored. The update blends the existing value and clamped error with a depth weight capped at 16 out of 32. This coarse pawn context intentionally shares information across different piece placements.
 
-The table resets per search. Public `evaluate_static`, `--eval-detail`, and the Python reference are unchanged. Terminal/draw handling runs before search correction, and adjusted scores are clamped outside the mate band. Synthetic null branches and real-position null verifications do not train it. TT is disabled in correction mode because the evaluator changes during search. `SearchResult` counts accepted updates and nonzero correction applications. `--compare-correction` records score drift and the different TT policy. New C++ context/bounds/lifetime/interruption checks await this change's CI; no evaluation-accuracy, speed or strength improvement is established.
+The table resets per search. Public `evaluate_static`, `--eval-detail`, and the Python reference are unchanged. Terminal/draw handling runs before search correction, and adjusted scores are clamped outside the mate band. Synthetic null branches and real-position null verifications do not train it. TT is disabled in correction mode because the evaluator changes during search. `SearchResult` counts accepted updates and nonzero correction applications. `--compare-correction` records score drift and the different TT policy. Correction-history commit `9f1e451` passed its configured C++ checks; no evaluation-accuracy, speed or strength improvement is established.
+
+## UCI match baseline
+
+The stdlib match runner accepts two UCI executable paths, launches them without extra arguments, and plays each opening with engine A and engine B assigned to White in turn. Games run sequentially with fresh processes. For example, after building both versions:
+
+```powershell
+python cpp/bench/uci_matches.py .\build\Release\trickfish_cpp.exe C:\path\to\baseline.exe --depth 2 --max-plies 200 --output build/matches.json
+```
+
+Use `--movetime` in milliseconds instead of `--depth` for a fixed per-move budget. The default is depth 2; a finite `--timeout` is a process watchdog, not a chess-clock loss policy. The runner uses each binary's default UCI options, sends the complete opening/game history, and verifies every returned move against the Python rules reference. Three supplied opening prefixes are a smoke set, not a representative strength suite. Each round plays both color assignments per opening.
+
+The arbiter checks mate before draw conditions. It recognizes reference insufficient-material/stalemate, automatic seventy-five-move/fivefold draws, and an explicit always-claim fifty-move/threefold policy. Intended-move claims and choosing a win instead of a claim are not modeled. The searched-ply cap excludes the opening prefix and produces an unfinished `*` result, not a draw. Illegal moves, protocol errors, engine exits or watchdog failures abort the run without awarding a forfeit or producing a complete report.
+
+JSON records engine/opening SHA-256, environment/policies, UCI names, all moves, opening-ply counts, per-search timing/info, final FENs and separate win/loss/draw/unfinished totals. These hashes identify inputs, not their source commits. There is no evaluation-based adjudication, PGN export, Elo estimate or SPRT. CI is configured to run six same-binary games capped at two searched plies; this validates process plumbing and unfinished-game accounting. New process results await this package's CI. No playing-strength conclusion follows.
 
 ## Verification standard
 

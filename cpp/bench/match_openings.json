@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "openings": [
+    {"id": "king-pawn", "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "moves": ["e2e4", "e7e5", "g1f3", "b8c6"]},
+    {"id": "queen-pawn", "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "moves": ["d2d4", "d7d5", "c2c4", "e7e6"]},
+    {"id": "english", "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "moves": ["c2c4", "e7e5", "b1c3", "g8f6"]}
+  ]
+}
