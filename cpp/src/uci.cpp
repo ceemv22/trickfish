@@ -65,6 +65,41 @@ std::uint64_t number_for(const std::string& text) {
     return value;
 }
 
+struct CheckOption {
+    std::string_view name;
+    bool SearchOptions::*member;
+};
+
+struct SpinOption {
+    std::string_view name;
+    int SearchOptions::*member;
+    int minimum;
+    int maximum;
+};
+
+constexpr CheckOption check_options[] = {
+    {"Experimental Exchange Ordering", &SearchOptions::use_exchange_ordering},
+    {"Experimental Null Move", &SearchOptions::use_null_move},
+    {"Experimental LMR", &SearchOptions::use_lmr},
+    {"Experimental Futility", &SearchOptions::use_futility},
+    {"Experimental Razoring", &SearchOptions::use_razoring},
+    {"Experimental Check Extensions", &SearchOptions::use_check_extensions},
+    {"Experimental Correction History", &SearchOptions::use_correction}
+};
+
+constexpr SpinOption spin_options[] = {
+    {"Futility Margin", &SearchOptions::futility_margin, 0, 10000},
+    {"Razor Margin", &SearchOptions::razor_margin, 0, 10000},
+    {"Check Extension Limit", &SearchOptions::check_extension_limit, 0, 4}
+};
+
+std::string lowercase(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char character) {
+        return static_cast<char>(std::tolower(character));
+    });
+    return text;
+}
+
 struct GoLimits {
     int depth = 64;
     std::optional<std::uint64_t> nodes;
@@ -169,7 +204,18 @@ public:
                 const auto& name = tokens[0];
                 if (name == "uci") {
                     emit("id name Trickfish C++\nid author ceemv22\noption name Move Overhead type spin default " +
-                        std::to_string(default_move_overhead_ms) + " min 0 max 10000\nuciok");
+                        std::to_string(default_move_overhead_ms) + " min 0 max 10000");
+                    const SearchOptions defaults;
+                    for (const auto& option : check_options) {
+                        emit("option name " + std::string(option.name) + " type check default " +
+                            (defaults.*option.member ? "true" : "false"));
+                    }
+                    for (const auto& option : spin_options) {
+                        emit("option name " + std::string(option.name) + " type spin default " +
+                            std::to_string(defaults.*option.member) + " min " + std::to_string(option.minimum) +
+                            " max " + std::to_string(option.maximum));
+                    }
+                    emit("uciok");
                 } else if (name == "isready") {
                     emit("readyok");
                 } else if (name == "quit") {
@@ -214,13 +260,30 @@ private:
             if (!name.empty()) name += ' ';
             name += *word;
         }
-        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char character) {
-            return static_cast<char>(std::tolower(character));
-        });
-        if (name != "move overhead") throw std::invalid_argument("unsupported option: " + name);
-        const auto overhead = number_for(*(value + 1));
-        if (overhead > 10000) throw std::invalid_argument("Move Overhead must be between 0 and 10000");
-        move_overhead_ = overhead;
+        name = lowercase(std::move(name));
+        if (name == "move overhead") {
+            const auto overhead = number_for(*(value + 1));
+            if (overhead > 10000) throw std::invalid_argument("Move Overhead must be between 0 and 10000");
+            move_overhead_ = overhead;
+            return;
+        }
+        for (const auto& option : check_options) {
+            if (name != lowercase(std::string(option.name))) continue;
+            const auto selected = lowercase(*(value + 1));
+            if (selected != "true" && selected != "false") throw std::invalid_argument("check option requires true or false");
+            search_options_.*option.member = selected == "true";
+            return;
+        }
+        for (const auto& option : spin_options) {
+            if (name != lowercase(std::string(option.name))) continue;
+            const auto selected = number_for(*(value + 1));
+            if (selected < static_cast<std::uint64_t>(option.minimum) || selected > static_cast<std::uint64_t>(option.maximum)) {
+                throw std::invalid_argument("spin option value is out of range");
+            }
+            search_options_.*option.member = static_cast<int>(selected);
+            return;
+        }
+        throw std::invalid_argument("unsupported option: " + name);
     }
 
     void emit(const std::string& text) {
@@ -255,11 +318,10 @@ private:
     }
 
     void start_search(GoLimits limits) {
-        worker_ = std::jthread([this, root = position_, history = history_, limits](std::stop_token stop) mutable {
+        worker_ = std::jthread([this, root = position_, history = history_, limits, options = search_options_](std::stop_token stop) mutable {
             try {
                 const SearchLimits search_limits{limits.nodes, limits.deadline,
                     [stop] { return stop.stop_requested(); }};
-                SearchOptions options;
                 options.root_moves = limits.root_moves;
                 const auto result = iterative_search(root, limits.depth, options, search_limits, &history);
                 if (limits.infinite && !stop.stop_requested()) {
@@ -279,6 +341,7 @@ private:
     std::ostream& output_;
     Position position_;
     RepetitionHistory history_;
+    SearchOptions search_options_;
     std::uint64_t move_overhead_ = default_move_overhead_ms;
     std::mutex output_mutex_;
     std::jthread worker_;

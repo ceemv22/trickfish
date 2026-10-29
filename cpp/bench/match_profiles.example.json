@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "engines": {
+    "a": {
+      "Experimental LMR": true
+    },
+    "b": {
+      "Experimental LMR": false
+    }
+  }
+}

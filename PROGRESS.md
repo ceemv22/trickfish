@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **80.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **81.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -66,7 +66,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C21c | Bounded tactical regression suite with explicit objectives, mirrored colors, and CI process checks | 1.000 | Implemented |
 | C21e | Sequential color-paired UCI match baseline with legal arbitration and provenance/replay reports | 1.500 | Implemented |
 | C21g | Replay-validated PGN mainline export with SAN, provenance, and unfinished-result integrity | 0.500 | Implemented |
-| C21h | Broader tactical suites and controlled match methodology | 3.000 | Pending |
+| C21i | Typed per-engine UCI profiles with immutable search snapshots and match/PGN provenance | 0.500 | Implemented |
+| C21j | Broader tactical suites and controlled match methodology | 2.500 | Pending |
 | C22 | Profile-guided movegen/state optimization with measured regressions | 6.000 | Pending |
 | C23 | Tablebase integration and score/draw handling | 3.000 | Pending |
 | C24 | Reproducible evaluation tuning, self-play, and SPRT workflow | 5.000 | Pending |
@@ -75,7 +76,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-29. Match-runner commit `f2d7a9f` passed both OS jobs in [run 73](https://github.com/ceemv22/trickfish/actions/runs/40918852606), confirming configured checks at the 80.000-point implementation. Seven PGN exporter tests, ten match-runner tests and twenty benchmark tests pass locally. New process-to-PGN smoke execution requires CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-29. PGN-export commit `4a04b95` passed both OS jobs in [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/40920523657), confirming configured checks at the 80.500-point implementation. Fourteen match/profile tests, eight exporter tests and twenty benchmark tests pass locally. New C++ option advertisement/snapshot semantics and profiled match/PGN process smoke execution require CI for the next pushed commit. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -241,3 +242,7 @@ Before UCI match-runner implementation, C21d was split into C21e (1.500) and C21
 Before PGN implementation, C21f was split into C21g (0.500) and C21h (3.000), preserving 3.500 points. C21g requires legal SAN mainlines, setup FEN/numbering, header escaping, replay/final-result/summary integrity, and unfinished-game preservation before output. It is an exporter, not a general PGN parser or a strength result.
 
 - C21g implementation: +0.500 points, implemented scope 80.500%. Added standalone UTF-8 PGN mainline export from schema-1 match JSON. It replays legal UCI moves, constructs SAN with legal-move disambiguation/special moves/check/mate, validates decisions/final FEN/result/reason/cap/summary, and preserves unfinished markers. Setup FEN, Black-to-move numbering, escaped roster/provenance tags and UTC game-start dates are included; legacy missing start dates remain unknown. Runner records start/end UTC timestamps without changing score policy. All games are validated before output is written. Seven exporter, ten runner and twenty existing benchmark tests pass locally; CI will export the same-binary match smoke report. No external PGN-reader compatibility, Elo or statistical strength claim is made. C21h broader match methodology remains pending.
+
+Before UCI-profile implementation, C21h was split into C21i (0.500) and C21j (2.500), preserving 3.000 points. C21i requires advertised experimental check/spin options with validation and per-go snapshots, typed per-engine match profiles, recorded accepted commands/provenance, and unchanged defaults. It does not validate a profile as stronger.
+
+- C21i implementation: +0.500 points, implemented scope 81.000%. UCI advertises seven false-default experimental checks and three bounded spin parameters; invalid updates preserve prior values, settings survive newgame, and every go captures a private SearchOptions copy. Match profiles accept advertised check/spin options only, validate all values before sending, reject duplicate/unknown names and preserve accepted canonical option messages. Per-engine requested profiles, file hash and per-game accepted options are recorded; PGN preserves color-specific profiles. Example LMR on/off profiles are wiring examples, not a strength recommendation. Fourteen match/profile, eight exporter and twenty benchmark tests pass locally. New C++ process checks cover advertisement and checked-root horizon changes across per-go snapshots/newgame/invalid values. CI uses profiled same-binary shallow games; new runtime awaits CI. No profile is validated as stronger by this infrastructure.

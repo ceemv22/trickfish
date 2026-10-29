@@ -6,7 +6,7 @@ import re
 import sys
 import textwrap
 
-from uci_matches import DRAW_POLICY, adjudicate, repetition_identity, score_games
+from uci_matches import DRAW_POLICY, adjudicate, repetition_identity, score_games, validate_profile
 from collections import Counter
 from trickfish.position import Position
 
@@ -112,6 +112,10 @@ def render_game(game, engines, policy):
         tags.update(SetUp="1", FEN=root_fen)
     tags.update(Opening=game["opening"], OpeningPlies=str(book), TrickfishReason=game["reason"],
         WhiteSHA256=engines[game["white"]]["sha256"], BlackSHA256=engines[game["black"]]["sha256"])
+    if "applied_options" in game:
+        for side, label in [("White", game["white"]), ("Black", game["black"])]:
+            profile = validate_profile(game["applied_options"].get(label, {}))
+            tags[side + "UCIProfile"] = json.dumps(profile, sort_keys=True, separators=(",", ":"))
     header = "\n".join(f'[{name} "{tag_value(value)}"]' for name, value in tags.items())
     tokens.append(game["result"])
     return header + "\n\n" + textwrap.fill(" ".join(tokens), width=79,

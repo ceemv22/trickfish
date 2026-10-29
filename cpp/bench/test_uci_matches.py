@@ -17,9 +17,10 @@ class FakeEngine:
     closed = []
     choice = None
 
-    def __init__(self, binary, timeout):
+    def __init__(self, binary, timeout, profile=None):
         self.binary = binary
         self.name = "fake"
+        self.applied_options = {} if profile is None else profile
 
     def __enter__(self):
         return self
@@ -97,7 +98,7 @@ class MatchTests(unittest.TestCase):
     def test_main_pairs_colors_and_keeps_caps_unscored(self):
         source = pathlib.Path(matches.__file__).resolve()
         output = io.StringIO()
-        def game(opening, binaries, white, go, max_plies, timeout):
+        def game(opening, binaries, white, go, max_plies, timeout, profiles=None):
             return {"white": white, "black": "b" if white == "a" else "a", "result": "*", "reason": "searched_ply_limit"}
         arguments = [str(source), str(source), str(source), "--depth", "1", "--max-plies", "2"]
         with patch.object(matches.sys, "argv", arguments), patch.object(matches.sys, "stdout", output):
@@ -118,6 +119,43 @@ class MatchTests(unittest.TestCase):
         engine = matches.Engine("fake", 0)
         with self.assertRaisesRegex(RuntimeError, "timeout"):
             engine.until("uciok")
+
+    def profile_engine(self, profile):
+        engine = matches.Engine("fake", 1, profile)
+        for line in ["option name Experimental LMR type check default false",
+            "option name Check Extension Limit type spin default 1 min 0 max 4", "uciok"]:
+            engine.events.put(line)
+        engine.until("uciok")
+        engine.send = Mock()
+        return engine
+
+    def test_profiles_use_advertised_types_bounds_and_canonical_names(self):
+        engine = self.profile_engine({"experimental lmr": True, "Check Extension Limit": 2})
+        engine.apply_profile()
+        self.assertEqual([call.args[0] for call in engine.send.call_args_list],
+            ["setoption name Experimental LMR value true", "setoption name Check Extension Limit value 2"])
+        self.assertEqual(engine.applied_options, {"Experimental LMR": True, "Check Extension Limit": 2})
+
+    def test_invalid_profiles_send_no_partial_option_changes(self):
+        for profile in [{"Experimental LMR": 1}, {"Check Extension Limit": True},
+            {"Experimental LMR": True, "Check Extension Limit": 5}, {"Unknown": False}]:
+            engine = self.profile_engine(profile)
+            with self.subTest(profile=profile), self.assertRaises(ValueError): engine.apply_profile()
+            engine.send.assert_not_called()
+
+    def test_duplicate_profile_names_and_json_keys_are_rejected(self):
+        with self.assertRaises(ValueError): matches.validate_profile({"Foo": True, "foo": False})
+        path = Mock()
+        path.read_text.return_value = '{"version":1,"engines":{"a":{"Foo":true,"Foo":false}}}'
+        with self.assertRaises(ValueError): matches.load_profiles(path)
+        path.read_text.return_value = json.dumps({"version": 1, "engines": {"c": {}}})
+        with self.assertRaises(ValueError): matches.load_profiles(path)
+
+    def test_game_records_each_engine_profile(self):
+        profiles = {"a": {"Experimental LMR": True}, "b": {"Experimental LMR": False}}
+        game = matches.play_game({"id": "start", "fen": INITIAL}, {"a": "A", "b": "B"},
+            "a", "go depth 1", 1, 5, FakeEngine, profiles)
+        self.assertEqual(game["applied_options"], profiles)
 
     def test_invalid_duplicate_and_finished_openings_are_rejected(self):
         path = Mock()

@@ -62,6 +62,11 @@ class UciProcessTests(unittest.TestCase):
         self.until("uciok")
         self.assertIn("id name Trickfish C++", self.transcript)
         self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
+        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History"]:
+            self.assertIn("option name Experimental " + name + " type check default false", self.transcript)
+        for name, default, maximum in [("Futility Margin", 150, 10000), ("Razor Margin", 200, 10000),
+            ("Check Extension Limit", 1, 4)]:
+            self.assertIn(f"option name {name} type spin default {default} min 0 max {maximum}", self.transcript)
         self.send("isready")
         self.until("readyok")
         self.send("position startpos")
@@ -156,6 +161,34 @@ class UciProcessTests(unittest.TestCase):
         self.send("go depth 1 wtime 10000 btime 1000000")
         self.assertIn(self.until("bestmove ").split()[1], WHITE_MOVES)
         self.assertTrue(any(line.startswith("info depth 0 nodes 0") for line in self.transcript))
+
+    def test_experimental_options_snapshot_persist_and_reject_invalid_values(self):
+        position = "position fen 7k/8/5K1Q/8/8/8/8/8 b - - 0 1"
+        self.send(position)
+        self.send("go depth 1")
+        self.send("setoption name experimental check extensions value TRUE")
+        self.until("bestmove ")
+        self.assertTrue(any(" score cp -897" in line for line in self.transcript))
+        self.send("ucinewgame")
+        self.send(position)
+        before = len(self.transcript)
+        self.send("go depth 1")
+        self.until("bestmove ")
+        self.assertTrue(any(" score mate -1" in line for line in self.transcript[before:]))
+        self.send("setoption name Check Extension Limit value 0")
+        self.send("setoption name Check Extension Limit value 5")
+        self.until("info string error:")
+        before = len(self.transcript)
+        self.send("go depth 1")
+        self.until("bestmove ")
+        self.assertTrue(any(" score cp -897" in line for line in self.transcript[before:]))
+        self.send("setoption name Experimental Check Extensions value invalid")
+        self.until("info string error:")
+        self.send("setoption name Check Extension Limit value 1")
+        before = len(self.transcript)
+        self.send("go depth 1")
+        self.until("bestmove ")
+        self.assertTrue(any(" score mate -1" in line for line in self.transcript[before:]))
 
     def test_searchmoves_restricts_completed_search_and_fallback(self):
         for command in ["go depth 2 searchmoves e2e4", "go searchmoves d2d4 e2e4 depth 1",

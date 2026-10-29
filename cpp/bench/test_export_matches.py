@@ -76,6 +76,13 @@ class ExportTests(unittest.TestCase):
         self.assertIn(r'[White "A \"quoted\" \\ engine next"]', pgn)
         self.assertIn('[WhiteSHA256 "' + "a" * 64 + '"]', pgn)
 
+    def test_pgn_preserves_typed_color_specific_profiles(self):
+        report = make_report(exporter.INITIAL, ["e2e4"])
+        report["games"][0]["applied_options"] = {"a": {"Experimental LMR": True}, "b": {"Experimental LMR": False}}
+        pgn = exporter.export_report(report)
+        self.assertIn(r'[WhiteUCIProfile "{\"Experimental LMR\":true}"]', pgn)
+        self.assertIn(r'[BlackUCIProfile "{\"Experimental LMR\":false}"]', pgn)
+
     def test_corrupted_replay_decisions_summary_and_cap_are_rejected(self):
         original = make_report(exporter.INITIAL, ["e2e4"])
         for change in ("fen", "move", "decision", "summary", "cap", "hash", "result"):
