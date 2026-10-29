@@ -52,6 +52,26 @@ def mirrored(position):
     return Position(board, "b" if position.side_to_move == "w" else "w", "-", None,
         position.halfmove_clock, position.fullmove_number)
 
+def activity_square_positions():
+    for symbol in "PNBRQpnbrq":
+        for square in range(64):
+            if symbol.lower() == "p" and square // 8 in (0, 7):
+                continue
+            variants = (False, True) if symbol.lower() == "r" else (False,)
+            for enemy_pawn in variants:
+                board = [None] * 64
+                board[7 if square == 0 else 0] = "k"
+                board[56 if square == 63 else 63] = "K"
+                board[square] = symbol
+                if enemy_pawn:
+                    board[28 if square == 27 else 27] = "p" if symbol.isupper() else "P"
+                position = Position(tuple(board), "b" if symbol.isupper() else "w", "-", None, 0, 1)
+                opposite = "w" if position.side_to_move == "b" else "b"
+                if position.is_square_attacked(position._king_square(opposite), position.side_to_move):
+                    raise AssertionError("invalid activity-square fixture")
+                yield position
+
+
 def positions_for_checks():
     positions = {}
     for fen in ROOT_FENS:
@@ -74,6 +94,8 @@ def positions_for_checks():
         for move in selected:
             child = position.make_move(move)
             positions[child.to_fen()] = child
+    for position in activity_square_positions():
+        positions[position.to_fen()] = position
     return positions
 
 def main():

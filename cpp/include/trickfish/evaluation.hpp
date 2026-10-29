@@ -175,29 +175,27 @@ inline int king_activity_total(const Position& position, int phase) {
 
 [[nodiscard]] inline int evaluate_piece_activity(const Position& position) {
     int score = 0;
-    for (std::uint8_t square = 0; square < 64; ++square) {
-        const auto symbol = position.piece_at(square);
-        if (symbol == '.') continue;
-        const auto color = color_from_symbol(symbol);
-        const int rank = square / 8;
-        const int file = square % 8;
-        const auto distance = detail::center_distance(square);
+    for (const auto color : {Color::white, Color::black}) {
         int bonus = 0;
-        switch (piece_type_from_symbol(symbol)) {
-            case PieceType::pawn: {
-                const int advance = color == Color::white ? 6 - rank : rank - 1;
-                bonus = 5 * advance + (file == 3 || file == 4 ? 6 : 0);
-                break;
-            }
-            case PieceType::knight: bonus = std::max(0, 28 - 2 * distance); break;
-            case PieceType::bishop: bonus = std::max(0, 16 - distance); break;
-            case PieceType::rook: {
-                const bool seventh = color == Color::white ? rank == 1 : rank == 6;
-                bonus = seventh && position.pieces(opposite(color), PieceType::pawn) != 0 ? 20 : 0;
-                break;
-            }
-            case PieceType::queen:
-            case PieceType::king: break;
+        auto pawns = position.pieces(color, PieceType::pawn);
+        while (pawns != 0) {
+            const auto square = pop_lsb(pawns);
+            const int rank = square / 8;
+            const int file = square % 8;
+            const int advance = color == Color::white ? 6 - rank : rank - 1;
+            bonus += 5 * advance + (file == 3 || file == 4 ? 6 : 0);
+        }
+        auto knights = position.pieces(color, PieceType::knight);
+        while (knights != 0) {
+            bonus += std::max(0, 28 - 2 * detail::center_distance(pop_lsb(knights)));
+        }
+        auto bishops = position.pieces(color, PieceType::bishop);
+        while (bishops != 0) {
+            bonus += std::max(0, 16 - detail::center_distance(pop_lsb(bishops)));
+        }
+        if (position.pieces(opposite(color), PieceType::pawn) != 0) {
+            const auto seventh_rank = Bitboard{0xff} << (color == Color::white ? 8 : 48);
+            bonus += 20 * std::popcount(position.pieces(color, PieceType::rook) & seventh_rank);
         }
         score += color == Color::white ? bonus : -bonus;
     }
