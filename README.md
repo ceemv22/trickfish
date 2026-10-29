@@ -218,6 +218,7 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Fixed-suite repeatable diagnostic search benchmark and provenance reports
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [x] Sequential color-paired UCI match baseline with legal replay and provenance
+- [x] Replay-validated PGN mainline export with result/provenance integrity
 - [ ] Broader tactical/opening methodology, tuning, and SPRT matches
 
 ### Research layers
@@ -361,7 +362,17 @@ Use `--movetime` in milliseconds instead of `--depth` for a fixed per-move budge
 
 The arbiter checks mate before draw conditions. It recognizes reference insufficient-material/stalemate, automatic seventy-five-move/fivefold draws, and an explicit always-claim fifty-move/threefold policy. Intended-move claims and choosing a win instead of a claim are not modeled. The searched-ply cap excludes the opening prefix and produces an unfinished `*` result, not a draw. Illegal moves, protocol errors, engine exits or watchdog failures abort the run without awarding a forfeit or producing a complete report.
 
-JSON records engine/opening SHA-256, environment/policies, UCI names, all moves, opening-ply counts, per-search timing/info, final FENs and separate win/loss/draw/unfinished totals. These hashes identify inputs, not their source commits. There is no evaluation-based adjudication, PGN export, Elo estimate or SPRT. CI is configured to run six same-binary games capped at two searched plies; this validates process plumbing and unfinished-game accounting. New process results await this package's CI. No playing-strength conclusion follows.
+JSON records engine/opening SHA-256, environment/policies, UCI names, all moves, opening-ply counts, per-search timing/info, final FENs and separate win/loss/draw/unfinished totals. These hashes identify inputs, not their source commits. There is no evaluation-based adjudication, Elo estimate or SPRT. Replay-validated PGN export is described below. CI is configured to run six same-binary games capped at two searched plies; this validates process plumbing and unfinished-game accounting. The match-runner baseline passed CI at `f2d7a9f`. No playing-strength conclusion follows.
+
+## PGN export
+
+```powershell
+python cpp/bench/export_matches.py build/matches.json --output build/matches.pgn
+```
+
+The exporter validates the complete schema-1 JSON replay, decision records, final FEN, result/reason and W/L/D/unfinished summary before writing UTF-8 PGN mainlines. It uses [SAN/PGN notation](https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm), including legal-piece disambiguation, castling, en passant, promotion and check/mate suffixes. Nonstandard starting positions receive SetUp/FEN tags and correct move numbering, including Black-to-move starts. Unfinished games retain `*` in both header and movetext.
+
+Headers preserve engine names, binary hashes, opening ID/prefix length and termination reason. New match JSON records game start/end UTC timestamps; PGN dates use the UTC start date. Older reports without a game start date export an unknown date instead of inferring one from report creation. The JSON remains the complete diagnostic record. This is a mainline exporter, not a PGN importer or variation/annotation editor; external reader compatibility has not been independently tested. CI is configured to export and print the paired process smoke games. New process-to-PGN results await this change's completed CI, and no playing-strength inference follows.
 
 ## Verification standard
 

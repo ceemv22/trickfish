@@ -16,6 +16,9 @@ from search_benchmark import digest
 from trickfish.position import Position
 
 
+DRAW_POLICY = "always claim fifty moves/threefold; automatic seventy-five/fivefold; mate first"
+
+
 def repetition_identity(position):
     return (position.board, position.side_to_move, position.castling, position._repetition_en_passant_file())
 
@@ -173,6 +176,7 @@ class Engine:
 
 
 def play_game(opening, binaries, white, go, max_plies, timeout, engine_factory=Engine):
+    started_utc = datetime.now(timezone.utc).isoformat()
     position, counts = opening_position(opening)
     moves = list(opening.get("moves", []))
     decisions = []
@@ -199,7 +203,8 @@ def play_game(opening, binaries, white, go, max_plies, timeout, engine_factory=E
             moves.append(text)
             counts[repetition_identity(position)] += 1
         names = {label: engine.name for label, engine in engines.items()}
-    return {"opening": opening["id"], "root_fen": opening["fen"], "opening_plies": len(opening.get("moves", [])),
+    return {"started_utc": started_utc, "ended_utc": datetime.now(timezone.utc).isoformat(),
+        "opening": opening["id"], "root_fen": opening["fen"], "opening_plies": len(opening.get("moves", [])),
         "white": white, "black": black, "engine_names": names, "moves": moves, "decisions": decisions,
         "result": result, "reason": reason, "final_fen": position.to_fen()}
 
@@ -261,7 +266,7 @@ def main():
         "environment": {"platform": platform.platform(), "python": platform.python_version()},
         "policy": {"go": go, "rounds": args.rounds, "searched_ply_limit": args.max_plies,
             "watchdog_seconds": args.timeout, "schedule": "sequential fresh processes; same opening, swapped colors",
-            "draws": "always claim fifty moves/threefold; automatic seventy-five/fivefold; mate first",
+            "draws": DRAW_POLICY,
             "errors": "abort run without assigning a game result", "ply_limit_result": "unfinished"},
         "scores": score_games(games), "games": games}
     encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"

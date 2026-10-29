@@ -260,3 +260,14 @@ jobs:
           python cpp/bench/uci_matches.py $binary $binary --depth 1 --max-plies 2 --output build/match-smoke.json
           if ($LASTEXITCODE -ne 0) { throw "Paired UCI process smoke failed" }
           Get-Content build/match-smoke.json
+      - name: Validate PGN exporter
+        shell: pwsh
+        run: |
+          python cpp/bench/test_export_matches.py
+          if ($LASTEXITCODE -ne 0) { throw "PGN exporter checks failed" }
+      - name: Replay and export paired smoke PGN
+        shell: pwsh
+        run: |
+          python cpp/bench/export_matches.py build/match-smoke.json --output build/match-smoke.pgn
+          if ($LASTEXITCODE -ne 0) { throw "Match replay/PGN export failed" }
+          Get-Content build/match-smoke.pgn
