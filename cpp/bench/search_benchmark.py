@@ -24,8 +24,10 @@ def validate_objective(case, result=None):
     objective = case.get("expect")
     if objective is None:
         return
-    if not isinstance(objective, dict) or not objective or set(objective) - {"bestmoves", "mate_in_one"}:
+    if not isinstance(objective, dict) or not objective or set(objective) - {"bestmoves", "mate_in_one", "score"}:
         raise ValueError(f"invalid tactical objective: {case['id']}")
+    if "score" in objective and type(objective["score"]) is not int:
+        raise ValueError("score objective must be an integer")
     position = Position.from_fen(case["fen"])
     legal = {move.to_uci(): move for move in position.legal_moves()}
     accepted = objective.get("bestmoves")
@@ -41,6 +43,8 @@ def validate_objective(case, result=None):
         if not mates or (accepted is not None and not set(accepted) <= mates):
             raise ValueError(f"reference mate objective is unsatisfied: {case['id']}")
     if result is not None:
+        if "score" in objective and result["score"] != objective["score"]:
+            raise ValueError(f"score objective failed: {case['id']}")
         selected = result["bestmove"]
         if accepted is not None and selected not in accepted:
             raise ValueError(f"tactical move objective failed: {case['id']}: {selected}")
@@ -103,7 +107,7 @@ def parse_result(output, fen, requested_depth, pv_extra=0):
     return result
 
 
-MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction"}
+MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction", "scale": "--search-scale"}
 
 
 def run_sample(binary, case, depth, timeout, mode):
@@ -183,6 +187,7 @@ def main():
     parser.add_argument("--compare-razor", action="store_true")
     parser.add_argument("--compare-check", action="store_true")
     parser.add_argument("--compare-correction", action="store_true")
+    parser.add_argument("--compare-scale", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
@@ -201,6 +206,7 @@ def main():
     if args.compare_razor: modes.append("razor")
     if args.compare_check: modes.append("check")
     if args.compare_correction: modes.append("correction")
+    if args.compare_scale: modes.append("scale")
     results = []
     for case in suite["positions"]:
         measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes)
@@ -210,10 +216,10 @@ def main():
             reference = measured["alphabeta"]
             candidate["alphabeta_comparison"] = compare_reference(candidate, reference)
             candidate["alphabeta_comparison"]["median_paired_wall_ratio"] = paired_wall_ratio(candidate, reference)
-        for mode, label in [("exchange", "ordered"), ("null", "verified"), ("lmr", "selective"), ("futility", "selective"), ("razor", "selective"), ("check", "extended"), ("correction", "adjusted")]:
+        for mode, label in [("exchange", "ordered"), ("null", "verified"), ("lmr", "selective"), ("futility", "selective"), ("razor", "selective"), ("check", "extended"), ("correction", "adjusted"), ("scale", "scaled")]:
             if mode not in measured: continue
             alternative = measured[mode]
-            if alternative["depth"] != candidate["depth"] or (mode not in {"lmr", "futility", "razor", "check", "correction"} and alternative["score"] != candidate["score"]):
+            if alternative["depth"] != candidate["depth"] or (mode not in {"lmr", "futility", "razor", "check", "correction", "scale"} and alternative["score"] != candidate["score"]):
                 raise ValueError(f"{mode} score/depth mismatch: {case['id']}")
             candidate[mode + "_comparison"] = {label: alternative, "score_equal": alternative["score"] == candidate["score"],
                 "score_delta": alternative["score"] - candidate["score"],
@@ -244,6 +250,9 @@ def main():
             "comparison_check_table": False, "compare_check": args.compare_check,
             "correction_history": False, "comparison_correction_table": False,
             "compare_correction": args.compare_correction,
+            "endgame_scaling": False, "compare_scale": args.compare_scale,
+            "comparison_scale": {"enabled": args.compare_scale, "normal": 256, "opposite_bishop_pawn_ending": 128,
+                "rounding": "toward zero", "draw_adjudication": False},
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,

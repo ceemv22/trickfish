@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "positions": [
+    {
+      "id": "opposite-bishops-white",
+      "fen": "2b1k3/7p/8/8/8/8/PP6/2B1K3 w - - 0 1"
+    },
+    {
+      "id": "opposite-bishops-white-reflected",
+      "fen": "2b1k3/pp6/8/8/8/8/7P/2B1K3 b - - 0 1"
+    },
+    {
+      "id": "opposite-bishops-black",
+      "fen": "2b1k3/7p/8/8/8/8/PP6/2B1K3 b - - 0 1"
+    },
+    {
+      "id": "opposite-bishops-black-reflected",
+      "fen": "2b1k3/pp6/8/8/8/8/7P/2B1K3 w - - 0 1"
+    },
+    {
+      "id": "same-colored-bishops",
+      "fen": "4kb2/7p/8/8/8/8/PP6/2B1K3 w - - 0 1"
+    },
+    {
+      "id": "same-colored-bishops-reflected",
+      "fen": "2b1k3/pp6/8/8/8/8/7P/4KB2 b - - 0 1"
+    },
+    {
+      "id": "extra-knight",
+      "fen": "2b1k3/7p/8/8/8/8/PP6/1NB1K3 w - - 0 1"
+    },
+    {
+      "id": "extra-knight-reflected",
+      "fen": "1nb1k3/pp6/8/8/8/8/7P/2B1K3 b - - 0 1"
+    },
+    {
+      "id": "extra-rook",
+      "fen": "2b1k2r/7p/8/8/8/8/PP6/2B1K3 w - - 0 1"
+    },
+    {
+      "id": "extra-rook-reflected",
+      "fen": "2b1k3/pp6/8/8/8/8/7P/2B1K2R b - - 0 1"
+    },
+    {
+      "id": "bishop-capture-removes-scale",
+      "fen": "4k3/8/8/8/8/8/P2b4/1B2K3 w - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "e1d2"
+        ]
+      }
+    },
+    {
+      "id": "bishop-capture-removes-scale-reflected",
+      "fen": "1b2k3/p2B4/8/8/8/8/8/4K3 b - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "e8d7"
+        ]
+      }
+    },
+    {
+      "id": "promotion-removes-scale",
+      "fen": "2b1k3/P6p/8/8/8/8/8/2B1K3 w - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "a7a8q"
+        ]
+      }
+    },
+    {
+      "id": "promotion-removes-scale-reflected",
+      "fen": "2b1k3/8/8/8/8/8/p6P/2B1K3 b - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "a2a1q"
+        ]
+      }
+    },
+    {
+      "id": "automatic-clock-draw",
+      "fen": "2b1k3/7p/8/8/8/8/PP6/2B1K3 w - - 150 1",
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "automatic-clock-draw-reflected",
+      "fen": "2b1k3/pp6/8/8/8/8/7P/2B1K3 b - - 150 1",
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "mate-precedence",
+      "fen": "7k/6Q1/6K1/8/8/8/8/8 b - - 150 1",
+      "expect": {
+        "score": -100000
+      }
+    },
+    {
+      "id": "mate-precedence-reflected",
+      "fen": "8/8/8/8/8/6k1/6q1/7K w - - 150 1",
+      "expect": {
+        "score": -100000
+      }
+    },
+    {
+      "id": "stalemate-precedence",
+      "fen": "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "stalemate-precedence-reflected",
+      "fen": "8/8/8/8/8/6k1/5q2/7K w - - 0 1",
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "bare-kings",
+      "fen": "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "bare-kings-reflected",
+      "fen": "4k3/8/8/8/8/8/8/4K3 b - - 0 1",
+      "expect": {
+        "score": 0
+      }
+    }
+  ]
+}

@@ -77,6 +77,15 @@ class BenchmarkTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "mate-in-one objective failed"):
                 benchmark.validate_objective(case, result)
 
+    def test_exact_score_objectives_validate_type_and_result(self):
+        case = {"id": "terminal", "fen": "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", "expect": {"score": 0}}
+        benchmark.validate_objective(case, {"bestmove": "0000", "score": 0})
+        with self.assertRaisesRegex(ValueError, "score objective failed"):
+            benchmark.validate_objective(case, {"bestmove": "0000", "score": 1})
+        for value in (True, 0.0, "0", None):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                benchmark.validate_objective(dict(case, expect={"score": value}))
+
     def test_invalid_objectives_are_rejected_before_search(self):
         for expect in [{}, {"unknown": True}, {"bestmoves": []}, {"bestmoves": ["a1a8"]},
             {"bestmoves": ["a1a2", "a1a2"]}, {"mate_in_one": False}, {"mate_in_one": True}]:
@@ -159,16 +168,16 @@ class BenchmarkTest(unittest.TestCase):
     def test_selective_score_drift_is_reported_without_claiming_parity(self):
         output = io.StringIO()
         arguments = [str(SOURCE), str(SOURCE), "--suite", str(SOURCE.with_name("search_suite.json")),
-            "--repeats", "2", "--compare-lmr", "--compare-futility", "--compare-razor", "--compare-check", "--compare-correction"]
+            "--repeats", "2", "--compare-lmr", "--compare-futility", "--compare-razor", "--compare-check", "--compare-correction", "--compare-scale"]
         def sample(binary, case, depth, timeout, mode):
-            return {"score": 1 if mode in {"lmr", "futility", "razor", "check", "correction"} else 0, "depth": depth, "nodes": 10,
+            return {"score": 1 if mode in {"lmr", "futility", "razor", "check", "correction", "scale"} else 0, "depth": depth, "nodes": 10,
                 "bestmove": "a1a2", "pv": ["a1a2"]}, 10
         with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark.sys, "stdout", output):
             with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
                 benchmark.main()
         report = json.loads(output.getvalue())
         for result in report["results"]:
-            for mode in ("lmr", "futility", "razor", "check", "correction"):
+            for mode in ("lmr", "futility", "razor", "check", "correction", "scale"):
                 self.assertFalse(result[mode + "_comparison"]["score_equal"])
                 self.assertEqual(result[mode + "_comparison"]["score_delta"], 1)
         self.assertEqual(benchmark.MODES["lmr"], "--search-lmr")
@@ -176,6 +185,10 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(benchmark.MODES["razor"], "--search-razor")
         self.assertEqual(benchmark.MODES["check"], "--search-check")
         self.assertEqual(benchmark.MODES["correction"], "--search-correction")
+        self.assertEqual(benchmark.MODES["scale"], "--search-scale")
+        self.assertFalse(report["search"]["endgame_scaling"])
+        self.assertEqual(report["search"]["comparison_scale"], {"enabled": True, "normal": 256,
+            "opposite_bishop_pawn_ending": 128, "rounding": "toward zero", "draw_adjudication": False})
 
     def test_extended_pv_budget_is_explicit_and_bounded(self):
         extended = OUTPUT.replace("pv a1a2", "pv a1a2 e8e7")
