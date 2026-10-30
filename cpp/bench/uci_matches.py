@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 
-from search_benchmark import digest
+from search_benchmark import digest, validate_output_path
 
 from trickfish.position import Position
 
@@ -316,6 +316,10 @@ def main():
     opening_hash = digest(opening_path)
     openings = load_openings(opening_path)
     profile_path = args.profiles.resolve(strict=True) if args.profiles else None
+    try:
+        validate_output_path(args.output, [*binaries.values(), opening_path, profile_path])
+    except ValueError as error:
+        parser.error(str(error))
     profile_hash = digest(profile_path) if profile_path is not None else None
     profiles = load_profiles(profile_path)
     if depth is not None:

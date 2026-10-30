@@ -20,6 +20,18 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def validate_output_path(output, inputs):
+    if output is None:
+        return
+    target = pathlib.Path(output).resolve()
+    for path in inputs:
+        if path is None:
+            continue
+        source = pathlib.Path(path).resolve(strict=True)
+        if target == source or (target.exists() and target.samefile(source)):
+            raise ValueError(f"output must differ from input file: {source}")
+
+
 def validate_objective(case, result=None):
     objective = case.get("expect")
     if objective is None:
@@ -196,6 +208,10 @@ def main():
         parser.error("depth must be 1..64, repeats at least 2, timeout finite and positive")
     binary = args.binary.resolve(strict=True)
     suite_path = args.suite.resolve(strict=True)
+    try:
+        validate_output_path(args.output, [binary, suite_path])
+    except ValueError as error:
+        parser.error(str(error))
     suite_hash = digest(suite_path)
     suite = load_suite(suite_path)
     binary_hash = digest(binary)

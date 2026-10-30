@@ -1,6 +1,7 @@
 import json
 import io
 import pathlib
+import tempfile
 import sys
 import unittest
 from collections import Counter
@@ -135,6 +136,25 @@ class MatchTests(unittest.TestCase):
                     with self.assertRaises(SystemExit) as raised: matches.main()
                     self.assertEqual(raised.exception.code, 2)
                     play.assert_not_called()
+
+    def test_match_output_cannot_overwrite_binary_openings_or_profiles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            a, b = root / "a", root / "b"
+            a.write_bytes(b"engine a")
+            b.write_bytes(b"engine b")
+            openings, profiles = root / "openings.json", root / "profiles.json"
+            openings.write_text(pathlib.Path(matches.__file__).with_name("match_openings.json").read_text())
+            profiles.write_text('{"version":1,"engines":{"a":{},"b":{}}}')
+            for output in (a, b, openings, profiles):
+                original = output.read_bytes()
+                arguments = ["runner", str(a), str(b), "--openings", str(openings), "--profiles", str(profiles), "--output", str(output)]
+                with self.subTest(output=output), patch.object(matches.sys, "argv", arguments):
+                    with patch.object(matches.sys, "stderr", io.StringIO()), patch.object(matches, "play_game") as play:
+                        with self.assertRaises(SystemExit) as error: matches.main()
+                        self.assertEqual(error.exception.code, 2)
+                        play.assert_not_called()
+                self.assertEqual(output.read_bytes(), original)
 
     def test_protocol_error_and_eof_are_not_bestmoves(self):
         for event in ["info string error: invalid command", None]:

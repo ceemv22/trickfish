@@ -1,4 +1,8 @@
 import copy
+import io
+import json
+import tempfile
+from unittest.mock import patch
 import pathlib
 import sys
 import unittest
@@ -27,6 +31,18 @@ def make_report(fen, moves, result="*", reason="searched_ply_limit", book=0):
 
 
 class ExportTests(unittest.TestCase):
+    def test_export_cli_rejects_input_collision_before_rendering(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = pathlib.Path(directory) / "report.json"
+            original = json.dumps(make_report(exporter.INITIAL, ["e2e4"]))
+            report.write_text(original)
+            with patch.object(exporter.sys, "argv", ["exporter", str(report), "--output", str(report)]):
+                with patch.object(exporter.sys, "stderr", io.StringIO()), patch.object(exporter, "export_report") as render:
+                    with self.assertRaises(SystemExit) as error: exporter.main()
+                    self.assertEqual(error.exception.code, 2)
+                    render.assert_not_called()
+            self.assertEqual(report.read_text(), original)
+
     def check_san(self, fen, text, expected):
         position = Position.from_fen(fen)
         legal = {move.to_uci(): move for move in position.legal_moves()}

@@ -2,6 +2,8 @@ import importlib.util
 import io
 import json
 import pathlib
+import os
+import tempfile
 import subprocess
 import unittest
 from unittest.mock import Mock, patch
@@ -16,6 +18,48 @@ OUTPUT = "bestmove a1a2\nscore 500\npv a1a2\ndepth 1\nstopped false\nnodes 23\n"
 
 
 class BenchmarkTest(unittest.TestCase):
+    def test_output_guard_preserves_input_and_allows_separate_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            source = root / "input.json"
+            source.write_text("original")
+            benchmark.validate_output_path(None, [source])
+            benchmark.validate_output_path(root / "result.json", [source, None])
+            self.assertFalse((root / "result.json").exists())
+            for output in (source, root / "unused" / ".." / "input.json"):
+                with self.subTest(output=output), self.assertRaises(ValueError):
+                    benchmark.validate_output_path(output, [source])
+            self.assertEqual(source.read_text(), "original")
+
+    def test_output_guard_rejects_hard_link_alias(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = pathlib.Path(directory) / "binary"
+            source.write_bytes(b"original binary")
+            alias = source.with_name("result.json")
+            try:
+                os.link(source, alias)
+            except OSError as error:
+                self.skipTest(str(error))
+            with self.assertRaises(ValueError): benchmark.validate_output_path(alias, [source])
+            self.assertEqual(source.read_bytes(), b"original binary")
+
+    def test_benchmark_rejects_output_collision_before_search(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            binary = root / "binary"
+            binary.write_bytes(b"original binary")
+            suite = root / "suite.json"
+            suite.write_text(SOURCE.with_name("search_suite.json").read_text())
+            for output in (binary, suite):
+                original = output.read_bytes()
+                arguments = ["benchmark", str(binary), "--suite", str(suite), "--output", str(output)]
+                with self.subTest(output=output), patch.object(benchmark.sys, "argv", arguments):
+                    with patch.object(benchmark.sys, "stderr", io.StringIO()), patch.object(benchmark, "run_modes") as run:
+                        with self.assertRaises(SystemExit) as error: benchmark.main()
+                        self.assertEqual(error.exception.code, 2)
+                        run.assert_not_called()
+                self.assertEqual(output.read_bytes(), original)
+
     def test_valid_pv_and_terminal_root(self):
         result = benchmark.parse_result(OUTPUT, FEN, 1)
         self.assertEqual(result["bestmove"], "a1a2")

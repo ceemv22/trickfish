@@ -7,6 +7,7 @@ import sys
 import textwrap
 
 from uci_matches import DRAW_POLICY, adjudicate, repetition_identity, score_games, validate_profile
+from search_benchmark import validate_output_path
 from collections import Counter
 from trickfish.position import Position
 
@@ -166,8 +167,10 @@ def main():
     parser.add_argument("report", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
-    if args.output is not None and args.report.resolve() == args.output.resolve():
-        parser.error("PGN output must differ from input report")
+    try:
+        validate_output_path(args.output, [args.report])
+    except ValueError as error:
+        parser.error(str(error))
     pgn = export_report(json.loads(args.report.read_text(encoding="utf-8")))
     if args.output is None: sys.stdout.write(pgn)
     else: args.output.write_text(pgn, encoding="utf-8")

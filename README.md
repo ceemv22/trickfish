@@ -410,6 +410,10 @@ The match runner accepts `--profiles cpp/bench/match_profiles.example.json`. The
 
 Reports preserve requested profiles, their source-file hash and per-game canonical accepted option messages. PGN includes color-specific UCIProfile tags. Export validates every game's applied profile against the requested profile, comparing option names case-insensitively and preserving boolean/integer types. Missing, extra or changed options and engine labels are rejected. Legacy reports without requested profiles remain supported; any supplied applied profiles must still contain exactly engines a/b. Profile option names reject control characters and leading/trailing whitespace before UCI commands are constructed. These records describe requested/accepted UCI configuration, not an independent query of every engine setting. CI is configured to test snapshot persistence and profiled same-binary games at shallow depth. New C++ process results await this change's completed CI.
 
+## Tool output protection
+
+The search benchmark, UCI match runner and PGN exporter reject output paths that refer to their input files. Checks resolve path aliases and compare existing file identity to catch hard links. Protected inputs are the benchmark binary/suite, match binaries/openings/profile file, and PGN source report. Validation runs before starting benchmark/match searches or rendering PGN. Separate output files and stdout remain supported; invalid output arguments leave inputs unchanged.
+
 ## Verification standard
 
 Rule and state changes require focused behavioral checks and established perft baselines. Search changes require regression cases and comparison with a reference path where applicable. Report local checks separately from the Actions result for the exact pushed commit. Playing-strength changes require controlled matches with reproducible hardware, openings, and time controls. Practical-selection work requires its own evaluation methodology.
