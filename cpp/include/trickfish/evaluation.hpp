@@ -67,6 +67,24 @@ inline constexpr int evaluation_max_phase = 24;
 
 namespace detail {
 
+inline constexpr auto passed_pawn_masks = [] {
+    std::array<std::array<Bitboard, 64>, 2> masks{};
+    for (const auto color : {Color::white, Color::black}) {
+        const int step = color == Color::white ? -1 : 1;
+        for (int square = 0; square < 64; ++square) {
+            for (int rank = square / 8 + step; rank >= 0 && rank < 8; rank += step) {
+                for (int file = square % 8 - 1; file <= square % 8 + 1; ++file) {
+                    if (file >= 0 && file < 8) {
+                        masks[static_cast<std::size_t>(color)][static_cast<std::size_t>(square)] |=
+                            Bitboard{1} << (rank * 8 + file);
+                    }
+                }
+            }
+        }
+    }
+    return masks;
+}();
+
 inline int pawn_structure_for_side(const Position& position, Color color, int phase) {
     const auto pawns = position.pieces(color, PieceType::pawn);
     const auto enemy_pawns = position.pieces(opposite(color), PieceType::pawn);
@@ -86,18 +104,7 @@ inline int pawn_structure_for_side(const Position& position, Color color, int ph
             (file == 7 || files[static_cast<std::size_t>(file + 1)] == 0)) {
             score -= 12;
         }
-        bool passed = true;
-        auto enemies = enemy_pawns;
-        while (enemies != 0) {
-            const auto enemy = pop_lsb(enemies);
-            const int enemy_rank = enemy / 8;
-            const int enemy_file = enemy % 8;
-            const bool ahead = color == Color::white ? enemy_rank < rank : enemy_rank > rank;
-            if (ahead && std::abs(enemy_file - file) <= 1) {
-                passed = false;
-                break;
-            }
-        }
+        const bool passed = (enemy_pawns & passed_pawn_masks[static_cast<std::size_t>(color)][square]) == 0;
         if (passed) {
             const int advance = color == Color::white ? 6 - rank : rank - 1;
             const int scaled = (evaluation_max_phase - phase) * 2 * advance;

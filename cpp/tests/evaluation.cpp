@@ -5,6 +5,12 @@
 #include "trickfish/evaluation.hpp"
 #include "trickfish/search.hpp"
 
+static_assert(trickfish::detail::passed_pawn_masks[0][0] == 0);
+static_assert(trickfish::detail::passed_pawn_masks[1][63] == 0);
+static_assert(trickfish::detail::passed_pawn_masks[0][48] == 0x0000030303030303ULL);
+static_assert(trickfish::detail::passed_pawn_masks[0][55] == 0x0000c0c0c0c0c0c0ULL);
+static_assert(trickfish::detail::passed_pawn_masks[1][15] == 0xc0c0c0c0c0c00000ULL);
+
 void verify(std::string_view fen, int material, int positional, int static_score, int final_score) {
     auto position = trickfish::Position::from_fen(fen);
     const auto key = position.key();
