@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "engines": {
+    "a": {"Experimental Pawn Cache": true},
+    "b": {"Experimental Pawn Cache": false}
+  }
+}

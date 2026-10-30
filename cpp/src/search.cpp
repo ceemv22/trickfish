@@ -8,6 +8,7 @@
 
 #include "trickfish/evaluation.hpp"
 #include "trickfish/correction.hpp"
+#include "trickfish/pawn_cache.hpp"
 #include "trickfish/exchange.hpp"
 #include "trickfish/movegen.hpp"
 
@@ -71,6 +72,8 @@ struct SearchBudget {
     bool use_endgame_scaling = false;
     bool use_cached_ordering = true;
     bool use_mate_distance = false;
+    bool use_pawn_cache = false;
+    PawnEvaluationCache pawn_cache{};
     std::uint64_t mate_distance_cutoffs = 0;
     CorrectionHistory correction{};
     std::uint64_t correction_updates = 0;
@@ -325,9 +328,11 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
     });
 }
 
-int raw_static_for_side(const Position& position, const SearchBudget* budget) {
-    const auto score = budget != nullptr && budget->use_endgame_scaling
-        ? evaluate_scaled_static(position) : evaluate_static(position);
+int raw_static_for_side(const Position& position, SearchBudget* budget) {
+    int score = budget != nullptr && budget->use_pawn_cache ? budget->pawn_cache.evaluate(position) : evaluate_static(position);
+    if (budget != nullptr && budget->use_endgame_scaling) {
+        score = score * endgame_scale(position) / endgame_scale_normal;
+    }
     return position.side_to_move() == Color::white ? score : -score;
 }
 
@@ -710,13 +715,14 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_endgame_scaling = options.use_endgame_scaling;
     budget.use_cached_ordering = options.use_cached_ordering;
     budget.use_mate_distance = options.use_mate_distance;
+    budget.use_pawn_cache = options.use_pawn_cache;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
         result.best_move = options.root_moves.empty() ? root_legal[0] : options.root_moves.front();
     }
     result.score = evaluate_for_side_to_move(position);
-    if (options.use_endgame_scaling && !root_legal.empty() && !position.is_insufficient_material()) {
+    if ((options.use_endgame_scaling || options.use_pawn_cache) && !root_legal.empty() && !position.is_insufficient_material()) {
         result.score = raw_static_for_side(position, &budget);
     }
     if (is_move_count_draw(position, options.draw_policy)) {
@@ -780,6 +786,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.correction_updates = budget.correction_updates;
     result.correction_applications = budget.correction_applications;
     result.mate_distance_cutoffs = budget.mate_distance_cutoffs;
+    result.pawn_cache_hits = budget.pawn_cache.hits();
+    result.pawn_cache_misses = budget.pawn_cache.misses();
     return result;
 }
 

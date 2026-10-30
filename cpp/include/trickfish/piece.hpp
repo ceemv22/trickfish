@@ -20,6 +20,13 @@ enum class PieceType : std::uint8_t {
     king
 };
 
+inline constexpr int phase_weight(PieceType type) {
+    if (type == PieceType::knight || type == PieceType::bishop) return 1;
+    if (type == PieceType::rook) return 2;
+    if (type == PieceType::queen) return 4;
+    return 0;
+}
+
 inline constexpr Color opposite(Color color) {
     return color == Color::white ? Color::black : Color::white;
 }

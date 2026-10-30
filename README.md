@@ -392,6 +392,22 @@ Headers preserve engine names, binary hashes, opening ID/prefix length and termi
 
 Correction history combines this cached pawn key with the existing side key, preserving its previous context-key values without rescanning pawns on each lookup/update. Position now maintains an additional 64-bit field; no general speedup is asserted. New CTests compare the cached key with an independent mailbox reconstruction through legal move trees and undo, including both colors' promotions/underpromotions, en passant, castling and null state. Actual C++ verification awaits this revision's CI.
 
+### Incremental material phase
+
+`Position::phase_units()` maintains the uncapped sum of knight/bishop=1, rook=2 and queen=4 weights during piece insertion/removal. FEN construction, captures, promotions and undo therefore maintain the value; quiet moves, castling, pawn-only changes and null moves preserve the material total. `game_phase()` caps this stored value at 24 when evaluation reads it, avoiding repeated piece-bitboard counts.
+
+The stored value is deliberately not capped: a promoted-material position with raw phase 30 can lose a queen and remain above the evaluation cap at 26. Subtracting from an already capped 24 would produce the wrong phase. New mailbox-reference legal-tree checks and an explicit 30-to-26 capture/undo regression await CI. Public phase weights and evaluation formulas remain unchanged.
+
+## Experimental pawn-evaluation cache
+
+`SearchOptions::use_pawn_cache` defaults to false. UCI `Experimental Pawn Cache` or `--search-pawn-cache depth [fen]` enables a search-local, lazily allocated 4096-entry direct-mapped cache. Every lookup checks the full pawn key and incrementally maintained material phase; zero pawn keys are valid entries. Phase is required because the reference passed-pawn term changes when nonpawn material changes. Slot collisions replace entries and key/phase mismatches recompute the pawn score.
+
+Only the pawn-structure component is stored. Material, piece activity, bishop pair, rook files and king terms are recomputed from the current position. Endgame scaling is applied after static evaluation, and correction-history training reads the same cached baseline as main/quiescence evaluation and interrupted fallback. The cache is shared across iterative depths/retries of one search and discarded before the next search. It does not replace repetition state or the transposition table; public/default/Python evaluation remains unchanged.
+
+`SearchResult` reports pawn_cache_hits/pawn_cache_misses. The cache diagnostic adds those two fields to the usual CLI output; other diagnostic modes retain their existing format. `--compare-pawn-cache` accepts both formats, requires cache work counters and identical score, completed depth, nodes, best move and PV, and records paired wall-time ratios. Counters measure lookups, not distinct positions or nodes, and timing includes process/initialization cost. No performance threshold or strength claim is made.
+
+New CTests compare cached/uncached static values on legal move trees, force slot collisions, check phase changes with identical pawns, ensure nonpawn scores are not reused, exercise zero-key/clear/capacity boundaries, and compare search with TT/history, correction/scaling, exchange/MDP and node-limited interruption. UCI tests toggle the option and compare depth-search output. CI is configured for diagnostic comparisons and node-limited paired games using `cpp/bench/pawn_cache_profiles.example.json`, followed by replay-validated PGN export. New C++ runtime and timing results await this revision's pushed CI; the profile is a wiring comparison, not a stronger configuration recommendation.
+
 ## Experimental mate-distance pruning
 
 `SearchOptions::use_mate_distance` defaults to false. `--search-mdp depth [fen]` or UCI `Experimental Mate Distance Pruning` enables main-search mate-score window bounds after legal-move and draw handling. At search ply p, alpha is bounded below by `-mate_score + p` and beta above by `mate_score - p - 1`; a collapsed window returns its lower bound. Synthetic null branches and quiescence do not apply the new bounds. Terminal scores and TT mate-distance normalization are unchanged.
@@ -414,7 +430,7 @@ Eight additional cases exercise all four promotion corners and excluded near-pat
 
 ## Controlled UCI profiles
 
-UCI advertises these `check` options, all defaulting to false: `Experimental Exchange Ordering`, `Experimental Null Move`, `Experimental LMR`, `Experimental Futility`, `Experimental Razoring`, `Experimental Check Extensions`, `Experimental Correction History`, `Experimental Endgame Scaling`, and `Experimental Mate Distance Pruning`. Boolean values and option names are case-insensitive. Spin parameters are `Futility Margin` (150, range 0..10000), `Razor Margin` (200, range 0..10000), and `Check Extension Limit` (1, range 0..4). Existing `Move Overhead` behavior is unchanged. Hash/Threads/ponder remain unsupported.
+UCI advertises these `check` options, all defaulting to false: `Experimental Exchange Ordering`, `Experimental Null Move`, `Experimental LMR`, `Experimental Futility`, `Experimental Razoring`, `Experimental Check Extensions`, `Experimental Correction History`, `Experimental Endgame Scaling`, `Experimental Mate Distance Pruning`, and `Experimental Pawn Cache`. Boolean values and option names are case-insensitive. Spin parameters are `Futility Margin` (150, range 0..10000), `Razor Margin` (200, range 0..10000), and `Check Extension Limit` (1, range 0..4). Existing `Move Overhead` behavior is unchanged. Hash/Threads/ponder remain unsupported.
 
 Each `go` takes a private settings snapshot. Later setoption commands affect subsequent searches, and ucinewgame preserves settings. Invalid values leave the previous setting intact. Defaults still leave all experimental techniques disabled; exposing an option does not establish a strength benefit.
 

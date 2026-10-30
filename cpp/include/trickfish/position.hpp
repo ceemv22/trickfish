@@ -49,6 +49,7 @@ public:
     [[nodiscard]] int fullmove_number() const;
     [[nodiscard]] std::uint64_t key() const;
     [[nodiscard]] std::uint64_t pawn_key() const;
+    [[nodiscard]] int phase_units() const;
     [[nodiscard]] UndoState make_move(const Move& move);
     void unmake_move(const Move& move, const UndoState& undo);
     [[nodiscard]] NullUndoState make_null_move();
@@ -74,6 +75,7 @@ private:
     int fullmove_number_ = 1;
     std::uint64_t key_ = 0;
     std::uint64_t pawn_key_ = 0;
+    int phase_units_ = 0;
 };
 
 }

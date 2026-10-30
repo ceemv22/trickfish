@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(trickfish LANGUAGES CXX)
 
 add_library(trickfish_core
+    cpp/src/pawn_cache.cpp
     cpp/src/correction.cpp
     cpp/src/exchange.cpp
     cpp/src/movegen.cpp
@@ -35,6 +36,14 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(trickfish_material_phase_test cpp/tests/material_phase.cpp)
+    target_link_libraries(trickfish_material_phase_test PRIVATE trickfish_core)
+    add_test(NAME incremental_material_phase COMMAND trickfish_material_phase_test)
+    set_tests_properties(incremental_material_phase PROPERTIES TIMEOUT 90)
+    add_executable(trickfish_pawn_cache_test cpp/tests/pawn_cache.cpp)
+    target_link_libraries(trickfish_pawn_cache_test PRIVATE trickfish_core)
+    add_test(NAME phase_aware_pawn_cache COMMAND trickfish_pawn_cache_test)
+    set_tests_properties(phase_aware_pawn_cache PROPERTIES TIMEOUT 90)
     add_executable(trickfish_pawn_key_test cpp/tests/pawn_key.cpp)
     target_link_libraries(trickfish_pawn_key_test PRIVATE trickfish_core)
     add_test(NAME incremental_pawn_key COMMAND trickfish_pawn_key_test)

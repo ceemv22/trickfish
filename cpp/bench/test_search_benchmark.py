@@ -88,6 +88,26 @@ class BenchmarkTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "nondeterministic"):
                 benchmark.run_case(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, 2, 10)
 
+    def test_pawn_cache_counters_are_optional_paired_and_nonnegative(self):
+        counters = "pawn_cache_hits 3\npawn_cache_misses 2\n"
+        result = benchmark.parse_result(OUTPUT + counters, FEN, 1)
+        self.assertEqual((result["pawn_cache_hits"], result["pawn_cache_misses"]), (3, 2))
+        for suffix in ("pawn_cache_hits 3\n", counters.replace("hits 3", "hits -1"),
+            counters.replace("hits 3", "hits 3.0"), counters.replace("misses 2", "misses 2 3")):
+            with self.subTest(suffix=suffix), self.assertRaises(ValueError):
+                benchmark.parse_result(OUTPUT + suffix, FEN, 1)
+
+    def test_pawn_cache_diagnostic_requires_counters_and_selects_cli(self):
+        case = {"id": "capture", "fen": FEN}
+        with patch.object(benchmark.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, OUTPUT)):
+            with self.assertRaisesRegex(ValueError, "omitted work counters"):
+                benchmark.run_sample(pathlib.Path("engine"), case, 1, 10, "pawn_cache")
+        output = OUTPUT + "pawn_cache_hits 3\npawn_cache_misses 2\n"
+        with patch.object(benchmark.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, output)) as execute:
+            result, _ = benchmark.run_sample(pathlib.Path("engine"), case, 1, 10, "pawn_cache")
+            self.assertEqual(execute.call_args.args[0][1], "--search-pawn-cache")
+            self.assertEqual(result["pawn_cache_hits"], 3)
+
     def test_failed_and_timed_out_processes_propagate(self):
         for error in [subprocess.TimeoutExpired("engine", 1), subprocess.CalledProcessError(1, "engine")]:
             with patch.object(benchmark.subprocess, "run", side_effect=error), self.assertRaises(type(error)):
@@ -187,19 +207,19 @@ class BenchmarkTest(unittest.TestCase):
                 benchmark.run_modes(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, repeats, 10, modes)
 
     def test_report_composes_paired_mode_ratios_and_schedule(self):
-        nodes = {"default": 23, "alphabeta": 30, "exchange": 20, "null": 40, "ordering": 23, "mate_distance": 21}
-        elapsed = {"default": 10, "alphabeta": 20, "exchange": 5, "null": 30, "ordering": 20, "mate_distance": 10}
+        nodes = {"default": 23, "alphabeta": 30, "exchange": 20, "null": 40, "ordering": 23, "mate_distance": 21, "pawn_cache": 23}
+        elapsed = {"default": 10, "alphabeta": 20, "exchange": 5, "null": 30, "ordering": 20, "mate_distance": 10, "pawn_cache": 5}
         def sample(binary, case, depth, timeout, mode):
             return {"score": 500, "depth": depth, "nodes": nodes[mode], "bestmove": "a1a2", "pv": ["a1a2"]}, elapsed[mode]
         output = io.StringIO()
         arguments = [str(SOURCE), str(SOURCE), "--suite", str(SOURCE.with_name("search_suite.json")),
-            "--repeats", "2", "--compare-alphabeta", "--compare-exchange", "--compare-null", "--compare-ordering", "--compare-mate-distance"]
+            "--repeats", "2", "--compare-alphabeta", "--compare-exchange", "--compare-null", "--compare-ordering", "--compare-mate-distance", "--compare-pawn-cache"]
         with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark.sys, "stdout", output):
             with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
                 benchmark.main()
         report = json.loads(output.getvalue())
         self.assertEqual(report["schema_version"], 3)
-        modes = ["default", "alphabeta", "exchange", "null", "ordering", "mate_distance"]
+        modes = ["default", "alphabeta", "exchange", "null", "ordering", "mate_distance", "pawn_cache"]
         self.assertEqual(report["search"]["mode_order"], modes)
         for result in report["results"]:
             self.assertEqual(result["execution_order"], [modes, list(reversed(modes))])
@@ -208,6 +228,8 @@ class BenchmarkTest(unittest.TestCase):
             self.assertEqual(result["null_comparison"]["median_paired_wall_ratio"], 3)
             self.assertEqual(result["exchange_comparison"]["node_delta_per_repeat"], -3)
             self.assertEqual(result["null_comparison"]["node_delta_per_repeat"], 17)
+            self.assertEqual(result["pawn_cache_comparison"]["node_delta_per_repeat"], 0)
+            self.assertEqual(result["pawn_cache_comparison"]["median_paired_wall_ratio"], 0.5)
             self.assertEqual(result["mate_distance_comparison"]["node_delta_per_repeat"], -2)
             self.assertTrue(result["mate_distance_comparison"]["score_equal"])
             self.assertEqual(result["ordering_comparison"]["node_delta_per_repeat"], 0)
@@ -222,17 +244,18 @@ class BenchmarkTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "mate_distance score/depth mismatch"):
                 benchmark.main()
 
-    def test_ordering_comparison_rejects_changed_search_trace(self):
-        arguments = [str(SOURCE), str(SOURCE), "--repeats", "2", "--compare-ordering"]
-        for field, value in (("nodes", 24), ("bestmove", "a1b1"), ("pv", ["a1b1"])):
-            def sample(binary, case, depth, timeout, mode):
-                result = {"score": 500, "depth": depth, "nodes": 23, "bestmove": "a1a2", "pv": ["a1a2"]}
-                if mode == "ordering": result[field] = value
-                return result, 10
-            with self.subTest(field=field), patch.object(benchmark.sys, "argv", arguments):
-                with patch.object(benchmark, "run_sample", side_effect=sample):
-                    with self.assertRaisesRegex(ValueError, "ordering changed search trace"):
-                        benchmark.main()
+    def test_ordering_and_cache_comparisons_reject_changed_search_trace(self):
+        for mode, flag in (("ordering", "--compare-ordering"), ("pawn_cache", "--compare-pawn-cache")):
+            arguments = [str(SOURCE), str(SOURCE), "--repeats", "2", flag]
+            for field, value in (("nodes", 24), ("bestmove", "a1b1"), ("pv", ["a1b1"])):
+                def sample(binary, case, depth, timeout, selected):
+                    result = {"score": 500, "depth": depth, "nodes": 23, "bestmove": "a1a2", "pv": ["a1a2"]}
+                    if selected == mode: result[field] = value
+                    return result, 10
+                with self.subTest(mode=mode, field=field), patch.object(benchmark.sys, "argv", arguments):
+                    with patch.object(benchmark, "run_sample", side_effect=sample):
+                        with self.assertRaisesRegex(ValueError, mode + " changed search trace"):
+                            benchmark.main()
 
     def test_selective_score_drift_is_reported_without_claiming_parity(self):
         output = io.StringIO()

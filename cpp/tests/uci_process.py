@@ -62,7 +62,7 @@ class UciProcessTests(unittest.TestCase):
         self.until("uciok")
         self.assertIn("id name Trickfish C++", self.transcript)
         self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
-        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling", "Mate Distance Pruning"]:
+        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling", "Mate Distance Pruning", "Pawn Cache"]:
             self.assertIn("option name Experimental " + name + " type check default false", self.transcript)
         for name, default, maximum in [("Futility Margin", 150, 10000), ("Razor Margin", 200, 10000),
             ("Check Extension Limit", 1, 4)]:
@@ -87,6 +87,21 @@ class UciProcessTests(unittest.TestCase):
         self.assertGreater(scores[0], 0)
         self.assertEqual(scores[1], scores[0] // 2)
         self.assertEqual(scores[2], scores[0])
+
+    def test_pawn_cache_preserves_depth_search_and_can_be_disabled(self):
+        results = []
+        for enabled in ("false", "true", "false"):
+            self.send("setoption name Experimental Pawn Cache value " + enabled)
+            self.send("position startpos")
+            self.send("go depth 2")
+            best = self.until("bestmove ").split()[1]
+            line = next(line for line in reversed(self.transcript) if line.startswith("info depth 2 "))
+            nodes = int(line.split(" nodes ")[1].split()[0])
+            score = int(line.split(" score cp ")[1].split()[0])
+            pv = line.split(" pv ")[1]
+            results.append((best, nodes, score, pv))
+        self.assertEqual(results[0], results[1])
+        self.assertEqual(results[0], results[2])
 
     def test_readiness_during_infinite_search(self):
         self.send("go infinite")

@@ -55,14 +55,7 @@ inline constexpr std::array piece_values = {100, 320, 330, 500, 900, 0};
 inline constexpr int evaluation_max_phase = 24;
 
 [[nodiscard]] inline int game_phase(const Position& position) {
-    constexpr std::array weights = {0, 1, 1, 2, 4, 0};
-    int phase = 0;
-    for (std::size_t type = 0; type < weights.size(); ++type) {
-        const auto piece = static_cast<PieceType>(type);
-        phase += weights[type] * (std::popcount(position.pieces(Color::white, piece)) +
-            std::popcount(position.pieces(Color::black, piece)));
-    }
-    return std::min(evaluation_max_phase, phase);
+    return std::min(evaluation_max_phase, position.phase_units());
 }
 
 namespace detail {
@@ -232,11 +225,19 @@ struct EvaluationBreakdown {
     }
 };
 
+namespace detail {
+
+inline EvaluationBreakdown breakdown_with_pawns(const Position& position, int phase, int pawn_score) {
+    return {phase, evaluate_material(position), evaluate_piece_activity(position), pawn_score,
+        evaluate_bishop_pair(position), evaluate_rook_files(position), king_safety_total(position, phase),
+        king_activity_total(position, phase)};
+}
+
+}
+
 [[nodiscard]] inline EvaluationBreakdown evaluate_breakdown(const Position& position) {
     const auto phase = game_phase(position);
-    return {phase, evaluate_material(position), evaluate_piece_activity(position), detail::pawn_structure_total(position, phase),
-        evaluate_bishop_pair(position), evaluate_rook_files(position), detail::king_safety_total(position, phase),
-        detail::king_activity_total(position, phase)};
+    return detail::breakdown_with_pawns(position, phase, detail::pawn_structure_total(position, phase));
 }
 
 [[nodiscard]] inline int evaluate_static(const Position& position) {

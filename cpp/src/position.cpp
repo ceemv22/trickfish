@@ -234,6 +234,7 @@ int Position::halfmove_clock() const { return halfmove_clock_; }
 int Position::fullmove_number() const { return fullmove_number_; }
 std::uint64_t Position::key() const { return key_; }
 std::uint64_t Position::pawn_key() const { return pawn_key_; }
+int Position::phase_units() const { return phase_units_; }
 
 bool Position::has_legal_en_passant() const {
     if (en_passant_square_ < 0) {
@@ -281,19 +282,23 @@ std::uint64_t Position::compute_key() const {
 }
 
 void Position::add_piece(char symbol, std::uint8_t square) {
-    const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
+    const auto type = piece_type_from_symbol(symbol);
+    const auto index = piece_index(color_from_symbol(symbol), type);
     board_[square] = symbol;
     pieces_[index] |= square_bit(square);
     occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] |= square_bit(square);
+    phase_units_ += phase_weight(type);
     key_ ^= zobrist::keys.pieces[index][square];
     if (symbol == 'P' || symbol == 'p') pawn_key_ ^= zobrist::keys.pieces[index][square];
 }
 
 void Position::remove_piece(char symbol, std::uint8_t square) {
-    const auto index = piece_index(color_from_symbol(symbol), piece_type_from_symbol(symbol));
+    const auto type = piece_type_from_symbol(symbol);
+    const auto index = piece_index(color_from_symbol(symbol), type);
     board_[square] = '.';
     pieces_[index] &= ~square_bit(square);
     occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] &= ~square_bit(square);
+    phase_units_ -= phase_weight(type);
     key_ ^= zobrist::keys.pieces[index][square];
     if (symbol == 'P' || symbol == 'p') pawn_key_ ^= zobrist::keys.pieces[index][square];
 }
