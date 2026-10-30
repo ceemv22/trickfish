@@ -48,6 +48,7 @@ public:
     [[nodiscard]] int halfmove_clock() const;
     [[nodiscard]] int fullmove_number() const;
     [[nodiscard]] std::uint64_t key() const;
+    [[nodiscard]] std::uint64_t pawn_key() const;
     [[nodiscard]] UndoState make_move(const Move& move);
     void unmake_move(const Move& move, const UndoState& undo);
     [[nodiscard]] NullUndoState make_null_move();
@@ -72,6 +73,7 @@ private:
     int halfmove_clock_ = 0;
     int fullmove_number_ = 1;
     std::uint64_t key_ = 0;
+    std::uint64_t pawn_key_ = 0;
 };
 
 }

@@ -10,12 +10,7 @@ namespace trickfish {
 namespace {
 
 std::uint64_t pawn_context_key(const Position& position) {
-    std::uint64_t key = position.side_to_move() == Color::black ? zobrist::keys.side : 0;
-    for (const auto color : {Color::white, Color::black}) {
-        auto pawns = position.pieces(color, PieceType::pawn);
-        while (pawns != 0) key ^= zobrist::keys.pieces[piece_index(color, PieceType::pawn)][pop_lsb(pawns)];
-    }
-    return key;
+    return position.pawn_key() ^ (position.side_to_move() == Color::black ? zobrist::keys.side : 0);
 }
 
 std::size_t correction_slot(std::uint64_t key) {

@@ -233,6 +233,7 @@ std::int8_t Position::en_passant_square() const { return en_passant_square_; }
 int Position::halfmove_clock() const { return halfmove_clock_; }
 int Position::fullmove_number() const { return fullmove_number_; }
 std::uint64_t Position::key() const { return key_; }
+std::uint64_t Position::pawn_key() const { return pawn_key_; }
 
 bool Position::has_legal_en_passant() const {
     if (en_passant_square_ < 0) {
@@ -285,6 +286,7 @@ void Position::add_piece(char symbol, std::uint8_t square) {
     pieces_[index] |= square_bit(square);
     occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] |= square_bit(square);
     key_ ^= zobrist::keys.pieces[index][square];
+    if (symbol == 'P' || symbol == 'p') pawn_key_ ^= zobrist::keys.pieces[index][square];
 }
 
 void Position::remove_piece(char symbol, std::uint8_t square) {
@@ -293,6 +295,7 @@ void Position::remove_piece(char symbol, std::uint8_t square) {
     pieces_[index] &= ~square_bit(square);
     occupancy_[static_cast<std::size_t>(color_from_symbol(symbol))] &= ~square_bit(square);
     key_ ^= zobrist::keys.pieces[index][square];
+    if (symbol == 'P' || symbol == 'p') pawn_key_ ^= zobrist::keys.pieces[index][square];
 }
 
 NullUndoState Position::make_null_move() {

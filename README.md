@@ -386,6 +386,12 @@ The exporter validates the complete schema-1 JSON replay, decision records, fina
 
 Headers preserve engine names, binary hashes, opening ID/prefix length and termination reason. New match JSON records game start/end UTC timestamps; PGN dates use the UTC start date. Older reports without a game start date export an unknown date instead of inferring one from report creation. The JSON remains the complete diagnostic record. This is a mainline exporter, not a PGN importer or variation/annotation editor; external reader compatibility has not been independently tested. CI is configured to export and print the depth-limited and node-limited paired process smoke games. The PGN pipeline passed CI at `4a04b95`; no playing-strength inference follows.
 
+### Incremental pawn-structure key
+
+`Position::pawn_key()` is the XOR of the existing Zobrist piece-square keys for white and black pawns only. It excludes side to move, castling, en passant and clocks, and is zero without pawns. Piece insertion/removal maintains it during FEN construction, ordinary moves, captures, en passant, promotions and their undo operations. Castling and null moves leave it unchanged. The full repetition key and FEN serialization retain their existing semantics.
+
+Correction history combines this cached pawn key with the existing side key, preserving its previous context-key values without rescanning pawns on each lookup/update. Position now maintains an additional 64-bit field; no general speedup is asserted. New CTests compare the cached key with an independent mailbox reconstruction through legal move trees and undo, including both colors' promotions/underpromotions, en passant, castling and null state. Actual C++ verification awaits this revision's CI.
+
 ## Experimental mate-distance pruning
 
 `SearchOptions::use_mate_distance` defaults to false. `--search-mdp depth [fen]` or UCI `Experimental Mate Distance Pruning` enables main-search mate-score window bounds after legal-move and draw handling. At search ply p, alpha is bounded below by `-mate_score + p` and beta above by `mate_score - p - 1`; a collapsed window returns its lower bound. Synthetic null branches and quiescence do not apply the new bounds. Terminal scores and TT mate-distance normalization are unchanged.
