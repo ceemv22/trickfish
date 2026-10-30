@@ -251,7 +251,7 @@ def main():
             "correction_history": False, "comparison_correction_table": False,
             "compare_correction": args.compare_correction,
             "endgame_scaling": False, "compare_scale": args.compare_scale,
-            "comparison_scale": {"enabled": args.compare_scale, "normal": 256, "opposite_bishop_pawn_ending": 128,
+            "comparison_scale": {"enabled": args.compare_scale, "normal": 256, "opposite_bishop_pawn_ending": 128, "wrong_bishop_rook_pawn_corner": 0,
                 "rounding": "toward zero", "draw_adjudication": False},
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,

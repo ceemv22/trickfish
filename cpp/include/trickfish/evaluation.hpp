@@ -245,6 +245,23 @@ inline constexpr int endgame_scale_normal = 256;
             return endgame_scale_normal;
         }
     }
+    for (const auto attacker : {Color::white, Color::black}) {
+        const auto defender = opposite(attacker);
+        auto bishops = position.pieces(attacker, PieceType::bishop);
+        const auto pawns = position.pieces(attacker, PieceType::pawn);
+        if (std::popcount(bishops) != 1 || pawns == 0 ||
+            position.occupancy(defender) != position.pieces(defender, PieceType::king)) continue;
+        constexpr Bitboard a_file = 0x0101010101010101ULL;
+        constexpr Bitboard h_file = a_file << 7;
+        int file = -1;
+        if ((pawns & ~a_file) == 0) file = 0;
+        else if ((pawns & ~h_file) == 0) file = 7;
+        if (file < 0) continue;
+        const auto corner = static_cast<std::uint8_t>((attacker == Color::white ? 0 : 56) + file);
+        if (position.pieces(defender, PieceType::king) != square_bit(corner)) continue;
+        const auto bishop = pop_lsb(bishops);
+        if ((bishop / 8 + bishop % 8) % 2 != (corner / 8 + corner % 8) % 2) return 0;
+    }
     auto white = position.pieces(Color::white, PieceType::bishop);
     auto black = position.pieces(Color::black, PieceType::bishop);
     if (std::popcount(white) != 1 || std::popcount(black) != 1 ||

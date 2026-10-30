@@ -31,6 +31,18 @@ int main() {
         verify_scale("2b1k3/7p/8/8/8/8/PP6/1NB1K3 w - - 0 1", 256);
         verify_scale("2b1k2r/7p/8/8/8/8/PP6/2B1K3 w - - 0 1", 256);
         verify_scale("2b1k3/7p/8/8/8/8/PP6/2BQK3 w - - 0 1", 256);
+        verify_scale("k7/8/8/8/8/8/P7/2B1K3 w - - 0 1", 0);
+        verify_scale("7k/8/8/8/8/8/7P/4KB2 w - - 0 1", 0);
+        verify_scale("2b1k3/p7/8/8/8/8/8/K7 b - - 0 1", 0);
+        verify_scale("4kb2/7p/8/8/8/8/8/7K b - - 0 1", 0);
+        verify_scale("k7/8/8/8/8/8/P7/4KB2 w - - 0 1", 256);
+        verify_scale("1k6/8/8/8/8/8/P7/2B1K3 w - - 0 1", 256);
+        verify_scale("k7/8/8/8/8/P7/P7/2B1K3 w - - 0 1", 0);
+        verify_scale("k7/8/8/8/8/8/P6P/2B1K3 w - - 0 1", 256);
+        verify_scale("k7/7p/8/8/8/8/P7/2B1K3 w - - 0 1", 256);
+        verify_scale("k7/8/8/8/8/8/P7/1NB1K3 w - - 0 1", 256);
+        verify_scale("k7/8/8/8/8/8/P7/R1B1K3 w - - 0 1", 256);
+        verify_scale("k7/8/8/8/8/8/P7/2B1KB2 w - - 0 1", 256);
         trickfish::SearchOptions options;
         require(!options.use_endgame_scaling, "endgame scaling must default off");
         options.use_endgame_scaling = true;
@@ -67,6 +79,27 @@ int main() {
             require(root.to_fen() == fen && root.key() == key && trickfish::evaluate_static(root) == raw,
                 "scaled search changed root/reference evaluation");
         }
+        auto corner_root = trickfish::Position::from_fen("k7/8/8/8/8/8/P7/2B1K3 w - - 0 1");
+        const auto corner_fen = corner_root.to_fen();
+        const auto corner_key = corner_root.key();
+        const auto corner_fallback = trickfish::iterative_search(corner_root, 2, options, {0, {}, {}});
+        require(corner_fallback.stopped && corner_fallback.score == 0 && corner_fallback.best_move,
+            "corner scaling must retain legal fallback rather than adjudicate draw");
+        require(trickfish::evaluate(corner_root) > 0 && !corner_root.is_insufficient_material(),
+            "corner pattern changed public evaluation or dead-position classification");
+        const auto corner_search = trickfish::iterative_search(corner_root, 1, options);
+        require(corner_search.score == 0 && corner_search.best_move && !corner_search.principal_variation.empty(),
+            "corner pattern was not used by quiescence/search");
+        require(corner_root.to_fen() == corner_fen && corner_root.key() == corner_key, "corner search changed root");
+        auto escape = trickfish::Position::from_fen("k7/8/8/8/8/8/P7/2B1K3 b - - 0 1");
+        const auto escape_fen = escape.to_fen();
+        const auto escape_key = escape.key();
+        const trickfish::Move leave_corner(0, 1);
+        const auto corner_undo = escape.make_move(leave_corner);
+        require(trickfish::endgame_scale(escape) == 256, "king leaving corner did not remove pattern");
+        escape.unmake_move(leave_corner, corner_undo);
+        require(trickfish::endgame_scale(escape) == 0 && escape.to_fen() == escape_fen && escape.key() == escape_key,
+            "king undo did not restore corner pattern");
         auto capture = trickfish::Position::from_fen("4k3/8/8/8/8/8/P2b4/1B2K3 w - - 0 1");
         const auto fen = capture.to_fen();
         const auto key = capture.key();

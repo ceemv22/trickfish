@@ -132,6 +132,38 @@
       "expect": {
         "score": 0
       }
+    },
+    {
+      "id": "wrong-bishop-a8",
+      "fen": "k7/8/8/8/8/8/P7/2B1K3 w - - 0 1"
+    },
+    {
+      "id": "wrong-bishop-h8",
+      "fen": "7k/8/8/8/8/8/7P/4KB2 w - - 0 1"
+    },
+    {
+      "id": "wrong-bishop-a1",
+      "fen": "2b1k3/p7/8/8/8/8/8/K7 b - - 0 1"
+    },
+    {
+      "id": "wrong-bishop-h1",
+      "fen": "4kb2/7p/8/8/8/8/8/7K b - - 0 1"
+    },
+    {
+      "id": "correct-bishop-corner",
+      "fen": "k7/8/8/8/8/8/P7/4KB2 w - - 0 1"
+    },
+    {
+      "id": "king-outside-corner",
+      "fen": "1k6/8/8/8/8/8/P7/2B1K3 w - - 0 1"
+    },
+    {
+      "id": "pawns-on-both-rook-files",
+      "fen": "k7/8/8/8/8/8/P6P/2B1K3 w - - 0 1"
+    },
+    {
+      "id": "defending-pawn-excludes-pattern",
+      "fen": "k7/7p/8/8/8/8/P7/2B1K3 w - - 0 1"
     }
   ]
 }

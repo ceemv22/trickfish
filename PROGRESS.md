@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **81.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **82.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -37,7 +37,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C16c | Phase-aware pawn structure, explainable breakdown, and Python term-parity fixtures | 3.000 | Implemented |
 | C16e | Reference piece/king activity, phase-aware king safety, and full evaluator parity fixtures | 6.000 | Implemented |
 | C16g | Optional opposite-colored bishop pawn-ending score scaling with search/terminal safeguards | 0.500 | Implemented |
-| C16h | Further endgame scaling and validation | 1.500 | Pending |
+| C16i | Optional wrong-bishop rook-pawn corner pattern with strict material guards and restoration checks | 0.500 | Implemented |
+| C16j | Further endgame scaling and validation | 1.000 | Pending |
 | C17a | Legal en passant key normalization including pinned and discovered-check cases | 1.000 | Implemented |
 | C17b1 | Reversible repetition-key history, occurrence counts, and threefold threshold tests | 0.750 | Implemented |
 | C17b2 | Search integration with path-dependent TT handling and interruption restoration | 1.250 | Implemented |
@@ -77,7 +78,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-30. Endgame-scaling commit `c2f40d1` is confirmed on origin/main and passed [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/40925324857). Forty-six local tooling tests pass. The new 22-position suite passes Python validation, including four depth-two move objectives and eight terminal/move-count score objectives. Actual default/scaled C++ diagnostic comparisons await the next pushed commit's CI. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-30. Comparison commit `58c0e9d` is confirmed on origin/main; [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/41122192357) has Windows running and Ubuntu queued at inspection. The last confirmed successful baseline is `c2f40d1`. Forty-six local tooling tests pass; Python validates the expanded 30-position suite (four move/eight terminal objectives) and the new C++ fixture FENs. New corner-pattern C++ checks await its pushed CI. Local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -257,3 +258,7 @@ Before endgame scaling implementation, C16f was split into C16g (0.500) and C16h
 - C16g implementation: +0.500 points; implemented scope 81.500%. Added default-off 128/256 opposite-colored single-bishop pawn-ending scaling, with no knights/rooks/queens, as a static heuristic rather than draw adjudication. Default/public/Python evaluation is unchanged. Optional API, diagnostic --search-scale and UCI check select a consistent main/quiescence/fallback/correction baseline; TT keys include the policy. New CTests cover material/color boundaries, capture/undo, both side perspectives, zero-node fallback, TT/reference score parity, legal PV, correction combination and terminal/move-count outcomes. Forty-five tooling tests pass locally and Python validates fixture FENs/capture legality; actual C++ checks await CI. The fixed factor is untuned, its strength effect unmeasured, and C16h remains pending.
 
 - Endgame comparison verification: +0.000 points; implemented scope remains 81.500%. Added --compare-scale with forward/reverse paired sampling, explicit factor/rounding policy, recorded score/node deltas and timing ratios without requiring heuristic score parity. A 22-position suite includes mirrored colors, eligibility boundaries, capture/promotion and terminal/move-count outcomes. Exact integer score objectives protect terminal results in both modes. Forty-six tooling tests pass locally; Python depth-two search confirms four move objectives and independent rule classification confirms eight terminal-score objectives. CI is configured for two repeats per mode at depth two. This is regression evidence, not tuning, speed improvement or measured playing strength.
+
+Before corner-pattern implementation, C16h was split into C16i (0.500) and C16j (1.000), preserving 1.500 points. C16i requires a scale-zero pattern limited to one bishop plus pawns on one rook file, no other attacking material, a bare defending king on the promotion corner and the bishop on the opposite square color, with unchanged default/adjudication behavior and boundary/state/search checks.
+
+- C16i implementation: +0.500 points; implemented scope 82.000%. Existing default-off endgame scaling recognizes a strict wrong-colored single-bishop/one-rook-file pawn pattern against a bare king exactly on the promotion corner, scaling the static baseline to zero. Both rook files and colors, doubled same-file pawns, correct/extra bishops, extra material, split files and a king outside the corner are covered by new CTests; king move/undo restores the pattern, interruption retains a legal fallback, and depth-one search uses the scale without changing public/dead-position classification. The comparison suite now has 30 cases and records the zero-factor policy. Forty-six tooling tests and Python fixture/objective validation pass locally; actual C++ runtime awaits CI. This is a narrow optional static pattern, not adjudication, a tablebase proof, a horizon-stable draw result or measured strength improvement. C16j remains pending.
