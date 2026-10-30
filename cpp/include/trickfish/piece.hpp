@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -19,6 +20,8 @@ enum class PieceType : std::uint8_t {
     queen,
     king
 };
+
+inline constexpr std::array piece_values = {100, 320, 330, 500, 900, 0};
 
 inline constexpr int phase_weight(PieceType type) {
     if (type == PieceType::knight || type == PieceType::bishop) return 1;

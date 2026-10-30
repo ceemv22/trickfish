@@ -214,6 +214,17 @@ jobs:
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           python cpp/tests/evaluation_parity.py $binary
           if ($LASTEXITCODE -ne 0) { throw "C++/Python evaluation term parity failed" }
+      - name: Measure isolated evaluation term reads
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $benchmark = if ($IsWindows) { ".\build\Release\trickfish_evaluation_terms_bench.exe" } else { "./build/trickfish_evaluation_terms_bench" }
+          $json = & $benchmark 20000
+          if ($LASTEXITCODE -ne 0) { throw "Evaluation term microbenchmark failed" }
+          $json | Set-Content build/evaluation-terms.json
+          python -c "import json; from pathlib import Path; d=json.loads(Path('build/evaluation-terms.json').read_text()); s=d['samples']; assert len(s)==6 and len(d['fixture_fens'])==d['positions']; assert [x['reference_first'] for x in s]==[True,False]*3; assert len({x['checksum'] for x in s})==1; assert all(x['reference_ns']>0 and x['incremental_ns']>0 for x in s); assert d['median_paired_read_time_ratio']>0"
+          if ($LASTEXITCODE -ne 0) { throw "Invalid evaluation term measurements" }
+          Get-Content build/evaluation-terms.json
       - name: Validate search benchmark runner
         shell: pwsh
         run: |
