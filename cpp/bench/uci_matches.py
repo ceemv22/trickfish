@@ -6,6 +6,7 @@ import json
 import pathlib
 import platform
 import queue
+import random
 import re
 import subprocess
 import sys
@@ -286,6 +287,24 @@ def score_games(games):
     return scores
 
 
+def build_schedule(openings, rounds, seed):
+    if type(rounds) is not int or rounds < 1 or type(seed) is not int or not 0 <= seed < (1 << 64):
+        raise ValueError("schedule requires positive rounds and an unsigned 64-bit seed")
+    names = [opening["id"] for opening in openings]
+    if not names or any(not isinstance(name, str) or not name for name in names) or len(set(names)) != len(names):
+        raise ValueError("schedule requires nonempty unique opening IDs")
+    generator = random.Random(seed)
+    schedule = []
+    for round_number in range(1, rounds + 1):
+        order = list(names)
+        generator.shuffle(order)
+        for opening in order:
+            pair = len(schedule) + 1
+            schedule.append({"pair": pair, "round": round_number, "opening": opening,
+                "white_order": ["a", "b"] if pair % 2 else ["b", "a"]})
+    return schedule
+
+
 def main():
     parser = argparse.ArgumentParser(description="Sequential color-paired UCI match baseline; no Elo/SPRT inference")
     parser.add_argument("engine_a", type=pathlib.Path)
@@ -296,6 +315,7 @@ def main():
     budget.add_argument("--movetime", type=int)
     budget.add_argument("--nodes", type=int)
     parser.add_argument("--rounds", type=int, default=1)
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-plies", type=int, default=200)
     parser.add_argument("--timeout", type=float, default=10)
     parser.add_argument("--profiles", type=pathlib.Path)
@@ -306,6 +326,8 @@ def main():
         parser.error("rounds/ply limit and finite watchdog timeout must be positive")
     if depth is not None and not 1 <= depth <= 64:
         parser.error("depth must be 1..64")
+    if not 0 <= args.seed < (1 << 64):
+        parser.error("seed must be an unsigned 64-bit integer")
     if args.nodes is not None and not 1 <= args.nodes <= (1 << 64) - 1:
         parser.error("nodes must be 1..18446744073709551615")
     if args.movetime is not None and (args.movetime < 1 or args.movetime >= args.timeout * 1000):
@@ -330,12 +352,13 @@ def main():
         budget_kind, budget_value = "movetime", args.movetime
     go = f"go {budget_kind} {budget_value}"
     games = []
-    for round_number in range(1, args.rounds + 1):
-        for opening in openings:
-            for white in ("a", "b"):
-                game = play_game(opening, binaries, white, go, args.max_plies, args.timeout, profiles=profiles)
-                game["round"] = round_number
-                games.append(game)
+    schedule = build_schedule(openings, args.rounds, args.seed)
+    by_name = {opening["id"]: opening for opening in openings}
+    for pair in schedule:
+        for pair_game, white in enumerate(pair["white_order"], 1):
+            game = play_game(by_name[pair["opening"]], binaries, white, go, args.max_plies, args.timeout, profiles=profiles)
+            game.update(round=pair["round"], pair=pair["pair"], pair_game=pair_game)
+            games.append(game)
     if any(digest(path) != hashes[label] for label, path in binaries.items()) or digest(opening_path) != opening_hash or (profile_path is not None and digest(profile_path) != profile_hash):
         raise RuntimeError("engine binary or openings changed during matches")
     report = {"schema_version": 1, "created_utc": datetime.now(timezone.utc).isoformat(),
@@ -345,7 +368,8 @@ def main():
         "profile_source": {"path": str(profile_path), "sha256": profile_hash} if profile_path is not None else None,
         "environment": {"platform": platform.platform(), "python": platform.python_version()},
         "policy": {"go": go, "search_budget": {"kind": budget_kind, "value": budget_value}, "rounds": args.rounds, "searched_ply_limit": args.max_plies,
-            "watchdog_seconds": args.timeout, "schedule": "sequential fresh processes; same opening, swapped colors",
+            "watchdog_seconds": args.timeout, "schedule": "seeded opening shuffle; adjacent color swaps; alternating pair starts; fresh processes",
+            "schedule_seed": args.seed, "pair_schedule": schedule,
             "draws": DRAW_POLICY,
             "errors": "abort run without assigning a game result", "ply_limit_result": "unfinished"},
         "scores": score_games(games), "games": games}

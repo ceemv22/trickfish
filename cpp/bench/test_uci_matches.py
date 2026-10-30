@@ -101,12 +101,16 @@ class MatchTests(unittest.TestCase):
         output = io.StringIO()
         def game(opening, binaries, white, go, max_plies, timeout, profiles=None):
             return {"white": white, "black": "b" if white == "a" else "a", "result": "*", "reason": "searched_ply_limit"}
-        arguments = [str(source), str(source), str(source), "--depth", "1", "--max-plies", "2"]
+        arguments = [str(source), str(source), str(source), "--depth", "1", "--seed", "123", "--max-plies", "2"]
         with patch.object(matches.sys, "argv", arguments), patch.object(matches.sys, "stdout", output):
             with patch.object(matches, "play_game", side_effect=game) as play:
                 matches.main()
         report = json.loads(output.getvalue())
-        self.assertEqual([call.args[2] for call in play.call_args_list], ["a", "b"] * 3)
+        self.assertEqual([call.args[2] for call in play.call_args_list], ["a", "b", "b", "a", "a", "b"])
+        self.assertEqual(report["policy"]["schedule_seed"], 123)
+        self.assertEqual([call.args[0]["id"] for call in play.call_args_list],
+            [pair["opening"] for pair in report["policy"]["pair_schedule"] for _ in range(2)])
+        self.assertEqual([game["pair_game"] for game in report["games"]], [1, 2] * 3)
         self.assertEqual(len(report["games"]), 6)
         self.assertEqual(report["scores"]["a"], {"wins": 0, "losses": 0, "draws": 0, "unfinished": 6})
         self.assertEqual(report["engines"]["a"]["sha256"], matches.digest(source))
@@ -155,6 +159,29 @@ class MatchTests(unittest.TestCase):
                         self.assertEqual(error.exception.code, 2)
                         play.assert_not_called()
                 self.assertEqual(output.read_bytes(), original)
+
+    def test_schedule_is_repeatable_complete_balanced_and_does_not_mutate_openings(self):
+        openings = [{"id": name} for name in ("a", "b", "c")]
+        plan = matches.build_schedule(openings, 4, 123)
+        self.assertEqual(plan, matches.build_schedule(openings, 4, 123))
+        self.assertEqual(openings, [{"id": name} for name in ("a", "b", "c")])
+        self.assertEqual(len(plan), 12)
+        for round_number in range(1, 5):
+            self.assertEqual(sorted(pair["opening"] for pair in plan if pair["round"] == round_number), ["a", "b", "c"])
+        balance = 0
+        for index, pair in enumerate(plan, 1):
+            self.assertEqual(pair["pair"], index)
+            self.assertEqual(set(pair["white_order"]), {"a", "b"})
+            balance += 1 if pair["white_order"][0] == "a" else -1
+            self.assertLessEqual(abs(balance), 1)
+
+    def test_schedule_rejects_invalid_seed_rounds_and_opening_identity(self):
+        for rounds, seed in ((0, 0), (True, 0), (1, -1), (1, 1 << 64), (1, True)):
+            with self.subTest(rounds=rounds, seed=seed), self.assertRaises(ValueError):
+                matches.build_schedule([{"id": "one"}], rounds, seed)
+        for openings in ([], [{"id": "same"}, {"id": "same"}], [{"id": ""}]):
+            with self.subTest(openings=openings), self.assertRaises(ValueError):
+                matches.build_schedule(openings, 1, 0)
 
     def test_protocol_error_and_eof_are_not_bestmoves(self):
         for event in ["info string error: invalid command", None]:

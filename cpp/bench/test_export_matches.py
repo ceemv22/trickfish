@@ -30,6 +30,21 @@ def make_report(fen, moves, result="*", reason="searched_ply_limit", book=0):
         "games": [game], "scores": matches.score_games([game])}
 
 
+def scheduled_report():
+    report = make_report(exporter.INITIAL, ["e2e4"])
+    first = report["games"][0]
+    first.update(pair=1, pair_game=1)
+    second = copy.deepcopy(first)
+    second.update(white="b", black="a", pair_game=2)
+    for decision in second["decisions"]:
+        decision["engine"] = "b" if decision["engine"] == "a" else "a"
+    report["games"].append(second)
+    report["scores"] = matches.score_games(report["games"])
+    report["policy"].update(rounds=1, schedule_seed=0,
+        pair_schedule=[{"pair": 1, "round": 1, "opening": "fixture", "white_order": ["a", "b"]}])
+    return report
+
+
 class ExportTests(unittest.TestCase):
     def test_export_cli_rejects_input_collision_before_rendering(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -42,6 +57,28 @@ class ExportTests(unittest.TestCase):
                     self.assertEqual(error.exception.code, 2)
                     render.assert_not_called()
             self.assertEqual(report.read_text(), original)
+
+    def test_scheduled_report_exports_pair_identity(self):
+        pgn = exporter.export_report(scheduled_report())
+        self.assertEqual(pgn.count('[TrickfishPair "1"]'), 2)
+        self.assertIn('[PairGame "1"]', pgn)
+        self.assertIn('[PairGame "2"]', pgn)
+
+    def test_schedule_corruption_is_rejected_before_export(self):
+        for change in ("seed", "missing", "reordered", "color", "opening", "root", "prefix", "pair", "plan", "rounds"):
+            report = scheduled_report()
+            second = report["games"][1]
+            if change == "seed": report["policy"]["schedule_seed"] = True
+            elif change == "missing": report["games"].pop()
+            elif change == "reordered": report["games"].reverse()
+            elif change == "color": second.update(white="a", black="b")
+            elif change == "opening": second["opening"] = "other"
+            elif change == "root": second["root_fen"] = exporter.INITIAL.replace("KQkq", "-")
+            elif change == "prefix": second["opening_plies"] = 1
+            elif change == "pair": second["pair_game"] = True
+            elif change == "plan": report["policy"]["pair_schedule"][0]["white_order"] = ["b", "a"]
+            else: report["policy"]["rounds"] = 2
+            with self.subTest(change=change), self.assertRaises(ValueError): exporter.export_report(report)
 
     def check_san(self, fen, text, expected):
         position = Position.from_fen(fen)

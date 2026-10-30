@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **82.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **83.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -69,7 +69,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C21e | Sequential color-paired UCI match baseline with legal arbitration and provenance/replay reports | 1.500 | Implemented |
 | C21g | Replay-validated PGN mainline export with SAN, provenance, and unfinished-result integrity | 0.500 | Implemented |
 | C21i | Typed per-engine UCI profiles with immutable search snapshots and match/PGN provenance | 0.500 | Implemented |
-| C21j | Broader tactical suites and controlled match methodology | 2.500 | Pending |
+| C21k | Seeded opening-order schedule with alternating pair starts and replay-validated schedule provenance | 0.500 | Implemented |
+| C21l | Broader tactical suites and controlled match methodology | 2.000 | Pending |
 | C22 | Profile-guided movegen/state optimization with measured regressions | 6.000 | Pending |
 | C23 | Tablebase integration and score/draw handling | 3.000 | Pending |
 | C24 | Reproducible evaluation tuning, self-play, and SPRT workflow | 5.000 | Pending |
@@ -78,7 +79,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-30. Input-protection commit `ca5fa74` is confirmed on origin/main; [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/41125343496) passed Ubuntu while Windows was running at inspection. The last confirmed fully successful baseline is mate-distance commit `86659bb`. Fifty-five local tooling tests pass using the external workspace-inheriting temporary-directory adapter described below. New C++ TT replacement/reuse checks await this revision's pushed CI; local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-30. TT-bound commit `a259c84` is confirmed on origin/main and passed both jobs in [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/41125854230). Fifty-nine local tooling tests pass through the external workspace-inheriting temporary-directory adapter. New seeded UCI match/PGN process smoke execution awaits this revision's pushed CI; local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -274,3 +275,7 @@ Before mate-distance implementation, the remaining C20p (0.500) was assigned to 
 - Tool input-preservation fix: +0.000 points; implemented scope remains 82.500%. Shared output validation prevents benchmark output from replacing its binary/suite, match output from replacing either binary/openings/profiles, and PGN output from replacing its report, including resolved path aliases and hard links. Tests check early rejection, unchanged source bytes, hard-link aliases and normal separate/stdout targets. Fifty-five tooling tests pass locally with workspace-inheriting temporary directories in an external local harness; ordinary private TemporaryDirectory execution is blocked by this sandbox's Windows ACL behavior. Standard repository tests await CI. This fixes an overwrite risk and adds no engine strength claim.
 
 - TT same-depth bound preservation: +0.000 points; implemented scope remains 82.500%. A same-key/same-depth non-exact update no longer overwrites exact information, nor does a strictly weaker bound overwrite a stronger bound of the same kind. Equal-score updates and different-kind/collision policies remain unchanged; deeper same-key entries retain priority. New CTests cover accepted/rejected payloads and repeated depth-three searches with a 64-slot collision-prone table against no-TT scores, legal PVs and unchanged root state. Fifty-five tooling tests pass locally through the workspace temporary-directory adapter; actual C++ checks await CI. No measured performance or playing-strength benefit is claimed.
+
+Before seeded scheduling implementation, C21j was split into C21k (0.500) and C21l (2.000), preserving 2.500 points. C21k requires deterministic opening shuffles for a recorded seed, adjacent color swaps with alternating first color, full schedule/game identity, corruption checks before PGN export and preserved legacy-report support. It is not statistical strength certification.
+
+- C21k implementation: +0.500 points; implemented scope 83.000%. UCI match scheduling now records an unsigned seed (default zero), per-round shuffled opening order, adjacent color pairs with alternating first White engine, complete pair schedule and per-game pair/round identity. PGN export validates schedule/game counts, color/order/round/opening identity, round coverage and shared opening history, adds pair tags and preserves legacy reports. The stored plan is authoritative; export does not reconstruct or authenticate PRNG seed provenance across runtimes. Fifty-nine tooling tests pass locally with the workspace temporary-directory adapter; CI will run explicit seeds for depth/node process smoke and replay. This is bounded scheduling methodology, not removal of all timing bias, tuning or measured playing strength. C21l remains pending.

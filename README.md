@@ -416,6 +416,14 @@ The match runner accepts `--profiles cpp/bench/match_profiles.example.json`. The
 
 Reports preserve requested profiles, their source-file hash and per-game canonical accepted option messages. PGN includes color-specific UCIProfile tags. Export validates every game's applied profile against the requested profile, comparing option names case-insensitively and preserving boolean/integer types. Missing, extra or changed options and engine labels are rejected. Legacy reports without requested profiles remain supported; any supplied applied profiles must still contain exactly engines a/b. Profile option names reject control characters and leading/trailing whitespace before UCI commands are constructed. These records describe requested/accepted UCI configuration, not an independent query of every engine setting. CI is configured to test snapshot persistence and profiled same-binary games at shallow depth. New C++ process results await this change's completed CI.
 
+## Reproducible match schedules
+
+The UCI runner accepts `--seed` (unsigned 64-bit integer, default 0). A local seeded generator shuffles the opening IDs separately for each round without changing the input list. Both color assignments remain adjacent; the first White engine alternates a/b across pairs, so its imbalance over any prefix is at most one pair. Each round still covers every supplied opening exactly once.
+
+JSON policy preserves the seed and complete ordered pair schedule; games record pair ID, game-in-pair and round. The same ordered opening input, seed and compatible Python runtime reproduce the plan. The recorded plan remains authoritative across environments: export validates plan/game consistency rather than reconstructing the random shuffle from the seed. This is scheduling provenance, not independent authentication of the seed or source-file content.
+
+PGN export checks complete pair counts, order/color/round/opening identities, equal round coverage and matching root FEN/opening history within each pair. It records TrickfishPair/PairGame tags. Older reports without a pair schedule remain supported. CI is configured for seeded depth- and node-limited process smoke games and PGN replay; new runtime results await this revision's pushed CI. Seeded ordering balances one scheduling asymmetry; it does not remove hardware/timing bias or establish statistical strength.
+
 ## Tool output protection
 
 The search benchmark, UCI match runner and PGN exporter reject output paths that refer to their input files. Checks resolve path aliases and compare existing file identity to catch hard links. Protected inputs are the benchmark binary/suite, match binaries/openings/profile file, and PGN source report. Validation runs before starting benchmark/match searches or rendering PGN. Separate output files and stdout remain supported; invalid output arguments leave inputs unchanged.

@@ -109,6 +109,8 @@ def render_game(game, engines, policy):
     tags = {"Event": "Trickfish UCI match", "Site": "?", "Date": game_date(game),
         "Round": str(game.get("round", "?")), "White": names.get(game["white"], "?"),
         "Black": names.get(game["black"], "?"), "Result": game["result"]}
+    if "pair" in game:
+        tags.update(TrickfishPair=game["pair"], PairGame=game["pair_game"])
     if root_fen != INITIAL:
         tags.update(SetUp="1", FEN=root_fen)
     tags.update(Opening=game["opening"], OpeningPlies=str(book), TrickfishReason=game["reason"],
@@ -146,10 +148,54 @@ def validate_profile_provenance(report):
             raise ValueError("requested and applied UCI profiles disagree")
 
 
+def validate_schedule(report):
+    policy = report["policy"]
+    if "pair_schedule" not in policy:
+        return
+    plan = policy["pair_schedule"]
+    rounds, seed = policy.get("rounds"), policy.get("schedule_seed")
+    if type(rounds) is not int or rounds < 1 or type(seed) is not int or not 0 <= seed < (1 << 64):
+        raise ValueError("invalid schedule rounds/seed")
+    if not isinstance(plan, list) or not plan or len(report["games"]) != 2 * len(plan):
+        raise ValueError("schedule/game counts disagree")
+    seen = {}
+    previous_round = 1
+    for index, pair in enumerate(plan, 1):
+        if not isinstance(pair, dict):
+            raise ValueError("schedule pair must be an object")
+        round_number, opening = pair.get("round"), pair.get("opening")
+        order = ["a", "b"] if index % 2 else ["b", "a"]
+        if (type(pair.get("pair")) is not int or pair["pair"] != index or
+            type(round_number) is not int or not previous_round <= round_number <= min(rounds, previous_round + 1) or
+            not isinstance(opening, str) or not opening or pair.get("white_order") != order):
+            raise ValueError("invalid pair schedule identity/order")
+        if index == 1 and round_number != 1:
+            raise ValueError("schedule must start at round one")
+        previous_round = round_number
+        if opening in seen.setdefault(round_number, set()):
+            raise ValueError("duplicate opening in schedule round")
+        seen[round_number].add(opening)
+        games = report["games"][2 * (index - 1):2 * index]
+        for pair_game, (game, white) in enumerate(zip(games, order), 1):
+            if (type(game.get("pair")) is not int or game["pair"] != index or
+                type(game.get("pair_game")) is not int or game["pair_game"] != pair_game or
+                type(game.get("round")) is not int or game["round"] != round_number or
+                game.get("opening") != opening or game.get("white") != white or
+                game.get("black") != ("b" if white == "a" else "a")):
+                raise ValueError("game disagrees with recorded schedule")
+        if (games[0]["root_fen"] != games[1]["root_fen"] or
+            games[0]["opening_plies"] != games[1]["opening_plies"] or
+            games[0]["moves"][:games[0]["opening_plies"]] != games[1]["moves"][:games[1]["opening_plies"]]):
+            raise ValueError("paired games do not share opening history")
+    if set(seen) != set(range(1, rounds + 1)) or any(names != seen[1] for names in seen.values()):
+        raise ValueError("opening coverage differs between rounds")
+
+
 def export_report(report):
     if report.get("schema_version") != 1 or not report.get("games"):
         raise ValueError("expected a nonempty schema-1 match report")
     validate_profile_provenance(report)
+    validate_schedule(report)
     policy = report["policy"]
     if policy["draws"] != DRAW_POLICY or type(policy["searched_ply_limit"]) is not int or policy["searched_ply_limit"] < 1:
         raise ValueError("unsupported match adjudication/ply-cap policy")
