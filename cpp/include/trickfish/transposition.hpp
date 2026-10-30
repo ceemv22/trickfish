@@ -56,8 +56,13 @@ public:
 
     void store(const TranspositionEntry& entry) {
         auto& slot = slots_[entry.key % slots_.size()];
-        if (slot && slot->key == entry.key && slot->depth > entry.depth) {
-            return;
+        if (slot && slot->key == entry.key) {
+            if (slot->depth > entry.depth) return;
+            if (slot->depth == entry.depth) {
+                if (slot->bound == Bound::exact && entry.bound != Bound::exact) return;
+                if (slot->bound == Bound::lower && entry.bound == Bound::lower && slot->score > entry.score) return;
+                if (slot->bound == Bound::upper && entry.bound == Bound::upper && slot->score < entry.score) return;
+            }
         }
         slot = entry;
     }

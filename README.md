@@ -280,6 +280,12 @@ Quiet history uses a side/from/to table within each search, shared across iterat
 
 One-ply continuation history adds context to quiet ordering: current side, previous moved piece type/destination, and current moving type/destination. It uses a lazily allocated 16,384-entry direct-mapped table with full-key checks; collisions replace entries on update. Scores are bounded to +/-16384 and combine with quiet history after existing tactical/killer priorities. `SearchOptions::use_continuation` controls it. Root and quiescence have no continuation context, and a standalone FEN supplies no previous played-game move. State resets per search; this table is separate from repetition history. New C++ context/reuse/parity checks await this change's CI.
 
+### Transposition replacement policy
+
+For the same full key, deeper entries retain priority. At equal depth, a non-exact bound cannot replace an exact entry; a weaker lower bound or weaker upper bound of the same kind cannot replace its stronger counterpart. Higher lower bounds and lower upper bounds carry more information. Equal scores, exact-to-exact updates and changes between lower/upper kinds retain the existing replacement behavior. Different-key collisions still evict the indexed slot; rejected updates preserve the complete prior payload, including its move.
+
+New CTests cover these bounds and repeated search through a small collision-prone table against a no-TT reference, checking scores, legal PVs and root restoration. Actual C++ verification awaits this revision's CI. This is an information-preservation refinement, with no measured speed or strength claim. History-aware UCI search still disables TT.
+
 ### Cached move-ordering keys
 
 Search computes each move's preferred-move flag, tactical status, capture/promotion/killer priority and combined history/continuation value once before sorting. Optional exchange ordering also computes its exchange score once. The comparator reads those keys and retains the existing coordinate/promotion tie-breaks. Values are local to one ordering call; heuristic tables continue to update between searched moves and are read again at the next call.
