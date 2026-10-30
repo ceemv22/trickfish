@@ -396,7 +396,7 @@ Correction history combines this cached pawn key with the existing side key, pre
 
 `Position::phase_units()` maintains the uncapped sum of knight/bishop=1, rook=2 and queen=4 weights during piece insertion/removal. FEN construction, captures, promotions and undo therefore maintain the value; quiet moves, castling, pawn-only changes and null moves preserve the material total. `game_phase()` caps this stored value at 24 when evaluation reads it, avoiding repeated piece-bitboard counts.
 
-The stored value is deliberately not capped: a promoted-material position with raw phase 30 can lose a queen and remain above the evaluation cap at 26. Subtracting from an already capped 24 would produce the wrong phase. New mailbox-reference legal-tree checks and an explicit 30-to-26 capture/undo regression await CI. Public phase weights and evaluation formulas remain unchanged.
+The stored value is deliberately not capped: a promoted-material position with raw phase 30 can lose a queen and remain above the evaluation cap at 26. Subtracting from an already capped 24 would produce the wrong phase. Mailbox-reference legal-tree checks and the explicit 30-to-26 capture/undo regression passed CI at `24df66d`. Public phase weights and evaluation formulas remain unchanged.
 
 ## Experimental pawn-evaluation cache
 
@@ -406,7 +406,7 @@ Only the pawn-structure component is stored. Material, piece activity, bishop pa
 
 `SearchResult` reports pawn_cache_hits/pawn_cache_misses. The cache diagnostic adds those two fields to the usual CLI output; other diagnostic modes retain their existing format. `--compare-pawn-cache` accepts both formats, requires cache work counters and identical score, completed depth, nodes, best move and PV, and records paired wall-time ratios. Counters measure lookups, not distinct positions or nodes, and timing includes process/initialization cost. No performance threshold or strength claim is made.
 
-New CTests compare cached/uncached static values on legal move trees, force slot collisions, check phase changes with identical pawns, ensure nonpawn scores are not reused, exercise zero-key/clear/capacity boundaries, and compare search with TT/history, correction/scaling, exchange/MDP and node-limited interruption. UCI tests toggle the option and compare depth-search output. CI is configured for diagnostic comparisons and node-limited paired games using `cpp/bench/pawn_cache_profiles.example.json`, followed by replay-validated PGN export. New C++ runtime and timing results await this revision's pushed CI; the profile is a wiring comparison, not a stronger configuration recommendation.
+New CTests compare cached/uncached static values on legal move trees, force slot collisions, check phase changes with identical pawns, ensure nonpawn scores are not reused, exercise zero-key/clear/capacity boundaries, and compare search with TT/history, correction/scaling, exchange/MDP and node-limited interruption. UCI tests toggle the option and compare depth-search output. CI is configured for diagnostic comparisons and node-limited paired games using `cpp/bench/pawn_cache_profiles.example.json`, followed by replay-validated PGN export. Configured C++/UCI/diagnostic comparisons passed CI at `24df66d`; the profile is a wiring comparison, not a stronger configuration recommendation, and no general speedup is established.
 
 ## Experimental mate-distance pruning
 
@@ -454,7 +454,17 @@ To continue, repeat the same engine/opening/profile paths and match controls, ad
 
 Only complete pairs form a resumable prefix; scores are derived again from their results. Resuming a completed checkpoint starts no engines and reproduces games/results in a new final report. A checkpoint is a separate format, not a finished match report for PGN export. Use one runner per checkpoint; this is local interruption recovery rather than concurrent coordination or authentication that recorded games were actually played. Standard reports without checkpoints retain their existing behavior.
 
-CI is configured to test simulated mid-pair interruption, corrupted/config-mismatched records, failed atomic replacement and standalone CLI continuation, then run real node-limited process matches with checkpoint/completed-resume/PGN verification. The new C++ process smoke awaits this revision's pushed CI; no strength inference follows from resumability.
+CI is configured to test simulated mid-pair interruption, corrupted/config-mismatched records, failed atomic replacement and standalone CLI continuation, then run real node-limited process matches with checkpoint/completed-resume/PGN verification. Checkpoint/resume process smoke passed CI at `e840b45`; no strength inference follows from resumability.
+
+## Descriptive match analysis
+
+Run `python cpp/bench/analyze_matches.py build/match-report.json --output build/match-analysis.json` on a completed schema-1 match report. The analyzer consumes the same full replay/profile/schedule validation as PGN export before producing statistics; it does not require building the complete PGN in memory. Checkpoints and analysis files are separate formats. The output records the source report path/hash plus engine/profile/policy provenance, and input/output aliases are rejected.
+
+Results include completed/unfinished counts, per-engine W/L/D, exact half-point totals, completed-game score fractions, engine-color breakdowns, per-opening summaries and termination counts. An unfinished game contributes no points and is not a draw. A zero denominator produces null, not a fictitious 50% score. These fractions describe only the completed subset and can be biased when games remain unfinished.
+
+Reports with a validated schedule also receive five pair-score bins for engine a: 0, 0.5, 1, 1.5 and 2 points over the two color-swapped games. Either unfinished game excludes the entire pair from pair scoring; a finished game in that pair still contributes to the separate completed-game totals. Legacy reports without a schedule keep individual-game statistics and explicitly have no paired distribution. Color attribution follows assigned engine colors even for Black-to-move starting FENs.
+
+The output is descriptive accounting. It supplies no rating estimate, confidence interval, significance decision or SPRT result, and does not authenticate that the recorded engine binaries actually played the games. CI is configured to analyze fresh/resumed process smoke reports and require identical statistics; new analysis integration awaits this revision's pushed CI.
 
 ## Tool output protection
 

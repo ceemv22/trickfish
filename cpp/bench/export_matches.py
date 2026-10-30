@@ -195,7 +195,7 @@ def validate_schedule(report, allow_partial=False):
         raise ValueError("opening coverage differs between rounds")
 
 
-def export_report(report):
+def validated_pgn_games(report):
     if report.get("schema_version") != 1 or not report.get("games"):
         raise ValueError("expected a nonempty schema-1 match report")
     validate_profile_provenance(report)
@@ -209,7 +209,11 @@ def export_report(report):
             raise ValueError("invalid engine hash provenance")
     if report["scores"] != score_games(report["games"]):
         raise ValueError("match summary disagrees with game results")
-    return "".join(render_game(game, engines, policy) for game in report["games"])
+    return (render_game(game, engines, policy) for game in report["games"])
+
+
+def export_report(report):
+    return "".join(validated_pgn_games(report))
 
 
 def main():

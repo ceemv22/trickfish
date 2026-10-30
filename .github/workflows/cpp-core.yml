@@ -306,3 +306,16 @@ jobs:
           Get-Content build/match-nodes-smoke.pgn
           python cpp/bench/export_matches.py build/match-resumed-smoke.json --output build/match-resumed-smoke.pgn
           if ($LASTEXITCODE -ne 0) { throw "Resumed match replay/PGN export failed" }
+      - name: Validate descriptive match analysis
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          python cpp/bench/test_analyze_matches.py
+          if ($LASTEXITCODE -ne 0) { throw "Match analysis regressions failed" }
+          python cpp/bench/analyze_matches.py build/match-nodes-smoke.json --output build/match-analysis.json
+          if ($LASTEXITCODE -ne 0) { throw "Match analysis failed" }
+          python cpp/bench/analyze_matches.py build/match-resumed-smoke.json --output build/match-resumed-analysis.json
+          if ($LASTEXITCODE -ne 0) { throw "Resumed match analysis failed" }
+          python -c "import json; from pathlib import Path; a=json.loads(Path('build/match-analysis.json').read_text()); b=json.loads(Path('build/match-resumed-analysis.json').read_text()); keys=('overall','paired','by_engine_color','by_opening','termination_reasons'); assert all(a[k]==b[k] for k in keys)"
+          if ($LASTEXITCODE -ne 0) { throw "Resume changed match statistics" }
+          Get-Content build/match-analysis.json

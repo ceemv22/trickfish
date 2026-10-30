@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **83.750%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **84.250%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -71,7 +71,8 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C21i | Typed per-engine UCI profiles with immutable search snapshots and match/PGN provenance | 0.500 | Implemented |
 | C21k | Seeded opening-order schedule with alternating pair starts and replay-validated schedule provenance | 0.500 | Implemented |
 | C21m | Atomic paired-match checkpoints with strict configuration/replay validation and safe resume | 0.750 | Implemented |
-| C21n | Broader tactical suites and controlled match methodology | 1.250 | Pending |
+| C21o | Replay-validated descriptive match analysis by pair, engine color, opening and termination | 0.500 | Implemented |
+| C21p | Broader tactical suites and controlled match methodology | 0.750 | Pending |
 | C22 | Profile-guided movegen/state optimization with measured regressions | 6.000 | Pending |
 | C23 | Tablebase integration and score/draw handling | 3.000 | Pending |
 | C24 | Reproducible evaluation tuning, self-play, and SPRT workflow | 5.000 | Pending |
@@ -80,7 +81,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-30. Pawn-cache/phase commit `24df66d` is confirmed on origin/main and passed both jobs in [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/41131545505). Seventy local tooling tests pass through the external workspace temporary-directory adapter, including simulated mid-pair failure, strict configuration/source/replay validation, atomic-write failure preservation and completed resume through a separate CLI process. New real C++ match/checkpoint/resume smoke execution awaits this revision's pushed CI; local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-30. Checkpoint commit `e840b45` is confirmed on origin/main and passed both jobs in [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/41132661735). Seventy-eight local tooling tests pass through the external workspace temporary-directory adapter, including legal games covering all five paired-score bins, unfinished exclusion, color/setup attribution, late corruption and standalone CLI source provenance/protection. New real C++ match-analysis/resume-statistics smoke execution awaits this revision's pushed CI; local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -290,3 +291,7 @@ Before seeded scheduling implementation, C21j was split into C21k (0.500) and C2
 Before checkpoint implementation, C21l was split into C21m (0.750) and C21n (1.250), preserving 2.000 points. C21m requires atomic completed-pair persistence, immutable configuration/source matching, replay-validated prefixes, continuation without duplicated completed pairs, safe source/output paths and corruption/interruption regressions. It is not SPRT or strength certification.
 
 - C21m implementation: +0.750 points; implemented scope 83.750%. Added explicit checkpoint/resume controls with atomic completed-pair persistence, an initial empty checkpoint, strict canonical configuration comparison (including source paths/hashes, profiles, controls, schedule and runtime metadata), replay/source-opening validation and continuation from the first unfinished pair. Partial schedule validation is internal to recovery; normal PGN export still requires complete schedules. Completed resume preserves all games/results without starting engines. Input/output aliases and fresh overwrite are rejected; temporary-file collision/failure cleanup preserves prior data. Seventy local tooling tests pass using the temporary-directory adapter, including actual standalone CLI completed-resume and a legal replay with an altered source root being rejected. CI will verify real node-limited checkpoint/resume/PGN smoke. This is bounded long-run recovery, not distributed coordination, authentication, SPRT or measured strength. C21n remains pending.
+
+Before match-analysis implementation, C21n was split into C21o (0.500) and C21p (0.750), preserving 1.250 points. C21o requires full report replay validation, exact completed-game and paired half-point accounting, explicit unfinished exclusions, color/opening/termination summaries, input provenance/protection and corruption/CLI regressions. It is descriptive analysis, not rating estimation or statistical significance.
+
+- C21o implementation: +0.500 points; implemented scope 84.250%. Added descriptive analysis that fully consumes shared PGN replay/profile/schedule validation before summarizing W/L/D, exact half-points, completed fractions, engine colors, openings, terminations and five complete-pair score bins. Unfinished games/pairs are excluded from their respective denominators; zero samples give null fractions. Legacy reports explicitly lack paired statistics. Source hash/path and engine/profile/policy metadata are preserved, output aliases rejected, and late invalid replay produces no analysis file. Shared validation now offers one-game-at-a-time rendered iteration without changing PGN export semantics. Seventy-eight tooling tests pass locally through the temporary-directory adapter; CI will compare fresh/resumed real process smoke statistics. This is accounting rather than rating, significance, SPRT, authentication or measured playing strength. C21p remains pending.
