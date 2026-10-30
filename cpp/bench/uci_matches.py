@@ -319,8 +319,12 @@ def main():
     parser.add_argument("--max-plies", type=int, default=200)
     parser.add_argument("--timeout", type=float, default=10)
     parser.add_argument("--profiles", type=pathlib.Path)
+    parser.add_argument("--checkpoint", type=pathlib.Path)
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
+    if args.resume and args.checkpoint is None:
+        parser.error("--resume requires --checkpoint")
     depth = 2 if args.depth is None and args.movetime is None and args.nodes is None else args.depth
     if args.rounds < 1 or args.max_plies < 1 or not 0 < args.timeout < float("inf"):
         parser.error("rounds/ply limit and finite watchdog timeout must be positive")
@@ -351,17 +355,8 @@ def main():
     else:
         budget_kind, budget_value = "movetime", args.movetime
     go = f"go {budget_kind} {budget_value}"
-    games = []
     schedule = build_schedule(openings, args.rounds, args.seed)
-    by_name = {opening["id"]: opening for opening in openings}
-    for pair in schedule:
-        for pair_game, white in enumerate(pair["white_order"], 1):
-            game = play_game(by_name[pair["opening"]], binaries, white, go, args.max_plies, args.timeout, profiles=profiles)
-            game.update(round=pair["round"], pair=pair["pair"], pair_game=pair_game)
-            games.append(game)
-    if any(digest(path) != hashes[label] for label, path in binaries.items()) or digest(opening_path) != opening_hash or (profile_path is not None and digest(profile_path) != profile_hash):
-        raise RuntimeError("engine binary or openings changed during matches")
-    report = {"schema_version": 1, "created_utc": datetime.now(timezone.utc).isoformat(),
+    configuration = {
         "engines": {label: {"path": str(path), "sha256": hashes[label], "arguments": []} for label, path in binaries.items()},
         "openings": {"path": str(opening_path), "sha256": opening_hash},
         "profiles": profiles,
@@ -372,7 +367,40 @@ def main():
             "schedule_seed": args.seed, "pair_schedule": schedule,
             "draws": DRAW_POLICY,
             "errors": "abort run without assigning a game result", "ply_limit_result": "unfinished"},
-        "scores": score_games(games), "games": games}
+        "opening_cases": openings}
+    def verify_sources():
+        if (any(digest(path) != hashes[label] for label, path in binaries.items()) or digest(opening_path) != opening_hash or
+            (profile_path is not None and digest(profile_path) != profile_hash)):
+            raise RuntimeError("engine binary, openings or profile changed during matches")
+    games = []
+    if args.checkpoint is not None:
+        try:
+            validate_output_path(args.checkpoint, [*binaries.values(), opening_path, profile_path])
+            if args.output is not None:
+                same_path = args.checkpoint.resolve() == args.output.resolve()
+                same_file = args.checkpoint.exists() and args.output.exists() and args.checkpoint.samefile(args.output)
+                if same_path or same_file: raise ValueError("checkpoint must differ from final output")
+            if args.checkpoint.exists() and not args.resume:
+                raise ValueError("checkpoint already exists; use --resume or a new path")
+        except ValueError as error:
+            parser.error(str(error))
+        from match_checkpoint import load_checkpoint, save_checkpoint
+        if args.resume:
+            games = load_checkpoint(args.checkpoint, configuration)
+        else:
+            save_checkpoint(args.checkpoint, configuration, games)
+    by_name = {opening["id"]: opening for opening in openings}
+    for pair in schedule[len(games) // 2:]:
+        for pair_game, white in enumerate(pair["white_order"], 1):
+            game = play_game(by_name[pair["opening"]], binaries, white, go, args.max_plies, args.timeout, profiles=profiles)
+            game.update(round=pair["round"], pair=pair["pair"], pair_game=pair_game)
+            games.append(game)
+        if args.checkpoint is not None:
+            verify_sources()
+            save_checkpoint(args.checkpoint, configuration, games)
+    verify_sources()
+    report = {key: value for key, value in configuration.items() if key != "opening_cases"}
+    report.update(schema_version=1, created_utc=datetime.now(timezone.utc).isoformat(), scores=score_games(games), games=games)
     encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"
     if args.output is None: sys.stdout.write(encoded)
     else: args.output.write_text(encoded, encoding="utf-8")

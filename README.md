@@ -446,6 +446,16 @@ JSON policy preserves the seed and complete ordered pair schedule; games record 
 
 PGN export checks complete pair counts, order/color/round/opening identities, equal round coverage and matching root FEN/opening history within each pair. It records TrickfishPair/PairGame tags. Older reports without a pair schedule remain supported. CI is configured for seeded depth- and node-limited process smoke games and PGN replay; new runtime results await this revision's pushed CI. Seeded ordering balances one scheduling asymmetry; it does not remove hardware/timing bias or establish statistical strength.
 
+## Match checkpoints and resume
+
+For a longer run, add `--checkpoint build/match-checkpoint.json` to the UCI runner command. The parent directory must exist. The runner writes an initial empty checkpoint and replaces it after each completed two-game pair, using a same-directory temporary file, flush/fsync and replace. A failed pair leaves earlier pairs available; its unfinished work is replayed when continuing. A pre-existing checkpoint requires explicit `--resume` and is not silently replaced by a fresh run.
+
+To continue, repeat the same engine/opening/profile paths and match controls, adding `--resume`. Configuration comparison includes source hashes, requested profiles, budget, watchdog, rounds, seed, complete schedule and recorded runtime environment. Completed games are replay-validated for legal moves, decisions, final FEN/result, profile and schedule identity, and the source opening's root/prefix before any new engine is started. Changed configuration or damaged records abort. The final output path can change, but cannot alias the checkpoint or any input file.
+
+Only complete pairs form a resumable prefix; scores are derived again from their results. Resuming a completed checkpoint starts no engines and reproduces games/results in a new final report. A checkpoint is a separate format, not a finished match report for PGN export. Use one runner per checkpoint; this is local interruption recovery rather than concurrent coordination or authentication that recorded games were actually played. Standard reports without checkpoints retain their existing behavior.
+
+CI is configured to test simulated mid-pair interruption, corrupted/config-mismatched records, failed atomic replacement and standalone CLI continuation, then run real node-limited process matches with checkpoint/completed-resume/PGN verification. The new C++ process smoke awaits this revision's pushed CI; no strength inference follows from resumability.
+
 ## Tool output protection
 
 The search benchmark, UCI match runner and PGN exporter reject output paths that refer to their input files. Checks resolve path aliases and compare existing file identity to catch hard links. Protected inputs are the benchmark binary/suite, match binaries/openings/profile file, and PGN source report. Validation runs before starting benchmark/match searches or rendering PGN. Separate output files and stdout remain supported; invalid output arguments leave inputs unchanged.

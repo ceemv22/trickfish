@@ -148,7 +148,7 @@ def validate_profile_provenance(report):
             raise ValueError("requested and applied UCI profiles disagree")
 
 
-def validate_schedule(report):
+def validate_schedule(report, allow_partial=False):
     policy = report["policy"]
     if "pair_schedule" not in policy:
         return
@@ -156,7 +156,9 @@ def validate_schedule(report):
     rounds, seed = policy.get("rounds"), policy.get("schedule_seed")
     if type(rounds) is not int or rounds < 1 or type(seed) is not int or not 0 <= seed < (1 << 64):
         raise ValueError("invalid schedule rounds/seed")
-    if not isinstance(plan, list) or not plan or len(report["games"]) != 2 * len(plan):
+    count = len(report["games"])
+    if (not isinstance(plan, list) or not plan or count % 2 or count > 2 * len(plan) or
+        (not allow_partial and count != 2 * len(plan))):
         raise ValueError("schedule/game counts disagree")
     seen = {}
     previous_round = 1
@@ -175,6 +177,8 @@ def validate_schedule(report):
         if opening in seen.setdefault(round_number, set()):
             raise ValueError("duplicate opening in schedule round")
         seen[round_number].add(opening)
+        if 2 * index > count:
+            continue
         games = report["games"][2 * (index - 1):2 * index]
         for pair_game, (game, white) in enumerate(zip(games, order), 1):
             if (type(game.get("pair")) is not int or game["pair"] != index or

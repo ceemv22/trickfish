@@ -260,6 +260,11 @@ jobs:
         run: |
           python cpp/bench/test_uci_matches.py
           if ($LASTEXITCODE -ne 0) { throw "UCI match runner checks failed" }
+      - name: Validate match checkpoints
+        shell: pwsh
+        run: |
+          python cpp/bench/test_match_checkpoint.py
+          if ($LASTEXITCODE -ne 0) { throw "Match checkpoint regressions failed" }
       - name: Smoke test paired UCI games
         timeout-minutes: 3
         shell: pwsh
@@ -273,9 +278,18 @@ jobs:
         shell: pwsh
         run: |
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
-          python cpp/bench/uci_matches.py $binary $binary --profiles cpp/bench/pawn_cache_profiles.example.json --nodes 64 --seed 43 --max-plies 2 --output build/match-nodes-smoke.json
+          python cpp/bench/uci_matches.py $binary $binary --profiles cpp/bench/pawn_cache_profiles.example.json --nodes 64 --seed 43 --max-plies 2 --checkpoint build/match-nodes-checkpoint.json --output build/match-nodes-smoke.json
           if ($LASTEXITCODE -ne 0) { throw "Node-limited UCI process smoke failed" }
           Get-Content build/match-nodes-smoke.json
+      - name: Resume completed node-limited matches
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/uci_matches.py $binary $binary --profiles cpp/bench/pawn_cache_profiles.example.json --nodes 64 --seed 43 --max-plies 2 --checkpoint build/match-nodes-checkpoint.json --resume --output build/match-resumed-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "Completed match resume failed" }
+          python -c "import json; from pathlib import Path; a=json.loads(Path('build/match-nodes-smoke.json').read_text()); b=json.loads(Path('build/match-resumed-smoke.json').read_text()); assert a['games']==b['games'] and a['scores']==b['scores']"
+          if ($LASTEXITCODE -ne 0) { throw "Resume changed completed results" }
       - name: Validate PGN exporter
         shell: pwsh
         run: |
@@ -290,3 +304,5 @@ jobs:
           python cpp/bench/export_matches.py build/match-nodes-smoke.json --output build/match-nodes-smoke.pgn
           if ($LASTEXITCODE -ne 0) { throw "Node-limited match replay/PGN export failed" }
           Get-Content build/match-nodes-smoke.pgn
+          python cpp/bench/export_matches.py build/match-resumed-smoke.json --output build/match-resumed-smoke.pgn
+          if ($LASTEXITCODE -ne 0) { throw "Resumed match replay/PGN export failed" }
