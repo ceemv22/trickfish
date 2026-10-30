@@ -46,6 +46,7 @@ struct SearchResult {
     std::uint64_t check_extensions = 0;
     std::uint64_t correction_updates = 0;
     std::uint64_t correction_applications = 0;
+    std::uint64_t mate_distance_cutoffs = 0;
 };
 
 struct SearchOptions {
@@ -69,6 +70,7 @@ struct SearchOptions {
     bool use_correction = false;
     bool use_endgame_scaling = false;
     bool use_cached_ordering = true;
+    bool use_mate_distance = false;
 };
 
 struct SearchLimits {

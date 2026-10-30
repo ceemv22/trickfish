@@ -2,7 +2,7 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
-Implemented-scope index: **82.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
+Implemented-scope index: **82.500%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.
 
@@ -63,7 +63,7 @@ Changing scope or weights requires a documented recalibration. Report its effect
 | C20k | Optional guarded frontier futility pruning with explicit selective-drift diagnostics | 1.000 | Implemented |
 | C20m | Optional guarded depth-one razoring with quiescence confirmation and drift diagnostics | 1.000 | Implemented |
 | C20o | Optional line-budgeted check extensions with horizon/PV/cancellation checks | 1.000 | Implemented |
-| C20p | Further extensions and pruning optimization | 0.500 | Pending |
+| C20q | Optional main-search mate-distance window bounds with reference parity and cancellation checks | 0.500 | Implemented |
 | C21a | Fixed-suite search benchmark, deterministic repeats, legal PV validation, and provenance reports | 2.000 | Implemented |
 | C21c | Bounded tactical regression suite with explicit objectives, mirrored colors, and CI process checks | 1.000 | Implemented |
 | C21e | Sequential color-paired UCI match baseline with legal arbitration and provenance/replay reports | 1.500 | Implemented |
@@ -78,7 +78,7 @@ This bounded roadmap does not cover the complete long-term project. NNUE/data tr
 
 ## Verification state
 
-GitHub Actions was inspected on 2026-10-30. Cached-ordering commit `eeb1eed` is confirmed on origin/main; both jobs in [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/41123092094) were running at inspection. The last confirmed successful two-OS baseline is corner-scaling commit `1a370e5`. Forty-nine local tooling tests pass. New node-limited match/PGN process smoke execution awaits this revision's pushed CI. Local C++ compile/runtime execution is unavailable.
+GitHub Actions was inspected on 2026-10-30. Node-match commit `9e14a33` is confirmed on origin/main and passed both jobs in [its workflow run](https://github.com/ceemv22/trickfish/actions/runs/41123405423). Fifty local tooling tests pass. Python validates eight new C++ fixture FENs, independently confirms both mate-in-one moves, and checks the bound arithmetic over 97 plies. Actual C++ mate-distance score/work/PV and UCI tests await this revision's pushed CI; local C++ compile/runtime execution is unavailable.
 
 C07 now hashes the en passant file only when a legal en passant capture exists (C17a); the recorded FEN field is preserved. C09 is a material baseline, not parity with Python positional evaluation. C10 has no repetition or time control; C13c adds main-search TT integration. C12 adds ordered captures, en passant, promotions, and all legal check evasions, with stand-pat disabled in check. A 32-ply quiescence cap returns material after checking terminal states; a checked but non-terminal position can be statically truncated at this safety cap. Repetition-aware termination remains C17. Runtime verification of C12 is pending CI. C11 has no measured speedup claim.
 
@@ -266,3 +266,7 @@ Before corner-pattern implementation, C16h was split into C16i (0.500) and C16j 
 - Cached move-ordering preparation: +0.000 points; implemented scope remains 82.000%. Search prepares per-move preferred/tactical/priority/history/exchange keys once per ordering call, preserving existing ordering and tie-break semantics. The prior calculation remains selectable through SearchOptions::use_cached_ordering=false and --search-order-reference. New CTests require identical results, nodes and heuristic work across exchange/TT/history modes and node-limited cancellation; benchmark --compare-ordering rejects score/depth/node/bestmove/PV drift and records paired reference/cached wall ratios. Forty-seven tooling tests pass locally; actual C++ equivalence and timing await CI. This is an optimization candidate, not a measured gain; C22 remains pending.
 
 - Node-limited match budgets: +0.000 points; implemented scope remains 82.000%. Match CLI supports mutually exclusive depth/movetime/nodes budgets, positive uint64 node bounds, exact go command and explicit budget kind/value provenance. Node mode adds no implicit depth cap; errors/timeouts keep the existing abort policy and ply caps remain unfinished. Added local boundary/conflict/forwarding/report regressions and CI node-limited same-binary paired games plus PGN replay. Forty-nine tooling tests pass locally; actual C++ process execution awaits CI. This relies on UCI engine budget compliance and establishes neither equal wall time nor stronger play.
+
+Before mate-distance implementation, the remaining C20p (0.500) was assigned to C20q (0.500), preserving the denominator. Acceptance requires default-off main-search mate-score bounds after terminal/draw handling, unchanged mate distance, reference-score/legal-PV/restoration checks, interruption behavior and explicit diagnostic comparison. It is not a measured speed or strength claim.
+
+- C20q implementation: +0.500 points; implemented scope 82.500%. Added default-off main-search mate-distance alpha/beta bounds after terminal/draw handling, excluding synthetic null branches and leaving quiescence unchanged. SearchResult counts collapsed windows; API, --search-mdp and experimental UCI check select the mode. Diagnostic --compare-mate-distance requires score/depth parity and records node/timing changes. New CTests cover mate-score parity with TT/history modes, legal PVs, cancellation/root restoration, terminal precedence and a specific mate-in-one work regression. Fifty tooling tests pass locally; Python validates FENs, both mating moves and bound arithmetic. Actual C++ runtime and node comparisons await CI. No measured general speedup or playing-strength gain is claimed.

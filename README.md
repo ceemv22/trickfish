@@ -380,6 +380,12 @@ The exporter validates the complete schema-1 JSON replay, decision records, fina
 
 Headers preserve engine names, binary hashes, opening ID/prefix length and termination reason. New match JSON records game start/end UTC timestamps; PGN dates use the UTC start date. Older reports without a game start date export an unknown date instead of inferring one from report creation. The JSON remains the complete diagnostic record. This is a mainline exporter, not a PGN importer or variation/annotation editor; external reader compatibility has not been independently tested. CI is configured to export and print the depth-limited and node-limited paired process smoke games. The PGN pipeline passed CI at `4a04b95`; no playing-strength inference follows.
 
+## Experimental mate-distance pruning
+
+`SearchOptions::use_mate_distance` defaults to false. `--search-mdp depth [fen]` or UCI `Experimental Mate Distance Pruning` enables main-search mate-score window bounds after legal-move and draw handling. At search ply p, alpha is bounded below by `-mate_score + p` and beta above by `mate_score - p - 1`; a collapsed window returns its lower bound. Synthetic null branches and quiescence do not apply the new bounds. Terminal scores and TT mate-distance normalization are unchanged.
+
+`SearchResult::mate_distance_cutoffs` counts collapsed-window returns, not all nodes saved by a narrower window. `--compare-mate-distance` records paired diagnostic runs and requires equal score/completed depth while allowing node counts and tied legal PVs to differ. New CTests cover winning/losing mate positions, TT/history modes, zero-node fallback, terminal/draw precedence and a bounded mate-in-one work regression. CI is configured to exercise default and bounded search; runtime and timing results for this change remain pending. This is an optional exact-bound technique, with no measured strength benefit established.
+
 ## Experimental endgame scaling
 
 `SearchOptions::use_endgame_scaling` defaults to false. `--search-scale depth [fen]` or UCI `Experimental Endgame Scaling` enables a fixed 128/256 multiplier only when both sides have exactly one bishop on opposite square colors, at least one pawn remains, and neither side has a knight, rook or queen. Positions outside this and the corner pattern below use 256/256. This is an untuned drawishness heuristic, not a theoretical-draw detector; winning positions can meet the material condition.
@@ -396,7 +402,7 @@ Eight additional cases exercise all four promotion corners and excluded near-pat
 
 ## Controlled UCI profiles
 
-UCI advertises these `check` options, all defaulting to false: `Experimental Exchange Ordering`, `Experimental Null Move`, `Experimental LMR`, `Experimental Futility`, `Experimental Razoring`, `Experimental Check Extensions`, `Experimental Correction History`, and `Experimental Endgame Scaling`. Boolean values and option names are case-insensitive. Spin parameters are `Futility Margin` (150, range 0..10000), `Razor Margin` (200, range 0..10000), and `Check Extension Limit` (1, range 0..4). Existing `Move Overhead` behavior is unchanged. Hash/Threads/ponder remain unsupported.
+UCI advertises these `check` options, all defaulting to false: `Experimental Exchange Ordering`, `Experimental Null Move`, `Experimental LMR`, `Experimental Futility`, `Experimental Razoring`, `Experimental Check Extensions`, `Experimental Correction History`, `Experimental Endgame Scaling`, and `Experimental Mate Distance Pruning`. Boolean values and option names are case-insensitive. Spin parameters are `Futility Margin` (150, range 0..10000), `Razor Margin` (200, range 0..10000), and `Check Extension Limit` (1, range 0..4). Existing `Move Overhead` behavior is unchanged. Hash/Threads/ponder remain unsupported.
 
 Each `go` takes a private settings snapshot. Later setoption commands affect subsequent searches, and ucinewgame preserves settings. Invalid values leave the previous setting intact. Defaults still leave all experimental techniques disabled; exposing an option does not establish a strength benefit.
 

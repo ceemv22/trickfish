@@ -85,7 +85,8 @@ constexpr CheckOption check_options[] = {
     {"Experimental Razoring", &SearchOptions::use_razoring},
     {"Experimental Check Extensions", &SearchOptions::use_check_extensions},
     {"Experimental Correction History", &SearchOptions::use_correction},
-    {"Experimental Endgame Scaling", &SearchOptions::use_endgame_scaling}
+    {"Experimental Endgame Scaling", &SearchOptions::use_endgame_scaling},
+    {"Experimental Mate Distance Pruning", &SearchOptions::use_mate_distance}
 };
 
 constexpr SpinOption spin_options[] = {

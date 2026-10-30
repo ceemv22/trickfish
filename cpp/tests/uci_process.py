@@ -62,7 +62,7 @@ class UciProcessTests(unittest.TestCase):
         self.until("uciok")
         self.assertIn("id name Trickfish C++", self.transcript)
         self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
-        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling"]:
+        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling", "Mate Distance Pruning"]:
             self.assertIn("option name Experimental " + name + " type check default false", self.transcript)
         for name, default, maximum in [("Futility Margin", 150, 10000), ("Razor Margin", 200, 10000),
             ("Check Extension Limit", 1, 4)]:

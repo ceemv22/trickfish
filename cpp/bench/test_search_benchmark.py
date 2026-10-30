@@ -143,19 +143,19 @@ class BenchmarkTest(unittest.TestCase):
                 benchmark.run_modes(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, repeats, 10, modes)
 
     def test_report_composes_paired_mode_ratios_and_schedule(self):
-        nodes = {"default": 23, "alphabeta": 30, "exchange": 20, "null": 40, "ordering": 23}
-        elapsed = {"default": 10, "alphabeta": 20, "exchange": 5, "null": 30, "ordering": 20}
+        nodes = {"default": 23, "alphabeta": 30, "exchange": 20, "null": 40, "ordering": 23, "mate_distance": 21}
+        elapsed = {"default": 10, "alphabeta": 20, "exchange": 5, "null": 30, "ordering": 20, "mate_distance": 10}
         def sample(binary, case, depth, timeout, mode):
             return {"score": 500, "depth": depth, "nodes": nodes[mode], "bestmove": "a1a2", "pv": ["a1a2"]}, elapsed[mode]
         output = io.StringIO()
         arguments = [str(SOURCE), str(SOURCE), "--suite", str(SOURCE.with_name("search_suite.json")),
-            "--repeats", "2", "--compare-alphabeta", "--compare-exchange", "--compare-null", "--compare-ordering"]
+            "--repeats", "2", "--compare-alphabeta", "--compare-exchange", "--compare-null", "--compare-ordering", "--compare-mate-distance"]
         with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark.sys, "stdout", output):
             with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
                 benchmark.main()
         report = json.loads(output.getvalue())
         self.assertEqual(report["schema_version"], 3)
-        modes = ["default", "alphabeta", "exchange", "null", "ordering"]
+        modes = ["default", "alphabeta", "exchange", "null", "ordering", "mate_distance"]
         self.assertEqual(report["search"]["mode_order"], modes)
         for result in report["results"]:
             self.assertEqual(result["execution_order"], [modes, list(reversed(modes))])
@@ -164,8 +164,19 @@ class BenchmarkTest(unittest.TestCase):
             self.assertEqual(result["null_comparison"]["median_paired_wall_ratio"], 3)
             self.assertEqual(result["exchange_comparison"]["node_delta_per_repeat"], -3)
             self.assertEqual(result["null_comparison"]["node_delta_per_repeat"], 17)
+            self.assertEqual(result["mate_distance_comparison"]["node_delta_per_repeat"], -2)
+            self.assertTrue(result["mate_distance_comparison"]["score_equal"])
             self.assertEqual(result["ordering_comparison"]["node_delta_per_repeat"], 0)
             self.assertEqual(result["ordering_comparison"]["median_paired_wall_ratio"], 2)
+
+    def test_mate_distance_comparison_rejects_score_drift(self):
+        arguments = [str(SOURCE), str(SOURCE), "--repeats", "2", "--compare-mate-distance"]
+        def sample(binary, case, depth, timeout, mode):
+            return {"score": 500 if mode == "default" else 499, "depth": depth, "nodes": 23,
+                "bestmove": "a1a2", "pv": ["a1a2"]}, 10
+        with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark, "run_sample", side_effect=sample):
+            with self.assertRaisesRegex(ValueError, "mate_distance score/depth mismatch"):
+                benchmark.main()
 
     def test_ordering_comparison_rejects_changed_search_trace(self):
         arguments = [str(SOURCE), str(SOURCE), "--repeats", "2", "--compare-ordering"]

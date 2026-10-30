@@ -70,6 +70,8 @@ struct SearchBudget {
     bool use_correction = false;
     bool use_endgame_scaling = false;
     bool use_cached_ordering = true;
+    bool use_mate_distance = false;
+    std::uint64_t mate_distance_cutoffs = 0;
     CorrectionHistory correction{};
     std::uint64_t correction_updates = 0;
     std::uint64_t correction_applications = 0;
@@ -430,6 +432,14 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
         }
         return 0;
     }
+    if (budget->use_mate_distance && budget->synthetic_null == 0) {
+        alpha = std::max(alpha, -mate_score + ply);
+        beta = std::min(beta, mate_score - ply - 1);
+        if (alpha >= beta) {
+            ++budget->mate_distance_cutoffs;
+            return alpha;
+        }
+    }
     if (budget->use_check_extensions && budget->synthetic_null == 0 && extensions_left > 0 &&
         ply + depth < 64 && position.in_check(position.side_to_move())) {
         ++depth;
@@ -699,6 +709,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_correction = options.use_correction;
     budget.use_endgame_scaling = options.use_endgame_scaling;
     budget.use_cached_ordering = options.use_cached_ordering;
+    budget.use_mate_distance = options.use_mate_distance;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
@@ -768,6 +779,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.check_extensions = budget.check_extensions;
     result.correction_updates = budget.correction_updates;
     result.correction_applications = budget.correction_applications;
+    result.mate_distance_cutoffs = budget.mate_distance_cutoffs;
     return result;
 }
 
