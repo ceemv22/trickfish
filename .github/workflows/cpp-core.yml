@@ -230,6 +230,8 @@ jobs:
         run: |
           python cpp/bench/test_search_benchmark.py
           if ($LASTEXITCODE -ne 0) { throw "Search benchmark runner checks failed" }
+          python cpp/bench/test_binary_benchmark.py
+          if ($LASTEXITCODE -ne 0) { throw "Two-binary benchmark regressions failed" }
       - name: Repeat fixed-suite search benchmark
         timeout-minutes: 3
         shell: pwsh
@@ -238,6 +240,14 @@ jobs:
           python cpp/bench/search_benchmark.py $binary --depth 2 --repeats 2 --compare-alphabeta --compare-ordering --compare-mate-distance --compare-pawn-cache --timeout 30 --output build/search-benchmark.json
           if ($LASTEXITCODE -ne 0) { throw "Search benchmark failed" }
           Get-Content build/search-benchmark.json
+      - name: Smoke test two-binary benchmark protocol
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/search_benchmark.py $binary --reference-binary $binary --reference-trace --depth 1 --repeats 2 --timeout 30 --output build/binary-comparison-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "Two-binary benchmark protocol failed" }
+          Get-Content build/binary-comparison-smoke.json
       - name: Verify bounded tactical regression suite
         timeout-minutes: 3
         shell: pwsh

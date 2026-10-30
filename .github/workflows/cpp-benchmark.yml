@@ -1,0 +1,87 @@
+name: C++ Binary Comparison
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: Baseline Git ref with compatible diagnostic search CLI
+        required: true
+        default: 989a4c76c9d8005f39e91ead2d14d9370cfa33eb
+        type: string
+      depth:
+        description: Fixed search depth from 1 to 64
+        required: true
+        default: '3'
+        type: string
+      repeats:
+        description: Paired repeats, at least 2
+        required: true
+        default: '6'
+        type: string
+      require_identical_trace:
+        description: Require identical nodes, root move and PV
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      BENCHMARK_DEPTH: ${{ inputs.depth }}
+      BENCHMARK_REPEATS: ${{ inputs.repeats }}
+      REQUIRE_TRACE: ${{ inputs.require_identical_trace }}
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Check out baseline
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.baseline_ref }}
+          path: baseline-source
+          persist-credentials: false
+      - name: Install Python reference
+        run: python -m pip install -e .
+      - name: Configure both Release builds
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            cmake -S . -B build -A x64 -DBUILD_TESTING=OFF
+            if ($LASTEXITCODE -ne 0) { throw "Candidate configure failed" }
+            cmake -S baseline-source -B baseline-source/build -A x64 -DBUILD_TESTING=OFF
+          } else {
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+            if ($LASTEXITCODE -ne 0) { throw "Candidate configure failed" }
+            cmake -S baseline-source -B baseline-source/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Baseline configure failed" }
+      - name: Build both engines
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "Candidate build failed" }
+          cmake --build baseline-source/build --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "Baseline build failed" }
+      - name: Compare same-runner search workloads
+        shell: pwsh
+        run: |
+          $candidateBinary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $baselineBinary = if ($IsWindows) { ".\baseline-source\build\Release\trickfish_cpp.exe" } else { "./baseline-source/build/trickfish_cpp" }
+          $benchmarkArguments = @("cpp/bench/search_benchmark.py", $candidateBinary, "--reference-binary", $baselineBinary, "--depth", $env:BENCHMARK_DEPTH, "--repeats", $env:BENCHMARK_REPEATS, "--timeout", "120", "--output", "build/binary-comparison.json")
+          if ($env:REQUIRE_TRACE -eq "true") { $benchmarkArguments += "--reference-trace" }
+          python @benchmarkArguments
+          if ($LASTEXITCODE -ne 0) { throw "Binary comparison failed" }
+          python -c "import json,subprocess; from pathlib import Path; p=Path('build/binary-comparison.json'); d=json.loads(p.read_text()); d['build_provenance']={'candidate_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseline_revision':subprocess.check_output(['git','-C','baseline-source','rev-parse','HEAD'],text=True).strip(),'configuration':'Release','same_runner':True}; p.write_text(json.dumps(d,indent=2,allow_nan=False),encoding='utf-8')"
+          if ($LASTEXITCODE -ne 0) { throw "Build provenance recording failed" }
+          Get-Content build/binary-comparison.json

@@ -362,6 +362,16 @@ TT is disabled while a positive extension budget is active because the effective
 
 The table resets per search. Public `evaluate_static`, `--eval-detail`, and the Python reference are unchanged. Terminal/draw handling runs before search correction, and adjusted scores are clamped outside the mate band. Synthetic null branches and real-position null verifications do not train it. TT is disabled in correction mode because the evaluator changes during search. `SearchResult` counts accepted updates and nonzero correction applications. `--compare-correction` records score drift and the different TT policy. Correction-history commit `9f1e451` passed its configured C++ checks; no evaluation-accuracy, speed or strength improvement is established.
 
+### Comparing separate engine binaries
+
+After building both revisions in Release mode, run `python cpp/bench/search_benchmark.py .\build\Release\trickfish_cpp.exe --reference-binary .\baseline-build\Release\trickfish_cpp.exe --reference-trace --depth 3 --repeats 6 --output build/binary-comparison.json`. Both must support the diagnostic `--search depth [fen]` protocol; Linux uses the corresponding executable paths without `.exe`.
+
+Each fixture alternates candidate/reference execution order between repeat rounds. Both runs require deterministic output, legal PVs/objectives and equal score/completed depth. `--reference-trace` additionally requires identical nodes, best move and PV; omit it to allow tied legal traces and different search work. Reports preserve both binary paths/hashes, byte-identity status, all samples, execution order, trace equality and candidate-minus-reference node delta. `binary_comparison.median_paired_wall_ratio` is candidate/reference process wall time: below one means less observed candidate time in those samples, not a significance or strength result. Both binaries and the suite are checked for changes before output, and either binary is protected from output aliases.
+
+The manually dispatched `C++ Binary Comparison` workflow in `.github/workflows/cpp-benchmark.yml` checks out the candidate and requested baseline, builds both with Release settings on each OS runner, runs the paired comparison and adds actual Git revisions/build provenance to the logged JSON. It defaults to baseline `989a4c7`, before incremental material/activity maintenance, depth 3 and six repeats, with identical trace required. It does not run automatically on push. Standard C++ CI only exercises the two-binary protocol using the same executable on both sides; that smoke test is not optimization evidence.
+
+These end-to-end CLI measurements include process startup, search, evaluation and move-update work. Runner load, shallow/terminal fixtures and compiler/environment differences still affect interpretation. No timing threshold, cross-machine speed claim, statistical decision or playing-strength estimate is made. The new workflow has not yet been executed; real revision-to-revision results require pushing and manually running it. Standalone CLI checkout metadata does not authenticate the source revision of an arbitrary supplied binary; workflow build provenance is recorded separately.
+
 ## UCI match baseline
 
 The stdlib match runner accepts two UCI executable paths, launches them without extra arguments, and plays each opening with engine A and engine B assigned to White in turn. Games run sequentially with fresh processes. For example, after building both versions:
@@ -406,7 +416,7 @@ The seventh-rank rook bonus remains conditional on enemy pawns and is computed f
 
 With BUILD_TESTING enabled, `trickfish_evaluation_terms_bench` measures recomputed popcount/bitboard term reads against incremental term reads in one process. For example, run `.\build\Release\trickfish_evaluation_terms_bench.exe 20000` after a Release build; Linux uses `./build/trickfish_evaluation_terms_bench`. JSON records fixture FENs, iteration count, six alternating-order timing pairs, checksums and their median incremental/reference read-time ratio. Calls go through a volatile function pointer, and indirect-call overhead is included. CI validates output/checksum consistency without imposing a speed threshold.
 
-This microbenchmark excludes Position construction, move updates and the rest of evaluation/search. It cannot establish net engine speed, account for added make/unmake work, or demonstrate playing strength. Those require end-to-end measurements; this change's native timings and functional C++ checks await its pushed CI.
+This microbenchmark excludes Position construction, move updates and the rest of evaluation/search. It cannot establish net engine speed, account for added make/unmake work, or demonstrate playing strength. Those require end-to-end measurements. Configured native measurements and functional C++ checks passed CI at `fa634bd`; no net engine speedup is inferred from the isolated read timings.
 
 ## Experimental pawn-evaluation cache
 

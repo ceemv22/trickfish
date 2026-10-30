@@ -126,7 +126,7 @@ def parse_result(output, fen, requested_depth, pv_extra=0):
     return result
 
 
-MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction", "scale": "--search-scale", "ordering": "--search-order-reference", "mate_distance": "--search-mdp", "pawn_cache": "--search-pawn-cache"}
+MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction", "scale": "--search-scale", "ordering": "--search-order-reference", "mate_distance": "--search-mdp", "pawn_cache": "--search-pawn-cache", "reference_binary": "--search"}
 
 
 def run_sample(binary, case, depth, timeout, mode):
@@ -141,9 +141,11 @@ def run_sample(binary, case, depth, timeout, mode):
     return result, elapsed
 
 
-def run_modes(binary, case, depth, repeats, timeout, modes):
+def run_modes(binary, case, depth, repeats, timeout, modes, reference_binary=None):
     if repeats < 2 or not modes or len(set(modes)) != len(modes) or any(mode not in MODES for mode in modes):
         raise ValueError("benchmark requires at least two repeats and unique supported modes")
+    if "reference_binary" in modes and reference_binary is None:
+        raise ValueError("reference binary mode requires a binary path")
     expected = {}
     samples = {mode: [] for mode in modes}
     execution_order = []
@@ -151,7 +153,8 @@ def run_modes(binary, case, depth, repeats, timeout, modes):
         order = list(modes if repeat % 2 == 0 else reversed(modes))
         execution_order.append(order)
         for mode in order:
-            result, elapsed = run_sample(binary, case, depth, timeout, mode)
+            selected_binary = reference_binary if mode == "reference_binary" else binary
+            result, elapsed = run_sample(selected_binary, case, depth, timeout, mode)
             if mode in expected and result != expected[mode]:
                 raise ValueError(f"nondeterministic search output: {case['id']} ({mode})")
             expected[mode] = result
@@ -212,19 +215,25 @@ def main():
     parser.add_argument("--compare-ordering", action="store_true")
     parser.add_argument("--compare-mate-distance", action="store_true")
     parser.add_argument("--compare-pawn-cache", action="store_true")
+    parser.add_argument("--reference-binary", type=pathlib.Path)
+    parser.add_argument("--reference-trace", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
         parser.error("depth must be 1..64, repeats at least 2, timeout finite and positive")
+    if args.reference_trace and args.reference_binary is None:
+        parser.error("--reference-trace requires --reference-binary")
     binary = args.binary.resolve(strict=True)
+    reference_binary = args.reference_binary.resolve(strict=True) if args.reference_binary is not None else None
     suite_path = args.suite.resolve(strict=True)
     try:
-        validate_output_path(args.output, [binary, suite_path])
+        validate_output_path(args.output, [binary, suite_path, reference_binary])
     except ValueError as error:
         parser.error(str(error))
     suite_hash = digest(suite_path)
     suite = load_suite(suite_path)
     binary_hash = digest(binary)
+    reference_hash = digest(reference_binary) if reference_binary is not None else None
     modes = ["default"]
     if args.compare_alphabeta: modes.append("alphabeta")
     if args.compare_exchange: modes.append("exchange")
@@ -238,9 +247,10 @@ def main():
     if args.compare_ordering: modes.append("ordering")
     if args.compare_mate_distance: modes.append("mate_distance")
     if args.compare_pawn_cache: modes.append("pawn_cache")
+    if reference_binary is not None: modes.append("reference_binary")
     results = []
     for case in suite["positions"]:
-        measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes)
+        measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes, reference_binary=reference_binary)
         candidate = measured["default"]
         candidate["execution_order"] = order
         if args.compare_alphabeta:
@@ -258,13 +268,26 @@ def main():
                 "score_delta": alternative["score"] - candidate["score"],
                 "node_delta_per_repeat": alternative["nodes"] - candidate["nodes"],
                 "median_paired_wall_ratio": paired_wall_ratio(alternative, candidate)}
+        if reference_binary is not None:
+            reference = measured["reference_binary"]
+            if candidate["score"] != reference["score"] or candidate["depth"] != reference["depth"]:
+                raise ValueError(f"binary score/depth mismatch: {case['id']}")
+            equal = {key: candidate[key] == reference[key] for key in ("nodes", "bestmove", "pv")}
+            if args.reference_trace and not all(equal.values()):
+                raise ValueError(f"binary search trace mismatch: {case['id']}")
+            candidate["binary_comparison"] = {"reference": reference, "score_equal": True,
+                "trace_equal": equal, "node_delta_per_repeat": candidate["nodes"] - reference["nodes"],
+                "median_paired_wall_ratio": paired_wall_ratio(candidate, reference)}
         results.append(candidate)
-    if digest(binary) != binary_hash or digest(suite_path) != suite_hash:
+    if (digest(binary) != binary_hash or digest(suite_path) != suite_hash or
+        (reference_binary is not None and digest(reference_binary) != reference_hash)):
         raise ValueError("binary or suite changed during benchmark")
     report = {
         "schema_version": 3,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "binary": str(binary), "binary_sha256": binary_hash,
+        "reference_binary": {"path": str(reference_binary), "sha256": reference_hash, "mode": "--search",
+            "same_bytes_as_candidate": reference_hash == binary_hash} if reference_binary is not None else None,
         "suite": str(suite_path), "suite_sha256": suite_hash,
         "checkout": revision(),
         "environment": {"platform": platform.platform(), "machine": platform.machine(),
@@ -295,7 +318,8 @@ def main():
             "table": "fresh per process", "repetition_history": False,
             "draw_policy": "automatic_only", "timing": "process-inclusive wall time",
             "execution_schedule": "forward/reverse alternation per fixture",
-            "mode_order": modes},
+            "mode_order": modes, "reference_trace_required": args.reference_trace,
+            "binary_comparison_ratio": "candidate/reference process wall time"},
         "results": results,
         "total_nodes_per_repeat": sum(case["nodes"] for case in results),
     }
