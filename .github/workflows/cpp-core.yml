@@ -268,6 +268,14 @@ jobs:
           python cpp/bench/uci_matches.py $binary $binary --profiles cpp/bench/match_profiles.example.json --depth 1 --max-plies 2 --output build/match-smoke.json
           if ($LASTEXITCODE -ne 0) { throw "Paired UCI process smoke failed" }
           Get-Content build/match-smoke.json
+      - name: Smoke test node-limited paired UCI games
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/uci_matches.py $binary $binary --profiles cpp/bench/match_profiles.example.json --nodes 64 --max-plies 2 --output build/match-nodes-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "Node-limited UCI process smoke failed" }
+          Get-Content build/match-nodes-smoke.json
       - name: Validate PGN exporter
         shell: pwsh
         run: |
@@ -279,3 +287,6 @@ jobs:
           python cpp/bench/export_matches.py build/match-smoke.json --output build/match-smoke.pgn
           if ($LASTEXITCODE -ne 0) { throw "Match replay/PGN export failed" }
           Get-Content build/match-smoke.pgn
+          python cpp/bench/export_matches.py build/match-nodes-smoke.json --output build/match-nodes-smoke.pgn
+          if ($LASTEXITCODE -ne 0) { throw "Node-limited match replay/PGN export failed" }
+          Get-Content build/match-nodes-smoke.pgn

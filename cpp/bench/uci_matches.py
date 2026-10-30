@@ -294,17 +294,20 @@ def main():
     budget = parser.add_mutually_exclusive_group()
     budget.add_argument("--depth", type=int)
     budget.add_argument("--movetime", type=int)
+    budget.add_argument("--nodes", type=int)
     parser.add_argument("--rounds", type=int, default=1)
     parser.add_argument("--max-plies", type=int, default=200)
     parser.add_argument("--timeout", type=float, default=10)
     parser.add_argument("--profiles", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
-    depth = 2 if args.depth is None and args.movetime is None else args.depth
+    depth = 2 if args.depth is None and args.movetime is None and args.nodes is None else args.depth
     if args.rounds < 1 or args.max_plies < 1 or not 0 < args.timeout < float("inf"):
         parser.error("rounds/ply limit and finite watchdog timeout must be positive")
     if depth is not None and not 1 <= depth <= 64:
         parser.error("depth must be 1..64")
+    if args.nodes is not None and not 1 <= args.nodes <= (1 << 64) - 1:
+        parser.error("nodes must be 1..18446744073709551615")
     if args.movetime is not None and (args.movetime < 1 or args.movetime >= args.timeout * 1000):
         parser.error("movetime must be positive and shorter than the watchdog timeout")
     binaries = {"a": args.engine_a.resolve(strict=True), "b": args.engine_b.resolve(strict=True)}
@@ -315,7 +318,13 @@ def main():
     profile_path = args.profiles.resolve(strict=True) if args.profiles else None
     profile_hash = digest(profile_path) if profile_path is not None else None
     profiles = load_profiles(profile_path)
-    go = f"go depth {depth}" if depth is not None else f"go movetime {args.movetime}"
+    if depth is not None:
+        budget_kind, budget_value = "depth", depth
+    elif args.nodes is not None:
+        budget_kind, budget_value = "nodes", args.nodes
+    else:
+        budget_kind, budget_value = "movetime", args.movetime
+    go = f"go {budget_kind} {budget_value}"
     games = []
     for round_number in range(1, args.rounds + 1):
         for opening in openings:
@@ -331,7 +340,7 @@ def main():
         "profiles": profiles,
         "profile_source": {"path": str(profile_path), "sha256": profile_hash} if profile_path is not None else None,
         "environment": {"platform": platform.platform(), "python": platform.python_version()},
-        "policy": {"go": go, "rounds": args.rounds, "searched_ply_limit": args.max_plies,
+        "policy": {"go": go, "search_budget": {"kind": budget_kind, "value": budget_value}, "rounds": args.rounds, "searched_ply_limit": args.max_plies,
             "watchdog_seconds": args.timeout, "schedule": "sequential fresh processes; same opening, swapped colors",
             "draws": DRAW_POLICY,
             "errors": "abort run without assigning a game result", "ply_limit_result": "unfinished"},

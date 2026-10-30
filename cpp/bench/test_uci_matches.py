@@ -110,6 +110,32 @@ class MatchTests(unittest.TestCase):
         self.assertEqual(report["scores"]["a"], {"wins": 0, "losses": 0, "draws": 0, "unfinished": 6})
         self.assertEqual(report["engines"]["a"]["sha256"], matches.digest(source))
 
+    def test_node_budget_is_forwarded_without_implicit_depth_and_recorded(self):
+        source = pathlib.Path(matches.__file__).resolve()
+        for value in (1, 64, (1 << 64) - 1):
+            output = io.StringIO()
+            arguments = [str(source), str(source), str(source), "--nodes", str(value), "--max-plies", "2"]
+            def game(opening, binaries, white, go, max_plies, timeout, profiles=None):
+                self.assertEqual(go, f"go nodes {value}")
+                return {"white": white, "black": "b" if white == "a" else "a", "result": "*", "reason": "searched_ply_limit"}
+            with self.subTest(value=value), patch.object(matches.sys, "argv", arguments):
+                with patch.object(matches.sys, "stdout", output), patch.object(matches, "play_game", side_effect=game) as play:
+                    matches.main()
+            report = json.loads(output.getvalue())
+            self.assertEqual(play.call_count, 6)
+            self.assertEqual(report["policy"]["search_budget"], {"kind": "nodes", "value": value})
+            self.assertEqual(report["policy"]["go"], f"go nodes {value}")
+            self.assertEqual(report["scores"]["a"]["unfinished"], 6)
+
+    def test_invalid_and_conflicting_node_budgets_fail_before_starting_games(self):
+        for flags in (["--nodes", "0"], ["--nodes", "-1"], ["--nodes", str(1 << 64)],
+            ["--nodes", "1", "--depth", "1"], ["--nodes", "1", "--movetime", "1"]):
+            with self.subTest(flags=flags), patch.object(matches.sys, "argv", ["runner", "missing-a", "missing-b", *flags]):
+                with patch.object(matches.sys, "stderr", io.StringIO()), patch.object(matches, "play_game") as play:
+                    with self.assertRaises(SystemExit) as raised: matches.main()
+                    self.assertEqual(raised.exception.code, 2)
+                    play.assert_not_called()
+
     def test_protocol_error_and_eof_are_not_bestmoves(self):
         for event in ["info string error: invalid command", None]:
             engine = matches.Engine("fake", 1)
