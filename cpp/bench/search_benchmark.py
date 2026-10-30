@@ -107,7 +107,7 @@ def parse_result(output, fen, requested_depth, pv_extra=0):
     return result
 
 
-MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction", "scale": "--search-scale"}
+MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction", "scale": "--search-scale", "ordering": "--search-order-reference"}
 
 
 def run_sample(binary, case, depth, timeout, mode):
@@ -188,6 +188,7 @@ def main():
     parser.add_argument("--compare-check", action="store_true")
     parser.add_argument("--compare-correction", action="store_true")
     parser.add_argument("--compare-scale", action="store_true")
+    parser.add_argument("--compare-ordering", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
@@ -207,6 +208,7 @@ def main():
     if args.compare_check: modes.append("check")
     if args.compare_correction: modes.append("correction")
     if args.compare_scale: modes.append("scale")
+    if args.compare_ordering: modes.append("ordering")
     results = []
     for case in suite["positions"]:
         measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes)
@@ -216,11 +218,13 @@ def main():
             reference = measured["alphabeta"]
             candidate["alphabeta_comparison"] = compare_reference(candidate, reference)
             candidate["alphabeta_comparison"]["median_paired_wall_ratio"] = paired_wall_ratio(candidate, reference)
-        for mode, label in [("exchange", "ordered"), ("null", "verified"), ("lmr", "selective"), ("futility", "selective"), ("razor", "selective"), ("check", "extended"), ("correction", "adjusted"), ("scale", "scaled")]:
+        for mode, label in [("exchange", "ordered"), ("null", "verified"), ("lmr", "selective"), ("futility", "selective"), ("razor", "selective"), ("check", "extended"), ("correction", "adjusted"), ("scale", "scaled"), ("ordering", "reference")]:
             if mode not in measured: continue
             alternative = measured[mode]
             if alternative["depth"] != candidate["depth"] or (mode not in {"lmr", "futility", "razor", "check", "correction", "scale"} and alternative["score"] != candidate["score"]):
                 raise ValueError(f"{mode} score/depth mismatch: {case['id']}")
+            if mode == "ordering" and any(alternative[key] != candidate[key] for key in ("nodes", "bestmove", "pv")):
+                raise ValueError(f"ordering changed search trace: {case['id']}")
             candidate[mode + "_comparison"] = {label: alternative, "score_equal": alternative["score"] == candidate["score"],
                 "score_delta": alternative["score"] - candidate["score"],
                 "node_delta_per_repeat": alternative["nodes"] - candidate["nodes"],
@@ -250,6 +254,7 @@ def main():
             "comparison_check_table": False, "compare_check": args.compare_check,
             "correction_history": False, "comparison_correction_table": False,
             "compare_correction": args.compare_correction,
+            "cached_ordering": True, "comparison_cached_ordering": False, "compare_ordering": args.compare_ordering,
             "endgame_scaling": False, "compare_scale": args.compare_scale,
             "comparison_scale": {"enabled": args.compare_scale, "normal": 256, "opposite_bishop_pawn_ending": 128, "wrong_bishop_rook_pawn_corner": 0,
                 "rounding": "toward zero", "draw_adjudication": False},

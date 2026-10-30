@@ -280,6 +280,12 @@ Quiet history uses a side/from/to table within each search, shared across iterat
 
 One-ply continuation history adds context to quiet ordering: current side, previous moved piece type/destination, and current moving type/destination. It uses a lazily allocated 16,384-entry direct-mapped table with full-key checks; collisions replace entries on update. Scores are bounded to +/-16384 and combine with quiet history after existing tactical/killer priorities. `SearchOptions::use_continuation` controls it. Root and quiescence have no continuation context, and a standalone FEN supplies no previous played-game move. State resets per search; this table is separate from repetition history. New C++ context/reuse/parity checks await this change's CI.
 
+### Cached move-ordering keys
+
+Search computes each move's preferred-move flag, tactical status, capture/promotion/killer priority and combined history/continuation value once before sorting. Optional exchange ordering also computes its exchange score once. The comparator reads those keys and retains the existing coordinate/promotion tie-breaks. Values are local to one ordering call; heuristic tables continue to update between searched moves and are read again at the next call.
+
+`SearchOptions::use_cached_ordering` defaults to true. `--search-order-reference depth [fen]` retains the previous comparator-based calculation with the same search policies. Add `--compare-ordering` to the benchmark to require equal score, completed depth, node count, best move and PV, and record reference/cached paired wall-time ratios. CI is configured for that diagnostic comparison and CTests covering exchange/table/history modes and node-limited interruption. New C++ parity/timing results await this revision's CI; no measured speedup or strength change is claimed.
+
 ## Search benchmark
 
 Run from the repository root after a Release build:

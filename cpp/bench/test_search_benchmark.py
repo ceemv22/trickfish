@@ -143,19 +143,19 @@ class BenchmarkTest(unittest.TestCase):
                 benchmark.run_modes(pathlib.Path("engine"), {"id": "capture", "fen": FEN}, 1, repeats, 10, modes)
 
     def test_report_composes_paired_mode_ratios_and_schedule(self):
-        nodes = {"default": 23, "alphabeta": 30, "exchange": 20, "null": 40}
-        elapsed = {"default": 10, "alphabeta": 20, "exchange": 5, "null": 30}
+        nodes = {"default": 23, "alphabeta": 30, "exchange": 20, "null": 40, "ordering": 23}
+        elapsed = {"default": 10, "alphabeta": 20, "exchange": 5, "null": 30, "ordering": 20}
         def sample(binary, case, depth, timeout, mode):
             return {"score": 500, "depth": depth, "nodes": nodes[mode], "bestmove": "a1a2", "pv": ["a1a2"]}, elapsed[mode]
         output = io.StringIO()
         arguments = [str(SOURCE), str(SOURCE), "--suite", str(SOURCE.with_name("search_suite.json")),
-            "--repeats", "2", "--compare-alphabeta", "--compare-exchange", "--compare-null"]
+            "--repeats", "2", "--compare-alphabeta", "--compare-exchange", "--compare-null", "--compare-ordering"]
         with patch.object(benchmark.sys, "argv", arguments), patch.object(benchmark.sys, "stdout", output):
             with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
                 benchmark.main()
         report = json.loads(output.getvalue())
         self.assertEqual(report["schema_version"], 3)
-        modes = ["default", "alphabeta", "exchange", "null"]
+        modes = ["default", "alphabeta", "exchange", "null", "ordering"]
         self.assertEqual(report["search"]["mode_order"], modes)
         for result in report["results"]:
             self.assertEqual(result["execution_order"], [modes, list(reversed(modes))])
@@ -164,6 +164,20 @@ class BenchmarkTest(unittest.TestCase):
             self.assertEqual(result["null_comparison"]["median_paired_wall_ratio"], 3)
             self.assertEqual(result["exchange_comparison"]["node_delta_per_repeat"], -3)
             self.assertEqual(result["null_comparison"]["node_delta_per_repeat"], 17)
+            self.assertEqual(result["ordering_comparison"]["node_delta_per_repeat"], 0)
+            self.assertEqual(result["ordering_comparison"]["median_paired_wall_ratio"], 2)
+
+    def test_ordering_comparison_rejects_changed_search_trace(self):
+        arguments = [str(SOURCE), str(SOURCE), "--repeats", "2", "--compare-ordering"]
+        for field, value in (("nodes", 24), ("bestmove", "a1b1"), ("pv", ["a1b1"])):
+            def sample(binary, case, depth, timeout, mode):
+                result = {"score": 500, "depth": depth, "nodes": 23, "bestmove": "a1a2", "pv": ["a1a2"]}
+                if mode == "ordering": result[field] = value
+                return result, 10
+            with self.subTest(field=field), patch.object(benchmark.sys, "argv", arguments):
+                with patch.object(benchmark, "run_sample", side_effect=sample):
+                    with self.assertRaisesRegex(ValueError, "ordering changed search trace"):
+                        benchmark.main()
 
     def test_selective_score_drift_is_reported_without_claiming_parity(self):
         output = io.StringIO()

@@ -224,7 +224,7 @@ jobs:
         shell: pwsh
         run: |
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
-          python cpp/bench/search_benchmark.py $binary --depth 2 --repeats 2 --compare-alphabeta --timeout 30 --output build/search-benchmark.json
+          python cpp/bench/search_benchmark.py $binary --depth 2 --repeats 2 --compare-alphabeta --compare-ordering --timeout 30 --output build/search-benchmark.json
           if ($LASTEXITCODE -ne 0) { throw "Search benchmark failed" }
           Get-Content build/search-benchmark.json
       - name: Verify bounded tactical regression suite

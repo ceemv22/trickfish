@@ -69,6 +69,7 @@ struct SearchBudget {
     std::uint64_t check_extensions = 0;
     bool use_correction = false;
     bool use_endgame_scaling = false;
+    bool use_cached_ordering = true;
     CorrectionHistory correction{};
     std::uint64_t correction_updates = 0;
     std::uint64_t correction_applications = 0;
@@ -232,6 +233,48 @@ int move_priority(const Position& position, const Move& move) {
 
 void order_moves(const Position& position, MoveList& moves, std::optional<Move> preferred = std::nullopt,
     SearchBudget* budget = nullptr, int ply = 0, std::optional<Move> previous = std::nullopt) {
+    if (budget == nullptr || budget->use_cached_ordering) {
+        struct RankedMove {
+            Move move;
+            int priority = 0;
+            int history = 0;
+            int exchange = 0;
+            bool preferred = false;
+            bool tactical = false;
+        };
+        const bool exchange_ordering = budget != nullptr && budget->use_exchange_ordering;
+        std::array<RankedMove, MoveList::capacity> ranked{};
+        for (std::size_t index = 0; index < moves.size(); ++index) {
+            const auto& move = moves[index];
+            auto& rank = ranked[index];
+            rank.move = move;
+            rank.preferred = move == preferred;
+            rank.tactical = !is_quiet(position, move);
+            rank.priority = move_priority(position, move) + killer_priority(position, move, budget, ply);
+            rank.history = history_priority(position, move, budget) + continuation_priority(position, move, budget, previous);
+            if (exchange_ordering && rank.tactical) {
+                const auto exchange = analyze_exchange(position, move, false, [budget] { check_stop(budget); });
+                rank.exchange = exchange.score;
+                ++budget->exchange_evaluations;
+                budget->exchange_nodes += exchange.nodes;
+                budget->exchange_cutoffs += exchange.cutoffs;
+            }
+        }
+        std::sort(ranked.begin(), ranked.begin() + moves.size(), [exchange_ordering](const RankedMove& left, const RankedMove& right) {
+            if (left.preferred != right.preferred) return left.preferred;
+            if (exchange_ordering) {
+                if (left.tactical != right.tactical) return left.tactical;
+                if (left.tactical && left.exchange != right.exchange) return left.exchange > right.exchange;
+            }
+            if (left.priority != right.priority) return left.priority > right.priority;
+            if (left.history != right.history) return left.history > right.history;
+            if (left.move.from != right.move.from) return left.move.from < right.move.from;
+            if (left.move.to != right.move.to) return left.move.to < right.move.to;
+            return left.move.promotion < right.move.promotion;
+        });
+        for (std::size_t index = 0; index < moves.size(); ++index) moves[index] = ranked[index].move;
+        return;
+    }
     if (budget != nullptr && budget->use_exchange_ordering) {
         struct RankedMove { Move move; int exchange = 0; bool tactical = false; };
         std::array<RankedMove, MoveList::capacity> ranked{};
@@ -655,6 +698,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.check_extension_limit = options.check_extension_limit;
     budget.use_correction = options.use_correction;
     budget.use_endgame_scaling = options.use_endgame_scaling;
+    budget.use_cached_ordering = options.use_cached_ordering;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
