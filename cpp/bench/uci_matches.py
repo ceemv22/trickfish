@@ -108,6 +108,17 @@ def load_profiles(path):
     return {label: validate_profile(data["engines"].get(label, {})) for label in ("a", "b")}
 
 
+def primary_information(line):
+    parts = line.split()
+    if parts[:2] == ["info", "string"] or "multipv" not in parts:
+        return True
+    index = parts.index("multipv")
+    if (parts.count("multipv") != 1 or index + 1 == len(parts) or
+        not parts[index + 1].isascii() or not parts[index + 1].isdecimal() or int(parts[index + 1]) < 1):
+        raise RuntimeError("malformed UCI multipv rank")
+    return int(parts[index + 1]) == 1
+
+
 class Engine:
     def __init__(self, binary, timeout, profile=None):
         self.binary = binary
@@ -190,7 +201,7 @@ class Engine:
                 self.option_catalog[name.casefold()] = {"name": name, "type": kind, "spec": spec or ""}
             if line.startswith("id name "):
                 self.name = line[8:]
-            if line.startswith("info "):
+            if line.startswith("info ") and primary_information(line):
                 info = line
             if line == prefix or line.startswith(prefix + " "):
                 return line, info

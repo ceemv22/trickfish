@@ -232,6 +232,36 @@ jobs:
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           python cpp/tests/uci_process.py $binary
           if ($LASTEXITCODE -ne 0) { throw "Interactive UCI checks failed" }
+      - name: Replay MultiPV diagnostics against Python rules
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/multipv_validation.py $binary --output build/multipv-validation.json
+          if ($LASTEXITCODE -ne 0) { throw "MultiPV diagnostic replay failed" }
+          Get-Content build/multipv-validation.json
+      - name: Verify rank-one information in real UCI matches
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/uci_matches.py $binary $binary --profiles cpp/bench/multipv_profiles.example.json --depth 1 --max-plies 2 --timeout 30 --output build/multipv-match-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "MultiPV UCI match-client smoke failed" }
+          python cpp/bench/export_matches.py build/multipv-match-smoke.json --output build/multipv-match-smoke.pgn
+          if ($LASTEXITCODE -ne 0) { throw "MultiPV match-client replay failed" }
+          python -c "import json; from pathlib import Path; d=json.loads(Path('build/multipv-match-smoke.json').read_text()); a=[x for g in d['games'] for x in g['decisions'] if x['engine']=='a']; b=[x for g in d['games'] for x in g['decisions'] if x['engine']=='b']; assert a and b; assert all(' multipv 1 ' in x['info'] for x in a); assert all(' multipv ' not in x['info'] for x in b); assert all(x['info'].split(' pv ')[1].split()[0]==x['move'] for x in a+b)"
+          if ($LASTEXITCODE -ne 0) { throw "Match client attached a secondary PV to bestmove" }
+      - name: Preserve MultiPV validation report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: multipv-validation-${{ matrix.os }}-${{ matrix.kernel }}-${{ github.sha }}
+          path: |
+            build/multipv-validation.json
+            build/multipv-match-smoke.json
+            build/multipv-match-smoke.pgn
+          if-no-files-found: warn
+          retention-days: 30
       - name: Verify C++ evaluation terms against Python reference
         timeout-minutes: 3
         shell: pwsh
@@ -246,6 +276,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Search benchmark runner checks failed" }
           python cpp/bench/test_quiescence_benchmark.py
           if ($LASTEXITCODE -ne 0) { throw "Quiescence benchmark checks failed" }
+          python cpp/bench/test_multipv_validation.py
+          if ($LASTEXITCODE -ne 0) { throw "MultiPV validator checks failed" }
+          python cpp/bench/test_uci_multipv.py
+          if ($LASTEXITCODE -ne 0) { throw "MultiPV match-client information checks failed" }
           python cpp/bench/test_mate_objectives.py
           if ($LASTEXITCODE -ne 0) { throw "Forced-mate objective checks failed" }
           python cpp/bench/test_assess_match.py

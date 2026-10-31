@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "engines": {
+    "a": {"MultiPV": 3},
+    "b": {"MultiPV": 1}
+  }
+}

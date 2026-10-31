@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "trickfish/attacks.hpp"
 #include "trickfish/evaluation.hpp"
@@ -11,6 +12,7 @@
 #include "trickfish/game_status.hpp"
 #include "trickfish/move_list.hpp"
 #include "trickfish/movegen.hpp"
+#include "trickfish/multipv.hpp"
 #include "trickfish/perft.hpp"
 #include "trickfish/position.hpp"
 #include "trickfish/search.hpp"
@@ -25,6 +27,37 @@ int main(int argc, char** argv) {
         }
         if (argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--uci")) {
             return trickfish::run_uci(std::cin, std::cout);
+        }
+        if (argc > 1 && std::string_view(argv[1]) == "--multi-pv") {
+            if (argc < 4 || argc > 5) throw std::invalid_argument("usage: --multi-pv depth count [fen]");
+            int depth = 0, count = 0;
+            for (const auto& item : {std::pair{std::string_view(argv[2]), &depth},
+                    std::pair{std::string_view(argv[3]), &count}}) {
+                const auto parsed = std::from_chars(item.first.data(), item.first.data() + item.first.size(), *item.second);
+                if (parsed.ec != std::errc{} || parsed.ptr != item.first.data() + item.first.size()) {
+                    throw std::invalid_argument("MultiPV depth and count must be integers");
+                }
+            }
+            auto position = trickfish::Position::from_fen(argc == 5 ? argv[4] : start_fen);
+            const auto result = trickfish::iterative_multi_pv(position, depth, count);
+            std::cout << "{\"schema_version\":1,\"completed_depth\":" << result.completed_depth <<
+                ",\"nodes\":" << result.nodes << ",\"stopped\":" << (result.stopped ? "true" : "false") << ",\"lines\":[";
+            for (std::size_t index = 0; index < result.lines.size(); ++index) {
+                if (index != 0) std::cout << ',';
+                const auto& line = result.lines[index];
+                std::cout << "{\"rank\":" << index + 1 << ",\"score\":" << line.score << ",\"completed_depth\":" <<
+                    line.completed_depth << ",\"nodes\":" << line.nodes << ",\"bestmove\":";
+                if (line.best_move) std::cout << '"' << line.best_move->to_uci() << '"';
+                else std::cout << "null";
+                std::cout << ",\"pv\":[";
+                for (std::size_t ply = 0; ply < line.principal_variation.size(); ++ply) {
+                    if (ply != 0) std::cout << ',';
+                    std::cout << '"' << line.principal_variation[ply].to_uci() << '"';
+                }
+                std::cout << "]}";
+            }
+            std::cout << "]}\n";
+            return 0;
         }
         if (argc > 1 && (std::string_view(argv[1]) == "--see" || std::string_view(argv[1]) == "--see-reference" ||
             std::string_view(argv[1]) == "--see-detail")) {

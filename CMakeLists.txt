@@ -8,6 +8,7 @@ add_library(trickfish_core
     cpp/src/correction.cpp
     cpp/src/exchange.cpp
     cpp/src/movegen.cpp
+    cpp/src/multipv.cpp
     cpp/src/perft.cpp
     cpp/src/position.cpp
     cpp/src/search.cpp
@@ -40,6 +41,10 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(trickfish_multipv_test cpp/tests/multipv.cpp)
+    target_link_libraries(trickfish_multipv_test PRIVATE trickfish_core)
+    add_test(NAME multipv_analysis COMMAND trickfish_multipv_test)
+    set_tests_properties(multipv_analysis PROPERTIES TIMEOUT 120)
     add_executable(trickfish_quiescence_compaction_test cpp/tests/quiescence_compaction.cpp)
     target_link_libraries(trickfish_quiescence_compaction_test PRIVATE trickfish_core)
     add_test(NAME quiescence_compaction_trace COMMAND trickfish_quiescence_compaction_test)

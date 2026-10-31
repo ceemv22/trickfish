@@ -6,11 +6,40 @@ import threading
 import time
 import unittest
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
+from trickfish.position import Position as ReferencePosition, STARTING_FEN
+
 BINARY = str(pathlib.Path(sys.argv.pop(1)).resolve())
 WHITE_MOVES = {f"{file}2{file}{rank}" for file in "abcdefgh" for rank in "34"} | {"b1a3", "b1c3", "g1f3", "g1h3"}
 BLACK_MOVES = {f"{file}7{file}{rank}" for file in "abcdefgh" for rank in "65"} | {"b8a6", "b8c6", "g8f6", "g8h6"}
 
 class UciProcessTests(unittest.TestCase):
+    def multi_batch(self, before, fen=STARTING_FEN, expected=None):
+        best = self.until("bestmove ").split()[1]
+        lines = [line for line in self.transcript[before:] if line.startswith("info depth ")]
+        if expected is not None: self.assertEqual(len(lines), expected, lines)
+        self.assertTrue(lines)
+        self.assertEqual([int(line.split(" multipv ")[1].split()[0]) for line in lines], list(range(1, len(lines) + 1)))
+        depths = {int(line.split()[2]) for line in lines}
+        nodes = {int(line.split(" nodes ")[1].split()[0]) for line in lines}
+        self.assertEqual(len(depths), 1)
+        self.assertEqual(len(nodes), 1)
+        roots = []
+        for line in lines:
+            pv = line.split(" pv ")[1].split() if " pv " in line else []
+            position = ReferencePosition.from_fen(fen)
+            for text in pv:
+                legal = {move.to_uci(): move for move in position.legal_moves()}
+                self.assertIn(text, legal, line)
+                position = position.make_move(legal[text])
+            if pv: roots.append(pv[0])
+        self.assertEqual(len(roots), len(set(roots)))
+        if roots: self.assertEqual(best, roots[0])
+        else:
+            legal = {move.to_uci() for move in ReferencePosition.from_fen(fen).legal_moves()}
+            self.assertTrue(best == "0000" or best in legal)
+        return lines, best, next(iter(depths)), next(iter(nodes))
+
     def setUp(self):
         self.process = subprocess.Popen([BINARY, "--uci"], stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -61,6 +90,7 @@ class UciProcessTests(unittest.TestCase):
         self.send("uci")
         self.until("uciok")
         self.assertIn("id name Trickfish C++", self.transcript)
+        self.assertIn("option name MultiPV type spin default 1 min 1 max 16", self.transcript)
         self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
         for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling", "Mate Distance Pruning", "Pawn Cache"]:
             self.assertIn("option name Experimental " + name + " type check default false", self.transcript)
@@ -265,6 +295,105 @@ class UciProcessTests(unittest.TestCase):
         self.assertFalse(any(line.startswith("bestmove ") for line in self.transcript))
         self.send("go depth 1 searchmoves e2e4")
         self.assertEqual(self.until("bestmove "), "bestmove e2e4")
+
+    def test_multi_pv_ranked_lines_and_single_pv_round_trip(self):
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go depth 2")
+        original_best = self.until("bestmove ")
+        original_info = [line for line in self.transcript[before:] if line.startswith("info depth ")]
+        self.send("setoption name MultiPV value 3")
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go depth 2")
+        lines, _, depth, _ = self.multi_batch(before, expected=3)
+        self.assertEqual(depth, 2)
+        scores = [int(line.split(" score cp ")[1].split()[0]) for line in lines]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+        self.send("setoption name MultiPV value 1")
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go depth 2")
+        self.assertEqual(self.until("bestmove "), original_best)
+        restored = [line for line in self.transcript[before:] if line.startswith("info depth ")]
+        self.assertEqual(restored, original_info)
+        self.assertNotIn(" multipv ", restored[0])
+
+    def test_multi_pv_options_snapshot_persist_and_reject_invalid_values(self):
+        self.send("setoption name multipv value 3")
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go depth 1")
+        self.send("setoption name MultiPV value 2")
+        self.multi_batch(before, expected=3)
+        self.send("ucinewgame")
+        self.send("position startpos")
+        for value in ("0", "17", "-1", "true", "18446744073709551616", "2 extra"):
+            self.send("setoption name MultiPV value " + value)
+            self.until("info string error:")
+        before = len(self.transcript)
+        self.send("go depth 1")
+        self.multi_batch(before, expected=2)
+
+    def test_multi_pv_searchmoves_caps_and_special_move_lines(self):
+        self.send("setoption name MultiPV value 16")
+        for fen, roots in [
+            (STARTING_FEN, ["e2e4", "d2d4"]),
+            ("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", ["e5d6", "e1d1"]),
+            ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", ["e1g1", "e1c1"]),
+            ("4k3/P7/8/8/8/8/8/4K3 w - - 0 1", ["a7a8q", "a7a8n"]),
+            ("1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1", ["a7b8q", "a7b8n"])]:
+            self.send("position fen " + fen)
+            before = len(self.transcript)
+            self.send("go depth 1 searchmoves " + " ".join(roots))
+            lines, _, _, _ = self.multi_batch(before, fen, 2)
+            self.assertEqual({line.split(" pv ")[1].split()[0] for line in lines}, set(roots))
+
+    def test_multi_pv_shared_budgets_and_infinite_stop(self):
+        self.send("setoption name MultiPV value 3")
+        for command, cap in (("go nodes 0", 0), ("go depth 16 nodes 64", 64), ("go movetime 0", 0)):
+            self.send("position startpos")
+            before = len(self.transcript)
+            self.send(command)
+            lines, _, _, nodes = self.multi_batch(before)
+            self.assertLessEqual(nodes, cap)
+            self.assertLessEqual(len(lines), 3)
+        self.send("go infinite depth 1")
+        before = len(self.transcript)
+        self.send("isready")
+        self.until("readyok")
+        self.assertFalse(any(line.startswith("bestmove ") for line in self.transcript[before:]))
+        self.send("stop")
+        lines, _, depth, _ = self.multi_batch(before)
+        self.assertEqual(len(lines), 1 if depth == 0 else 3)
+
+    def test_multi_pv_terminal_and_repetition_roots(self):
+        self.send("setoption name MultiPV value 3")
+        for fen in ("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1", "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",
+                "4k3/8/8/8/8/8/R7/4K3 w - - 150 1"):
+            self.send("position fen " + fen)
+            before = len(self.transcript)
+            self.send("go depth 2")
+            _, best, _, _ = self.multi_batch(before, fen, 1)
+            self.assertEqual(best, "0000")
+        self.send("position startpos moves " + " ".join(["g1f3", "g8f6", "f3g1", "f6g8"] * 2))
+        before = len(self.transcript)
+        self.send("go depth 2")
+        lines, _, _, _ = self.multi_batch(before, expected=1)
+        self.assertIn(" score cp 0", lines[0])
+
+    def test_multi_pv_eof_and_quit_finish_one_search(self):
+        for ending in ("", "quit\n"):
+            result = subprocess.run([BINARY, "--uci"], input="uci\nsetoption name MultiPV value 3\nposition startpos\ngo infinite depth 64\n" + ending,
+                capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            best = [line for line in result.stdout.splitlines() if line.startswith("bestmove ")]
+            infos = [line for line in result.stdout.splitlines() if line.startswith("info depth ")]
+            self.assertEqual(len(best), 1, result.stdout)
+            self.assertIn(best[0].split()[1], WHITE_MOVES)
+            self.assertTrue(infos)
+            self.assertEqual([int(line.split(" multipv ")[1].split()[0]) for line in infos], list(range(1, len(infos) + 1)))
+            self.assertEqual(len({int(line.split()[2]) for line in infos}), 1)
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,7 @@
 #include "trickfish/evaluation.hpp"
 #include "trickfish/movegen.hpp"
 #include "trickfish/search.hpp"
+#include "trickfish/multipv.hpp"
 #include "trickfish/time.hpp"
 
 namespace trickfish {
@@ -208,6 +209,7 @@ public:
                 if (name == "uci") {
                     emit("id name Trickfish C++\nid author ceemv22\noption name Move Overhead type spin default " +
                         std::to_string(default_move_overhead_ms) + " min 0 max 10000");
+                    emit("option name MultiPV type spin default 1 min 1 max " + std::to_string(maximum_multi_pv));
                     const SearchOptions defaults;
                     for (const auto& option : check_options) {
                         emit("option name " + std::string(option.name) + " type check default " +
@@ -270,6 +272,14 @@ private:
             move_overhead_ = overhead;
             return;
         }
+        if (name == "multipv") {
+            const auto selected = number_for(*(value + 1));
+            if (selected < 1 || selected > static_cast<std::uint64_t>(maximum_multi_pv)) {
+                throw std::invalid_argument("MultiPV must be between 1 and 16");
+            }
+            multi_pv_ = static_cast<int>(selected);
+            return;
+        }
         for (const auto& option : check_options) {
             if (name != lowercase(std::string(option.name))) continue;
             const auto selected = lowercase(*(value + 1));
@@ -301,9 +311,9 @@ private:
         }
     }
 
-    void emit_result(const SearchResult& result) {
-        std::ostringstream message;
-        message << "info depth " << result.completed_depth << " nodes " << result.nodes;
+    void append_info(std::ostringstream& message, const SearchResult& result, std::uint64_t nodes, int rank = 0) {
+        message << "info depth " << result.completed_depth << " nodes " << nodes;
+        if (rank != 0) message << " multipv " << rank;
         if (result.completed_depth > 0) {
             if (std::abs(result.score) >= mate_threshold) {
                 const int moves = (mate_score - std::abs(result.score) + 1) / 2;
@@ -316,24 +326,33 @@ private:
             message << " pv";
             for (const auto& move : result.principal_variation) message << ' ' << move.to_uci();
         }
-        message << "\nbestmove " << (result.best_move ? result.best_move->to_uci() : "0000");
+    }
+
+    void emit_result(const MultiPVResult& result, int count) {
+        std::ostringstream message;
+        for (std::size_t index = 0; index < result.lines.size(); ++index) {
+            if (index != 0) message << '\n';
+            append_info(message, result.lines[index], result.nodes, count == 1 ? 0 : static_cast<int>(index + 1));
+        }
+        const auto best = result.lines.empty() ? std::optional<Move>{} : result.lines.front().best_move;
+        message << "\nbestmove " << (best ? best->to_uci() : "0000");
         emit(message.str());
     }
 
     void start_search(GoLimits limits) {
-        worker_ = std::jthread([this, root = position_, history = history_, limits, options = search_options_](std::stop_token stop) mutable {
+        worker_ = std::jthread([this, root = position_, history = history_, limits, options = search_options_, count = multi_pv_](std::stop_token stop) mutable {
             try {
                 const SearchLimits search_limits{limits.nodes, limits.deadline,
                     [stop] { return stop.stop_requested(); }};
                 options.root_moves = limits.root_moves;
-                const auto result = iterative_search(root, limits.depth, options, search_limits, &history);
+                const auto result = iterative_multi_pv(root, limits.depth, count, options, search_limits, &history);
                 if (limits.infinite && !stop.stop_requested()) {
                     std::mutex wait_mutex;
                     std::unique_lock lock(wait_mutex);
                     std::condition_variable_any condition;
                     condition.wait(lock, stop, [] { return false; });
                 }
-                emit_result(result);
+                emit_result(result, count);
             } catch (const std::exception& error) {
                 emit("info string search error: " + std::string(error.what()) + "\nbestmove 0000");
             }
@@ -345,6 +364,7 @@ private:
     Position position_;
     RepetitionHistory history_;
     SearchOptions search_options_;
+    int multi_pv_ = 1;
     std::uint64_t move_overhead_ = default_move_overhead_ms;
     std::mutex output_mutex_;
     std::jthread worker_;
