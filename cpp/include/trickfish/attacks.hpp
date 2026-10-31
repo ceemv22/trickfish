@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -111,6 +112,41 @@ inline constexpr std::array rook_directions = {
     std::pair{-1, 0}, std::pair{1, 0}, std::pair{0, -1}, std::pair{0, 1}
 };
 
+template<std::size_t Size>
+consteval auto make_sliding_rays(const std::array<std::pair<int, int>, Size>& directions) {
+    std::array<std::array<Bitboard, 64>, Size> rays{};
+    for (std::size_t direction = 0; direction < Size; ++direction) {
+        for (std::uint8_t square = 0; square < 64; ++square) {
+            const std::array single = {directions[direction]};
+            rays[direction][square] = sliding_attacks_for(square, 0, single);
+        }
+    }
+    return rays;
+}
+
+inline constexpr auto bishop_rays = make_sliding_rays(bishop_directions);
+inline constexpr auto rook_rays = make_sliding_rays(rook_directions);
+
+template<std::size_t Size>
+constexpr Bitboard ray_attacks_for(std::uint8_t square, Bitboard occupancy,
+    const std::array<std::pair<int, int>, Size>& directions,
+    const std::array<std::array<Bitboard, 64>, Size>& rays) {
+    Bitboard attacks = 0;
+    for (std::size_t direction = 0; direction < Size; ++direction) {
+        const auto ray = rays[direction][square];
+        const auto blockers = ray & occupancy;
+        if (blockers == 0) {
+            attacks |= ray;
+        } else {
+            const auto [rank_step, file_step] = directions[direction];
+            const auto blocker = static_cast<std::uint8_t>(rank_step * 8 + file_step > 0
+                ? std::countr_zero(blockers) : 63 - std::countl_zero(blockers));
+            attacks |= ray ^ rays[direction][blocker];
+        }
+    }
+    return attacks;
+}
+
 }
 
 inline constexpr Bitboard knight_attacks(std::uint8_t square) {
@@ -136,18 +172,44 @@ inline constexpr Bitboard pawn_attacks(Color color, std::uint8_t square) {
         : detail::black_pawn_attack_table[square];
 }
 
-inline constexpr Bitboard bishop_attacks(std::uint8_t square, Bitboard occupancy) {
+inline constexpr Bitboard bishop_attacks_reference(std::uint8_t square, Bitboard occupancy) {
     if (square >= 64) {
         throw std::invalid_argument("square must be between 0 and 63");
     }
     return detail::sliding_attacks_for(square, occupancy, detail::bishop_directions);
 }
 
-inline constexpr Bitboard rook_attacks(std::uint8_t square, Bitboard occupancy) {
+inline constexpr Bitboard rook_attacks_reference(std::uint8_t square, Bitboard occupancy) {
     if (square >= 64) {
         throw std::invalid_argument("square must be between 0 and 63");
     }
     return detail::sliding_attacks_for(square, occupancy, detail::rook_directions);
+}
+
+inline constexpr Bitboard bishop_attacks_ray(std::uint8_t square, Bitboard occupancy) {
+    if (square >= 64) throw std::invalid_argument("square must be between 0 and 63");
+    return detail::ray_attacks_for(square, occupancy, detail::bishop_directions, detail::bishop_rays);
+}
+
+inline constexpr Bitboard rook_attacks_ray(std::uint8_t square, Bitboard occupancy) {
+    if (square >= 64) throw std::invalid_argument("square must be between 0 and 63");
+    return detail::ray_attacks_for(square, occupancy, detail::rook_directions, detail::rook_rays);
+}
+
+#ifdef TRICKFISH_RAY_SLIDERS
+inline constexpr bool use_ray_sliders = true;
+#else
+inline constexpr bool use_ray_sliders = false;
+#endif
+
+inline constexpr Bitboard bishop_attacks(std::uint8_t square, Bitboard occupancy) {
+    if constexpr (use_ray_sliders) return bishop_attacks_ray(square, occupancy);
+    else return bishop_attacks_reference(square, occupancy);
+}
+
+inline constexpr Bitboard rook_attacks(std::uint8_t square, Bitboard occupancy) {
+    if constexpr (use_ray_sliders) return rook_attacks_ray(square, occupancy);
+    else return rook_attacks_reference(square, occupancy);
 }
 
 inline constexpr Bitboard queen_attacks(std::uint8_t square, Bitboard occupancy) {

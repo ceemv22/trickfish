@@ -19,6 +19,10 @@
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc == 2 && std::string_view(argv[1]) == "--slider-kernel") {
+            std::cout << (trickfish::use_ray_sliders ? "ray" : "reference") << '\n';
+            return 0;
+        }
         if (argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--uci")) {
             return trickfish::run_uci(std::cin, std::cout);
         }

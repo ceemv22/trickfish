@@ -28,10 +28,10 @@ jobs:
       - uses: actions/checkout@v7
       - name: Configure Linux
         if: runner.os == 'Linux'
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTRICKFISH_RAY_SLIDERS=ON
       - name: Configure Windows
         if: runner.os == 'Windows'
-        run: cmake -S . -B build -A x64
+        run: cmake -S . -B build -A x64 -DTRICKFISH_RAY_SLIDERS=ON
       - name: Build Linux
         if: runner.os == 'Linux'
         run: cmake --build build --config Release
@@ -221,6 +221,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Search benchmark runner checks failed" }
           python cpp/bench/test_mate_objectives.py
           if ($LASTEXITCODE -ne 0) { throw "Forced-mate objective checks failed" }
+          python cpp/bench/test_sliding_profile.py
+          if ($LASTEXITCODE -ne 0) { throw "Sliding profile validation failed" }
           python cpp/bench/test_binary_benchmark.py
           if ($LASTEXITCODE -ne 0) { throw "Two-binary benchmark regressions failed" }
           python cpp/bench/test_binary_summary.py

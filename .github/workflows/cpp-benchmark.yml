@@ -9,7 +9,7 @@ on:
       baseline_ref:
         description: Baseline Git ref with compatible diagnostic search CLI
         required: true
-        default: 02c3416d5bd4a8f14f660e2c6de0aad1250790e0
+        default: d678f1a414b0e322d266094688e1962fb9f01ed3
         type: string
       depth:
         description: Fixed search depth from 1 to 64
@@ -51,7 +51,7 @@ jobs:
       - name: Check out baseline
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.baseline_ref || '02c3416d5bd4a8f14f660e2c6de0aad1250790e0' }}
+          ref: ${{ inputs.baseline_ref || 'd678f1a414b0e322d266094688e1962fb9f01ed3' }}
           path: baseline-source
           persist-credentials: false
       - name: Install Python reference
@@ -60,19 +60,19 @@ jobs:
         shell: pwsh
         run: |
           if ($IsWindows) {
-            cmake -S . -B build -A x64 -DBUILD_TESTING=OFF
+            cmake -S . -B build -A x64 -DBUILD_TESTING=ON -DTRICKFISH_RAY_SLIDERS=ON
             if ($LASTEXITCODE -ne 0) { throw "Candidate configure failed" }
-            cmake -S baseline-source -B baseline-source/build -A x64 -DBUILD_TESTING=OFF
+            cmake -S baseline-source -B baseline-source/build -A x64 -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=OFF
           } else {
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DTRICKFISH_RAY_SLIDERS=ON
             if ($LASTEXITCODE -ne 0) { throw "Candidate configure failed" }
-            cmake -S baseline-source -B baseline-source/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+            cmake -S baseline-source -B baseline-source/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=OFF
           }
           if ($LASTEXITCODE -ne 0) { throw "Baseline configure failed" }
       - name: Build both engines
         shell: pwsh
         run: |
-          cmake --build build --config Release --parallel 2
+          cmake --build build --config Release --target trickfish_cpp trickfish_sliding_kernel_bench --parallel 2
           if ($LASTEXITCODE -ne 0) { throw "Candidate build failed" }
           cmake --build baseline-source/build --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { throw "Baseline build failed" }
@@ -81,16 +81,29 @@ jobs:
         run: |
           $candidateBinary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           $baselineBinary = if ($IsWindows) { ".\baseline-source\build\Release\trickfish_cpp.exe" } else { "./baseline-source/build/trickfish_cpp" }
+          $kernel = & $candidateBinary --slider-kernel
+          if ($LASTEXITCODE -ne 0 -or $kernel -ne "ray") { throw "Candidate ray kernel was not selected" }
           $benchmarkArguments = @("cpp/bench/search_benchmark.py", $candidateBinary, "--reference-binary", $baselineBinary, "--depth", $env:BENCHMARK_DEPTH, "--repeats", $env:BENCHMARK_REPEATS, "--warmups", "2", "--timeout", "120", "--output", "build/binary-comparison.json")
           if ($env:REQUIRE_TRACE -eq "true") { $benchmarkArguments += "--reference-trace" }
           python @benchmarkArguments
           if ($LASTEXITCODE -ne 0) { throw "Binary comparison failed" }
-          python -c "import json,subprocess; from pathlib import Path; p=Path('build/binary-comparison.json'); d=json.loads(p.read_text()); d['build_provenance']={'candidate_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseline_revision':subprocess.check_output(['git','-C','baseline-source','rev-parse','HEAD'],text=True).strip(),'configuration':'Release','same_runner':True}; p.write_text(json.dumps(d,indent=2,allow_nan=False),encoding='utf-8')"
+          python -c "import json,subprocess; from pathlib import Path; p=Path('build/binary-comparison.json'); d=json.loads(p.read_text()); d['build_provenance']={'candidate_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseline_revision':subprocess.check_output(['git','-C','baseline-source','rev-parse','HEAD'],text=True).strip(),'configuration':'Release','same_runner':True,'candidate_kernel':'ray','baseline_kernel_requested':'reference'}; p.write_text(json.dumps(d,indent=2,allow_nan=False),encoding='utf-8')"
           if ($LASTEXITCODE -ne 0) { throw "Build provenance recording failed" }
           python cpp/bench/summarize_binary_benchmark.py build/binary-comparison.json --output build/binary-comparison-summary.json
           if ($LASTEXITCODE -ne 0) { throw "Binary benchmark summary failed" }
           Get-Content build/binary-comparison.json
           Get-Content build/binary-comparison-summary.json
+      - name: Profile both sliding kernels in the same process
+        shell: pwsh
+        run: |
+          $profiler = if ($IsWindows) { ".\build\Release\trickfish_sliding_kernel_bench.exe" } else { "./build/trickfish_sliding_kernel_bench" }
+          $json = & $profiler 512
+          if ($LASTEXITCODE -ne 0) { throw "Sliding kernel profile failed" }
+          $json | Set-Content build/sliding-kernel.json
+          python cpp/bench/summarize_sliding_profile.py build/sliding-kernel.json --output build/sliding-kernel-summary.json
+          if ($LASTEXITCODE -ne 0) { throw "Sliding kernel profile validation failed" }
+          Get-Content build/sliding-kernel.json
+          Get-Content build/sliding-kernel-summary.json
       - name: Preserve comparison reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
@@ -99,5 +112,7 @@ jobs:
           path: |
             build/binary-comparison.json
             build/binary-comparison-summary.json
+            build/sliding-kernel.json
+            build/sliding-kernel-summary.json
           if-no-files-found: warn
           retention-days: 30

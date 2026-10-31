@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(trickfish LANGUAGES CXX)
+option(TRICKFISH_RAY_SLIDERS "Use experimental table-driven sliding attacks" OFF)
 
 add_library(trickfish_core
     cpp/src/pawn_cache.cpp
@@ -13,6 +14,9 @@ add_library(trickfish_core
 )
 
 target_include_directories(trickfish_core PUBLIC cpp/include)
+if(TRICKFISH_RAY_SLIDERS)
+    target_compile_definitions(trickfish_core PUBLIC TRICKFISH_RAY_SLIDERS)
+endif()
 target_compile_features(trickfish_core PUBLIC cxx_std_23)
 set_target_properties(trickfish_core PROPERTIES CXX_EXTENSIONS NO)
 
@@ -36,6 +40,12 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(trickfish_sliding_kernel_test cpp/tests/sliding_kernel.cpp)
+    target_link_libraries(trickfish_sliding_kernel_test PRIVATE trickfish_core)
+    add_test(NAME exhaustive_sliding_kernel COMMAND trickfish_sliding_kernel_test)
+    set_tests_properties(exhaustive_sliding_kernel PROPERTIES TIMEOUT 90)
+    add_executable(trickfish_sliding_kernel_bench cpp/bench/sliding_kernel.cpp)
+    target_link_libraries(trickfish_sliding_kernel_bench PRIVATE trickfish_core)
     add_executable(trickfish_pawnless_scaling_test cpp/tests/pawnless_scaling.cpp)
     target_link_libraries(trickfish_pawnless_scaling_test PRIVATE trickfish_core)
     add_test(NAME pawnless_endgame_scaling COMMAND trickfish_pawnless_scaling_test)
