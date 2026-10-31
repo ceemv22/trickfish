@@ -248,6 +248,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Quiescence benchmark checks failed" }
           python cpp/bench/test_mate_objectives.py
           if ($LASTEXITCODE -ne 0) { throw "Forced-mate objective checks failed" }
+          python cpp/bench/test_assess_match.py
+          if ($LASTEXITCODE -ne 0) { throw "Fixed-horizon paired match assessment checks failed" }
           python cpp/bench/test_sliding_profile.py
           if ($LASTEXITCODE -ne 0) { throw "Sliding profile validation failed" }
           python cpp/bench/test_sliding_assessment.py
@@ -366,6 +368,8 @@ jobs:
         shell: pwsh
         run: |
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/assess_match.py plan $binary $binary --campaign cpp/bench/campaign_smoke.json --output build/sign-plan.json
+          if ($LASTEXITCODE -ne 0) { throw "Fixed-horizon smoke plan failed" }
           python cpp/bench/uci_matches.py $binary $binary --campaign cpp/bench/campaign_smoke.json --checkpoint build/campaign-checkpoint.json --output build/campaign.json
           if ($LASTEXITCODE -ne 0) { throw "Declared campaign failed" }
           python cpp/bench/uci_matches.py $binary $binary --campaign cpp/bench/campaign_smoke.json --checkpoint build/campaign-checkpoint.json --resume --output build/campaign-resumed.json
@@ -377,6 +381,11 @@ jobs:
           python -c "import json; from pathlib import Path; a=json.loads(Path('build/campaign.json').read_text()); b=json.loads(Path('build/campaign-resumed.json').read_text()); d=json.loads(Path('build/campaign-audit.json').read_text()); assert a['games']==b['games'] and a['scores']==b['scores']; assert d['analysis']['overall']['games']==24 and d['analysis']['paired']['pairs']==12"
           if ($LASTEXITCODE -ne 0) { throw "Campaign pair/resume accounting failed" }
           Get-Content build/campaign-audit.json
+          python cpp/bench/assess_match.py evaluate build/campaign-resumed.json --plan build/sign-plan.json --output build/sign-assessment.json
+          if ($LASTEXITCODE -ne 0) { throw "Fixed-horizon smoke assessment failed" }
+          python -c "import json; from pathlib import Path; d=json.loads(Path('build/sign-assessment.json').read_text()); assert d['status']=='inconclusive' and d['statistic'] is None and set(d['blockers'])=={'unfinished_pairs','identical_binary_bytes'}"
+          if ($LASTEXITCODE -ne 0) { throw "Smoke control must not yield a statistical decision" }
+          Get-Content build/sign-assessment.json
       - name: Resume completed node-limited matches
         timeout-minutes: 3
         shell: pwsh

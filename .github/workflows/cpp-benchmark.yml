@@ -9,7 +9,7 @@ on:
       baseline_ref:
         description: Baseline Git ref with compatible diagnostic search CLI
         required: true
-        default: 6b7089aa96a14afa5377f8ec3c535c93795f948e
+        default: aa85f5ac2428c2fead1002878433d2e8c3f89341
         type: string
       baseline_kernel:
         description: Baseline kernel and timing assessment policy
@@ -50,7 +50,7 @@ jobs:
       REQUIRE_TRACE: ${{ github.event_name == 'push' || inputs.require_identical_trace }}
       BASELINE_KERNEL: ${{ inputs.baseline_kernel || 'ray' }}
       BASELINE_RAY_SLIDERS: ${{ inputs.baseline_kernel == 'reference' && 'OFF' || 'ON' }}
-      BENCHMARK_EXPERIMENT: targeted-castling-attacks
+      BENCHMARK_EXPERIMENT: restore-accepted-search
     steps:
       - name: Check out candidate
         uses: actions/checkout@v7
@@ -60,7 +60,7 @@ jobs:
       - name: Check out baseline
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.baseline_ref || '6b7089aa96a14afa5377f8ec3c535c93795f948e' }}
+          ref: ${{ inputs.baseline_ref || 'aa85f5ac2428c2fead1002878433d2e8c3f89341' }}
           path: baseline-source
           persist-credentials: false
       - name: Install Python reference
