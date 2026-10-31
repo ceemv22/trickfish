@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime, timezone
+from functools import lru_cache
 import hashlib
 import json
 import pathlib
@@ -32,11 +33,45 @@ def validate_output_path(output, inputs):
             raise ValueError(f"output must differ from input file: {source}")
 
 
+def forced_mate_moves(fen, moves):
+    if type(moves) is not int or not 1 <= moves <= 2:
+        raise ValueError("mate horizon must be one or two moves")
+    return _forced_mate_moves(fen, moves)
+
+
+@lru_cache(maxsize=128)
+def _forced_mate_moves(fen, moves):
+    root = Position.from_fen(fen)
+    attacker = root.side_to_move
+    defender = "b" if attacker == "w" else "w"
+    if root.is_square_attacked(root._king_square(defender), attacker):
+        raise ValueError("nonmoving king checked in mate objective")
+    visited = 0
+    @lru_cache(maxsize=8192)
+    def forced(current_fen, remaining):
+        nonlocal visited
+        visited += 1
+        if visited > 100000:
+            raise ValueError("mate objective exceeds reference proof budget")
+        position = Position.from_fen(current_fen)
+        legal = position.legal_moves()
+        if not legal:
+            return position.is_in_check() and position.side_to_move != attacker
+        if remaining == 0 or position.halfmove_clock >= 150 or position.is_insufficient_material():
+            return False
+        outcomes = (forced(position.make_move(move).to_fen(), remaining - 1) for move in legal)
+        return any(outcomes) if position.side_to_move == attacker else all(outcomes)
+    if root.halfmove_clock >= 150 or root.is_insufficient_material():
+        return ()
+    return tuple(move.to_uci() for move in root.legal_moves()
+        if forced(root.make_move(move).to_fen(), 2 * moves - 2))
+
+
 def validate_objective(case, result=None):
     objective = case.get("expect")
     if objective is None:
         return
-    if not isinstance(objective, dict) or not objective or set(objective) - {"bestmoves", "mate_in_one", "score"}:
+    if not isinstance(objective, dict) or not objective or set(objective) - {"bestmoves", "mate_in_one", "mate_in", "score"}:
         raise ValueError(f"invalid tactical objective: {case['id']}")
     if "score" in objective and type(objective["score"]) is not int:
         raise ValueError("score objective must be an integer")
@@ -54,6 +89,13 @@ def validate_objective(case, result=None):
         mates = {text for text, move in legal.items() if position.make_move(move).game_status() == "checkmate"}
         if not mates or (accepted is not None and not set(accepted) <= mates):
             raise ValueError(f"reference mate objective is unsatisfied: {case['id']}")
+    if "mate_in" in objective:
+        if "mate_in_one" in objective:
+            raise ValueError("use only one mate objective")
+        horizon = objective["mate_in"]
+        mates_within = forced_mate_moves(case["fen"], horizon)
+        if not mates_within or (accepted is not None and not set(accepted) <= set(mates_within)):
+            raise ValueError(f"reference forced-mate objective is unsatisfied: {case['id']}")
     if result is not None:
         if "score" in objective and result["score"] != objective["score"]:
             raise ValueError(f"score objective failed: {case['id']}")
@@ -62,6 +104,13 @@ def validate_objective(case, result=None):
             raise ValueError(f"tactical move objective failed: {case['id']}: {selected}")
         if objective.get("mate_in_one") and (selected not in mates or result["score"] != 99999):
             raise ValueError(f"mate-in-one objective failed: {case['id']}")
+        if "mate_in" in objective and (selected not in mates_within or
+            not 100000 - (2 * horizon - 1) <= result["score"] <= 99999):
+            raise ValueError(f"forced-mate objective failed: {case['id']}")
+        if "mate_in" in objective:
+            distance = 100000 - result["score"]
+            if distance % 2 != 1 or selected not in forced_mate_moves(case["fen"], (distance + 1) // 2):
+                raise ValueError(f"reported mate distance is unsupported: {case['id']}")
 
 
 def load_suite(path):

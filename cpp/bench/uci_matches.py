@@ -309,20 +309,38 @@ def main():
     parser = argparse.ArgumentParser(description="Sequential color-paired UCI match baseline; no Elo/SPRT inference")
     parser.add_argument("engine_a", type=pathlib.Path)
     parser.add_argument("engine_b", type=pathlib.Path)
-    parser.add_argument("--openings", type=pathlib.Path, default=pathlib.Path(__file__).with_name("match_openings.json"))
+    parser.add_argument("--openings", type=pathlib.Path)
+    parser.add_argument("--campaign", type=pathlib.Path)
     budget = parser.add_mutually_exclusive_group()
     budget.add_argument("--depth", type=int)
     budget.add_argument("--movetime", type=int)
     budget.add_argument("--nodes", type=int)
-    parser.add_argument("--rounds", type=int, default=1)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--max-plies", type=int, default=200)
-    parser.add_argument("--timeout", type=float, default=10)
+    parser.add_argument("--rounds", type=int)
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--max-plies", type=int)
+    parser.add_argument("--timeout", type=float)
     parser.add_argument("--profiles", type=pathlib.Path)
     parser.add_argument("--checkpoint", type=pathlib.Path)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
+    campaign = None
+    if args.campaign is not None:
+        controls = (args.openings, args.depth, args.movetime, args.nodes, args.rounds, args.seed,
+            args.max_plies, args.timeout, args.profiles)
+        if any(value is not None for value in controls):
+            parser.error("--campaign cannot be combined with opening, budget, schedule, profile or watchdog overrides")
+        from match_campaign import load_campaign
+        campaign = load_campaign(args.campaign)
+        data = campaign["metadata"]["specification"]
+        args.openings, args.profiles = campaign["opening_path"], campaign["profile_path"]
+        for name in ("rounds", "seed", "max_plies", "timeout"): setattr(args, name, data[name])
+        setattr(args, data["search_budget"]["kind"], data["search_budget"]["value"])
+    if args.openings is None: args.openings = pathlib.Path(__file__).with_name("match_openings.json")
+    if args.rounds is None: args.rounds = 1
+    if args.seed is None: args.seed = 0
+    if args.max_plies is None: args.max_plies = 200
+    if args.timeout is None: args.timeout = 10
     if args.resume and args.checkpoint is None:
         parser.error("--resume requires --checkpoint")
     depth = 2 if args.depth is None and args.movetime is None and args.nodes is None else args.depth
@@ -343,11 +361,15 @@ def main():
     openings = load_openings(opening_path)
     profile_path = args.profiles.resolve(strict=True) if args.profiles else None
     try:
-        validate_output_path(args.output, [*binaries.values(), opening_path, profile_path])
+        validate_output_path(args.output, [*binaries.values(), opening_path, profile_path, args.campaign])
     except ValueError as error:
         parser.error(str(error))
     profile_hash = digest(profile_path) if profile_path is not None else None
     profiles = load_profiles(profile_path)
+    if campaign is not None:
+        specification = campaign["metadata"]["specification"]
+        if opening_hash != specification["openings_sha256"] or profile_hash != specification["profiles_sha256"]:
+            raise ValueError("campaign source hashes changed before match setup")
     if depth is not None:
         budget_kind, budget_value = "depth", depth
     elif args.nodes is not None:
@@ -368,14 +390,16 @@ def main():
             "draws": DRAW_POLICY,
             "errors": "abort run without assigning a game result", "ply_limit_result": "unfinished"},
         "opening_cases": openings}
+    if campaign is not None: configuration["campaign"] = campaign["metadata"]
     def verify_sources():
         if (any(digest(path) != hashes[label] for label, path in binaries.items()) or digest(opening_path) != opening_hash or
-            (profile_path is not None and digest(profile_path) != profile_hash)):
+            (profile_path is not None and digest(profile_path) != profile_hash) or
+            (campaign is not None and digest(args.campaign) != campaign["metadata"]["sha256"])):
             raise RuntimeError("engine binary, openings or profile changed during matches")
     games = []
     if args.checkpoint is not None:
         try:
-            validate_output_path(args.checkpoint, [*binaries.values(), opening_path, profile_path])
+            validate_output_path(args.checkpoint, [*binaries.values(), opening_path, profile_path, args.campaign])
             if args.output is not None:
                 same_path = args.checkpoint.resolve() == args.output.resolve()
                 same_file = args.checkpoint.exists() and args.output.exists() and args.checkpoint.samefile(args.output)

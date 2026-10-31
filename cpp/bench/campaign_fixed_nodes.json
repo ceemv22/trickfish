@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "Twelve-family fixed-node diagnostic campaign",
+  "openings": "match_openings_extended.json",
+  "openings_sha256": "e48ee46aec9a49696c8d94a59680fd66e0cb06b946646f333db747a40dd7f706",
+  "opening_ids": [
+    "open-game",
+    "sicilian",
+    "french",
+    "caro-kann",
+    "scandinavian",
+    "pirc",
+    "queens-gambit",
+    "slav",
+    "kings-indian",
+    "nimzo-indian",
+    "english",
+    "reti"
+  ],
+  "profiles": null,
+  "profiles_sha256": null,
+  "search_budget": {
+    "kind": "nodes",
+    "value": 10000
+  },
+  "rounds": 1,
+  "seed": 20261031,
+  "max_plies": 200,
+  "timeout": 30
+}

@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "positions": [
+    {
+      "id": "queen-capture",
+      "fen": "4k3/8/8/8/8/8/q7/R3K3 w - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "a1a2"
+        ]
+      }
+    },
+    {
+      "id": "queen-capture-reflected",
+      "fen": "r3k3/Q7/8/8/8/8/8/4K3 b - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "a8a7"
+        ]
+      }
+    },
+    {
+      "id": "promotion",
+      "fen": "4k3/P7/8/8/8/8/8/4K3 w - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "a7a8q"
+        ]
+      }
+    },
+    {
+      "id": "promotion-reflected",
+      "fen": "4k3/8/8/8/8/8/p7/4K3 b - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "a2a1q"
+        ]
+      }
+    },
+    {
+      "id": "en-passant",
+      "fen": "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
+      "expect": {
+        "bestmoves": [
+          "e5d6"
+        ]
+      }
+    },
+    {
+      "id": "en-passant-reflected",
+      "fen": "4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1",
+      "expect": {
+        "bestmoves": [
+          "e4d3"
+        ]
+      }
+    },
+    {
+      "id": "mate-in-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "expect": {
+        "mate_in_one": true
+      }
+    },
+    {
+      "id": "mate-in-one-reflected",
+      "fen": "8/8/8/8/8/5kq1/8/7K b - - 0 1",
+      "expect": {
+        "mate_in_one": true
+      }
+    },
+    {
+      "id": "forced-evasion",
+      "fen": "7k/8/5K1Q/8/8/8/8/8 b - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "h8g8"
+        ]
+      }
+    },
+    {
+      "id": "forced-evasion-reflected",
+      "fen": "8/8/8/8/8/5k1q/8/7K w - - 0 1",
+      "expect": {
+        "bestmoves": [
+          "h1g1"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-1",
+      "fen": "7k/8/8/7K/8/8/8/4Q3 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "h5g6",
+          "h5h6"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-1-reflected",
+      "fen": "4q3/8/8/8/7k/8/8/7K b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "h4g3",
+          "h4h3"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-2",
+      "fen": "8/8/7Q/8/K7/8/8/k7 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "a4b3"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-2-reflected",
+      "fen": "K7/8/8/k7/8/7q/8/8 b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "a5b6"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-3",
+      "fen": "8/8/8/1Q6/5K2/8/8/6k1 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "f4g3"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-3-reflected",
+      "fen": "6K1/8/8/5k2/1q6/8/8/8 b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "f5g6"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-4",
+      "fen": "8/3Q4/8/8/8/8/7k/4K3 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "e1f2"
+        ]
+      }
+    },
+    {
+      "id": "q-forced-two-4-reflected",
+      "fen": "4k3/7K/8/8/8/8/3q4/8 b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "e8f7"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-1",
+      "fen": "8/8/8/8/4R3/7K/8/6k1 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "e4f4"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-1-reflected",
+      "fen": "6K1/8/7k/4r3/8/8/8/8 b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "e5f5"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-2",
+      "fen": "7R/8/8/8/8/4K3/8/6k1 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "e3f3"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-2-reflected",
+      "fen": "6K1/8/4k3/8/8/8/8/7r b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "e6f6"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-3",
+      "fen": "8/8/8/8/1R6/8/7k/5K2 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "b4b3"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-3-reflected",
+      "fen": "5k2/7K/8/1r6/8/8/8/8 b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "b5b6"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-4",
+      "fen": "8/8/8/8/8/7R/k2K4/8 w - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "d2c2",
+          "d2c1"
+        ]
+      }
+    },
+    {
+      "id": "r-forced-two-4-reflected",
+      "fen": "8/K2k4/7r/8/8/8/8/8 b - - 0 1",
+      "expect": {
+        "mate_in": 2,
+        "bestmoves": [
+          "d7c8",
+          "d7c7"
+        ]
+      }
+    }
+  ]
+}
