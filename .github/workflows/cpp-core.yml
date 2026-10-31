@@ -240,6 +240,14 @@ jobs:
           python cpp/bench/multipv_validation.py $binary --output build/multipv-validation.json
           if ($LASTEXITCODE -ne 0) { throw "MultiPV diagnostic replay failed" }
           Get-Content build/multipv-validation.json
+      - name: Validate completed-iteration progress and observer parity
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/search_progress.py $binary --output build/search-progress-validation.json
+          if ($LASTEXITCODE -ne 0) { throw "Search progress replay or observer parity failed" }
+          Get-Content build/search-progress-validation.json
       - name: Verify rank-one information in real UCI matches
         timeout-minutes: 3
         shell: pwsh
@@ -258,6 +266,7 @@ jobs:
           name: multipv-validation-${{ matrix.os }}-${{ matrix.kernel }}-${{ github.sha }}
           path: |
             build/multipv-validation.json
+            build/search-progress-validation.json
             build/multipv-match-smoke.json
             build/multipv-match-smoke.pgn
           if-no-files-found: warn
@@ -278,6 +287,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Quiescence benchmark checks failed" }
           python cpp/bench/test_multipv_validation.py
           if ($LASTEXITCODE -ne 0) { throw "MultiPV validator checks failed" }
+          python cpp/bench/test_search_progress.py
+          if ($LASTEXITCODE -ne 0) { throw "Search progress validator checks failed" }
           python cpp/bench/test_uci_multipv.py
           if ($LASTEXITCODE -ne 0) { throw "MultiPV match-client information checks failed" }
           python cpp/bench/test_mate_objectives.py

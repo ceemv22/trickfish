@@ -23,6 +23,7 @@
 #include "trickfish/movegen.hpp"
 #include "trickfish/search.hpp"
 #include "trickfish/multipv.hpp"
+#include "trickfish/reporting.hpp"
 #include "trickfish/time.hpp"
 
 namespace trickfish {
@@ -311,8 +312,9 @@ private:
         }
     }
 
-    void append_info(std::ostringstream& message, const SearchResult& result, std::uint64_t nodes, int rank = 0) {
-        message << "info depth " << result.completed_depth << " nodes " << nodes;
+    void append_info(std::ostringstream& message, const SearchResult& result, std::uint64_t nodes, SearchTiming timing, int rank = 0) {
+        message << "info depth " << result.completed_depth << " nodes " << nodes << " time " << timing.milliseconds <<
+            " nps " << timing.nodes_per_second;
         if (rank != 0) message << " multipv " << rank;
         if (result.completed_depth > 0) {
             if (std::abs(result.score) >= mate_threshold) {
@@ -328,15 +330,19 @@ private:
         }
     }
 
-    void emit_result(const MultiPVResult& result, int count) {
+    void emit_progress(const MultiPVResult& result, int count, std::chrono::milliseconds elapsed) {
         std::ostringstream message;
+        const auto timing = search_timing(result.nodes, elapsed);
         for (std::size_t index = 0; index < result.lines.size(); ++index) {
             if (index != 0) message << '\n';
-            append_info(message, result.lines[index], result.nodes, count == 1 ? 0 : static_cast<int>(index + 1));
+            append_info(message, result.lines[index], result.nodes, timing, count == 1 ? 0 : static_cast<int>(index + 1));
         }
-        const auto best = result.lines.empty() ? std::optional<Move>{} : result.lines.front().best_move;
-        message << "\nbestmove " << (best ? best->to_uci() : "0000");
         emit(message.str());
+    }
+
+    void emit_bestmove(const MultiPVResult& result) {
+        const auto best = result.lines.empty() ? std::optional<Move>{} : result.lines.front().best_move;
+        emit("bestmove " + (best ? best->to_uci() : std::string("0000")));
     }
 
     void start_search(GoLimits limits) {
@@ -345,14 +351,31 @@ private:
                 const SearchLimits search_limits{limits.nodes, limits.deadline,
                     [stop] { return stop.stop_requested(); }};
                 options.root_moves = limits.root_moves;
-                const auto result = iterative_multi_pv(root, limits.depth, count, options, search_limits, &history);
+                const auto started = std::chrono::steady_clock::now();
+                int published_depth = -1;
+                std::uint64_t published_nodes = 0;
+                std::size_t published_lines = 0;
+                const auto publish = [&](const MultiPVResult& progress, std::chrono::milliseconds elapsed) {
+                    emit_progress(progress, count, elapsed);
+                    published_depth = progress.completed_depth;
+                    published_nodes = progress.nodes;
+                    published_lines = progress.lines.size();
+                };
+                const auto observe = [&](const MultiPVResult& progress) {
+                    publish(progress, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started));
+                };
+                const auto result = iterative_multi_pv(root, limits.depth, count, options, search_limits, &history, observe);
+                const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
                 if (limits.infinite && !stop.stop_requested()) {
                     std::mutex wait_mutex;
                     std::unique_lock lock(wait_mutex);
                     std::condition_variable_any condition;
                     condition.wait(lock, stop, [] { return false; });
                 }
-                emit_result(result, count);
+                if (published_depth != result.completed_depth || published_nodes != result.nodes || published_lines != result.lines.size()) {
+                    publish(result, elapsed);
+                }
+                emit_bestmove(result);
             } catch (const std::exception& error) {
                 emit("info string search error: " + std::string(error.what()) + "\nbestmove 0000");
             }

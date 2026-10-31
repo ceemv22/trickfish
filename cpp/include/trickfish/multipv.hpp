@@ -16,7 +16,10 @@ struct MultiPVResult {
     std::uint64_t nodes = 0;
 };
 
+using MultiPVObserver = std::function<void(const MultiPVResult&)>;
+
 [[nodiscard]] MultiPVResult iterative_multi_pv(Position& position, int max_depth, int count,
-    const SearchOptions& options = {}, const SearchLimits& limits = {}, const RepetitionHistory* history = nullptr);
+    const SearchOptions& options = {}, const SearchLimits& limits = {}, const RepetitionHistory* history = nullptr,
+    const MultiPVObserver& observer = {});
 
 }

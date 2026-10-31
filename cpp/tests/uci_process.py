@@ -9,6 +9,9 @@ import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 from trickfish.position import Position as ReferencePosition, STARTING_FEN
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "bench"))
+from search_progress import trace_signature, validate_uci_batches
+
 BINARY = str(pathlib.Path(sys.argv.pop(1)).resolve())
 WHITE_MOVES = {f"{file}2{file}{rank}" for file in "abcdefgh" for rank in "34"} | {"b1a3", "b1c3", "g1f3", "g1h3"}
 BLACK_MOVES = {f"{file}7{file}{rank}" for file in "abcdefgh" for rank in "65"} | {"b8a6", "b8c6", "g8f6", "g8h6"}
@@ -17,28 +20,16 @@ class UciProcessTests(unittest.TestCase):
     def multi_batch(self, before, fen=STARTING_FEN, expected=None):
         best = self.until("bestmove ").split()[1]
         lines = [line for line in self.transcript[before:] if line.startswith("info depth ")]
-        if expected is not None: self.assertEqual(len(lines), expected, lines)
-        self.assertTrue(lines)
-        self.assertEqual([int(line.split(" multipv ")[1].split()[0]) for line in lines], list(range(1, len(lines) + 1)))
-        depths = {int(line.split()[2]) for line in lines}
-        nodes = {int(line.split(" nodes ")[1].split()[0]) for line in lines}
-        self.assertEqual(len(depths), 1)
-        self.assertEqual(len(nodes), 1)
-        roots = []
-        for line in lines:
-            pv = line.split(" pv ")[1].split() if " pv " in line else []
-            position = ReferencePosition.from_fen(fen)
-            for text in pv:
-                legal = {move.to_uci(): move for move in position.legal_moves()}
-                self.assertIn(text, legal, line)
-                position = position.make_move(legal[text])
-            if pv: roots.append(pv[0])
-        self.assertEqual(len(roots), len(set(roots)))
+        batches = validate_uci_batches(lines, fen, expected or 3, explicit_ranks=True)
+        last = batches[-1]
+        selected = lines[-len(last["lines"]):]
+        if expected is not None: self.assertEqual(len(selected), expected, selected)
+        roots = [line["pv"][0] for line in last["lines"] if line["pv"]]
         if roots: self.assertEqual(best, roots[0])
         else:
             legal = {move.to_uci() for move in ReferencePosition.from_fen(fen).legal_moves()}
             self.assertTrue(best == "0000" or best in legal)
-        return lines, best, next(iter(depths)), next(iter(nodes))
+        return selected, best, last["depth"], last["nodes"]
 
     def setUp(self):
         self.process = subprocess.Popen([BINARY, "--uci"], stdin=subprocess.PIPE,
@@ -316,7 +307,8 @@ class UciProcessTests(unittest.TestCase):
         self.send("go depth 2")
         self.assertEqual(self.until("bestmove "), original_best)
         restored = [line for line in self.transcript[before:] if line.startswith("info depth ")]
-        self.assertEqual(restored, original_info)
+        self.assertEqual(trace_signature(validate_uci_batches(restored, STARTING_FEN, 1)),
+            trace_signature(validate_uci_batches(original_info, STARTING_FEN, 1)))
         self.assertNotIn(" multipv ", restored[0])
 
     def test_multi_pv_options_snapshot_persist_and_reject_invalid_values(self):
@@ -382,6 +374,56 @@ class UciProcessTests(unittest.TestCase):
         lines, _, _, _ = self.multi_batch(before, expected=1)
         self.assertIn(" score cp 0", lines[0])
 
+    def test_live_single_pv_progress_precedes_infinite_stop(self):
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go infinite depth 2")
+        self.until("info depth 2 ")
+        self.send("isready")
+        self.until("readyok")
+        self.assertFalse(any(line.startswith("bestmove ") for line in self.transcript[before:]))
+        self.send("stop")
+        best = self.until("bestmove ").split()[1]
+        infos = [line for line in self.transcript[before:] if line.startswith("info depth ")]
+        batches = validate_uci_batches(infos, STARTING_FEN, 1)
+        self.assertEqual([batch["depth"] for batch in batches], [1, 2])
+        self.assertEqual(best, batches[-1]["lines"][0]["pv"][0])
+
+    def test_live_multi_pv_batches_precede_stop_and_remain_atomic(self):
+        self.send("setoption name MultiPV value 3")
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go infinite depth 2")
+        self.until("info depth 2 ")
+        self.send("isready")
+        self.until("readyok")
+        self.assertFalse(any(line.startswith("bestmove ") for line in self.transcript[before:]))
+        published = [line for line in self.transcript[before:] if line.startswith("info depth ")]
+        batches = validate_uci_batches(published, STARTING_FEN, 3)
+        self.assertEqual([batch["depth"] for batch in batches], [1, 2])
+        self.assertTrue(all(len(batch["lines"]) == 3 for batch in batches))
+        self.send("stop")
+        self.multi_batch(before, expected=3)
+
+    def test_live_stop_and_shared_node_limit_preserve_completed_batches(self):
+        self.send("setoption name MultiPV value 3")
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go depth 16 nodes 4096")
+        _, _, depth, nodes = self.multi_batch(before, expected=3)
+        self.assertGreaterEqual(depth, 1)
+        self.assertEqual(nodes, 4096)
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go infinite")
+        self.until("info depth 1 ")
+        self.send("stop")
+        self.multi_batch(before, expected=3)
+        self.send("stop")
+        self.send("isready")
+        self.until("readyok")
+        self.assertEqual(sum(line.startswith("bestmove ") for line in self.transcript[before:]), 1)
+
     def test_multi_pv_eof_and_quit_finish_one_search(self):
         for ending in ("", "quit\n"):
             result = subprocess.run([BINARY, "--uci"], input="uci\nsetoption name MultiPV value 3\nposition startpos\ngo infinite depth 64\n" + ending,
@@ -392,8 +434,10 @@ class UciProcessTests(unittest.TestCase):
             self.assertEqual(len(best), 1, result.stdout)
             self.assertIn(best[0].split()[1], WHITE_MOVES)
             self.assertTrue(infos)
-            self.assertEqual([int(line.split(" multipv ")[1].split()[0]) for line in infos], list(range(1, len(infos) + 1)))
-            self.assertEqual(len({int(line.split()[2]) for line in infos}), 1)
+            batches = validate_uci_batches(infos, STARTING_FEN, 3)
+            if batches[-1]["lines"][0]["pv"]:
+                self.assertEqual(best[0].split()[1], batches[-1]["lines"][0]["pv"][0])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,8 @@ def receive(lines):
 class MultiPVInformationTests(unittest.TestCase):
     def test_match_client_keeps_rank_one_information(self):
         primary = "info depth 2 multipv 1 score cp 30 pv e2e4"
-        line, information = receive([primary, "info depth 2 multipv 2 score cp 20 pv d2d4",
+        line, information = receive(["info depth 1 multipv 1 score cp 0 pv b1c3", "info depth 1 multipv 2 score cp -10 pv d2d4",
+            primary, "info depth 2 multipv 2 score cp 20 pv d2d4",
             "info depth 2 multipv 3 score cp 10 pv b1c3", "bestmove e2e4"])
         self.assertEqual(line, "bestmove e2e4")
         self.assertEqual(information, primary)

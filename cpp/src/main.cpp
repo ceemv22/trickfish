@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "trickfish/attacks.hpp"
 #include "trickfish/evaluation.hpp"
@@ -18,6 +19,30 @@
 #include "trickfish/search.hpp"
 #include "trickfish/uci.hpp"
 
+namespace {
+
+void write_multi_pv(std::ostream& output, const trickfish::MultiPVResult& result) {
+    output << "{\"schema_version\":1,\"completed_depth\":" << result.completed_depth <<
+        ",\"nodes\":" << result.nodes << ",\"stopped\":" << (result.stopped ? "true" : "false") << ",\"lines\":[";
+    for (std::size_t index = 0; index < result.lines.size(); ++index) {
+        if (index != 0) output << ',';
+        const auto& line = result.lines[index];
+        output << "{\"rank\":" << index + 1 << ",\"score\":" << line.score << ",\"completed_depth\":" <<
+            line.completed_depth << ",\"nodes\":" << line.nodes << ",\"bestmove\":";
+        if (line.best_move) output << '"' << line.best_move->to_uci() << '"';
+        else output << "null";
+        output << ",\"pv\":[";
+        for (std::size_t ply = 0; ply < line.principal_variation.size(); ++ply) {
+            if (ply != 0) output << ',';
+            output << '"' << line.principal_variation[ply].to_uci() << '"';
+        }
+        output << "]}";
+    }
+    output << "]}";
+}
+
+}
+
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
@@ -28,8 +53,8 @@ int main(int argc, char** argv) {
         if (argc == 1 || (argc == 2 && std::string_view(argv[1]) == "--uci")) {
             return trickfish::run_uci(std::cin, std::cout);
         }
-        if (argc > 1 && std::string_view(argv[1]) == "--multi-pv") {
-            if (argc < 4 || argc > 5) throw std::invalid_argument("usage: --multi-pv depth count [fen]");
+        if (argc > 1 && (std::string_view(argv[1]) == "--multi-pv" || std::string_view(argv[1]) == "--multi-pv-progress")) {
+            if (argc < 4 || argc > 5) throw std::invalid_argument("usage: --multi-pv|--multi-pv-progress depth count [fen]");
             int depth = 0, count = 0;
             for (const auto& item : {std::pair{std::string_view(argv[2]), &depth},
                     std::pair{std::string_view(argv[3]), &count}}) {
@@ -39,24 +64,21 @@ int main(int argc, char** argv) {
                 }
             }
             auto position = trickfish::Position::from_fen(argc == 5 ? argv[4] : start_fen);
-            const auto result = trickfish::iterative_multi_pv(position, depth, count);
-            std::cout << "{\"schema_version\":1,\"completed_depth\":" << result.completed_depth <<
-                ",\"nodes\":" << result.nodes << ",\"stopped\":" << (result.stopped ? "true" : "false") << ",\"lines\":[";
-            for (std::size_t index = 0; index < result.lines.size(); ++index) {
-                if (index != 0) std::cout << ',';
-                const auto& line = result.lines[index];
-                std::cout << "{\"rank\":" << index + 1 << ",\"score\":" << line.score << ",\"completed_depth\":" <<
-                    line.completed_depth << ",\"nodes\":" << line.nodes << ",\"bestmove\":";
-                if (line.best_move) std::cout << '"' << line.best_move->to_uci() << '"';
-                else std::cout << "null";
-                std::cout << ",\"pv\":[";
-                for (std::size_t ply = 0; ply < line.principal_variation.size(); ++ply) {
-                    if (ply != 0) std::cout << ',';
-                    std::cout << '"' << line.principal_variation[ply].to_uci() << '"';
+            const bool progress_mode = std::string_view(argv[1]) == "--multi-pv-progress";
+            std::vector<trickfish::MultiPVResult> iterations;
+            trickfish::MultiPVObserver observer;
+            if (progress_mode) observer = [&iterations](const trickfish::MultiPVResult& progress) { iterations.push_back(progress); };
+            const auto result = trickfish::iterative_multi_pv(position, depth, count, {}, {}, nullptr, observer);
+            if (progress_mode) {
+                std::cout << "{\"progress_schema_version\":1,\"iterations\":[";
+                for (std::size_t index = 0; index < iterations.size(); ++index) {
+                    if (index != 0) std::cout << ',';
+                    write_multi_pv(std::cout, iterations[index]);
                 }
-                std::cout << "]}";
+                std::cout << "],\"result\":";
             }
-            std::cout << "]}\n";
+            write_multi_pv(std::cout, result);
+            std::cout << (progress_mode ? "}\n" : "\n");
             return 0;
         }
         if (argc > 1 && (std::string_view(argv[1]) == "--see" || std::string_view(argv[1]) == "--see-reference" ||

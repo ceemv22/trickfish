@@ -54,6 +54,8 @@ struct SearchResult {
     std::uint64_t quiescence_filtered_quiet_moves = 0;
 };
 
+using SearchObserver = std::function<void(const SearchResult&)>;
+
 struct SearchOptions {
     bool use_table = true;
     bool use_pvs = true;
@@ -87,7 +89,8 @@ struct SearchLimits {
 };
 
 [[nodiscard]] SearchResult iterative_search(Position& position, int max_depth,
-    const SearchOptions& options, const SearchLimits& limits = {}, const RepetitionHistory* history = nullptr);
+    const SearchOptions& options, const SearchLimits& limits = {}, const RepetitionHistory* history = nullptr,
+    const SearchObserver& observer = {});
 
 [[nodiscard]] SearchResult search(Position& position, int depth, bool use_table = true, bool use_pvs = true, bool use_killers = true);
 [[nodiscard]] SearchResult iterative_search(Position& position, int max_depth, bool use_table = true,

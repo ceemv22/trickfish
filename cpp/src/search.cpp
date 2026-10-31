@@ -626,6 +626,42 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
     return best;
 }
 
+void update_counters(SearchResult& result, const SearchBudget& budget, std::uint64_t fail_low, std::uint64_t fail_high) {
+    result.nodes = budget.nodes;
+    result.transposition_hits = budget.hits;
+    result.pvs_probes = budget.pvs_probes;
+    result.pvs_researches = budget.pvs_researches;
+    result.aspiration_fail_low = fail_low;
+    result.aspiration_fail_high = fail_high;
+    result.killer_cutoffs = budget.killer_cutoffs;
+    result.killer_moves_searched = budget.killer_moves_searched;
+    result.history_rewards = budget.history_rewards;
+    result.history_penalties = budget.history_penalties;
+    result.history_moves_searched = budget.history_moves_searched;
+    result.exchange_evaluations = budget.exchange_evaluations;
+    result.exchange_nodes = budget.exchange_nodes;
+    result.exchange_cutoffs = budget.exchange_cutoffs;
+    result.continuation_updates = budget.continuation_updates;
+    result.continuation_moves_searched = budget.continuation_moves_searched;
+    result.null_probes = budget.null_probes;
+    result.null_verifications = budget.null_verifications;
+    result.null_cutoffs = budget.null_cutoffs;
+    result.lmr_reductions = budget.lmr_reductions;
+    result.lmr_researches = budget.lmr_researches;
+    result.futility_pruned = budget.futility_pruned;
+    result.razor_probes = budget.razor_probes;
+    result.razor_cutoffs = budget.razor_cutoffs;
+    result.check_extensions = budget.check_extensions;
+    result.correction_updates = budget.correction_updates;
+    result.correction_applications = budget.correction_applications;
+    result.mate_distance_cutoffs = budget.mate_distance_cutoffs;
+    result.pawn_cache_hits = budget.pawn_cache.hits();
+    result.pawn_cache_misses = budget.pawn_cache.misses();
+    result.quiescence_ordering_calls = budget.quiescence_ordering_calls;
+    result.quiescence_ordered_moves = budget.quiescence_ordered_moves;
+    result.quiescence_filtered_quiet_moves = budget.quiescence_filtered_quiet_moves;
+}
+
 }
 
 SearchResult search_impl(Position& position, int depth, TranspositionTable* table, SearchBudget* budget = nullptr, bool use_pvs = true,
@@ -683,7 +719,7 @@ SearchResult iterative_search(Position& position, int max_depth, bool use_table,
 }
 
 SearchResult iterative_search(Position& position, int max_depth, const SearchOptions& options,
-    const SearchLimits& limits, const RepetitionHistory* history) {
+    const SearchLimits& limits, const RepetitionHistory* history, const SearchObserver& observer) {
     if (max_depth < 1 || max_depth > 64) {
         throw std::invalid_argument("search depth must be between 1 and 64");
     }
@@ -776,43 +812,16 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
             result.stopped = true;
             break;
         }
+        if (observer) {
+            auto progress = result;
+            update_counters(progress, budget, fail_low, fail_high);
+            observer(progress);
+        }
         if (!result.best_move) {
             break;
         }
     }
-    result.nodes = budget.nodes;
-    result.transposition_hits = budget.hits;
-    result.pvs_probes = budget.pvs_probes;
-    result.pvs_researches = budget.pvs_researches;
-    result.aspiration_fail_low = fail_low;
-    result.aspiration_fail_high = fail_high;
-    result.killer_cutoffs = budget.killer_cutoffs;
-    result.killer_moves_searched = budget.killer_moves_searched;
-    result.history_rewards = budget.history_rewards;
-    result.history_penalties = budget.history_penalties;
-    result.history_moves_searched = budget.history_moves_searched;
-    result.exchange_evaluations = budget.exchange_evaluations;
-    result.exchange_nodes = budget.exchange_nodes;
-    result.exchange_cutoffs = budget.exchange_cutoffs;
-    result.continuation_updates = budget.continuation_updates;
-    result.continuation_moves_searched = budget.continuation_moves_searched;
-    result.null_probes = budget.null_probes;
-    result.null_verifications = budget.null_verifications;
-    result.null_cutoffs = budget.null_cutoffs;
-    result.lmr_reductions = budget.lmr_reductions;
-    result.lmr_researches = budget.lmr_researches;
-    result.futility_pruned = budget.futility_pruned;
-    result.razor_probes = budget.razor_probes;
-    result.razor_cutoffs = budget.razor_cutoffs;
-    result.check_extensions = budget.check_extensions;
-    result.correction_updates = budget.correction_updates;
-    result.correction_applications = budget.correction_applications;
-    result.mate_distance_cutoffs = budget.mate_distance_cutoffs;
-    result.pawn_cache_hits = budget.pawn_cache.hits();
-    result.pawn_cache_misses = budget.pawn_cache.misses();
-    result.quiescence_ordering_calls = budget.quiescence_ordering_calls;
-    result.quiescence_ordered_moves = budget.quiescence_ordered_moves;
-    result.quiescence_filtered_quiet_moves = budget.quiescence_filtered_quiet_moves;
+    update_counters(result, budget, fail_low, fail_high);
     return result;
 }
 

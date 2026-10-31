@@ -30,17 +30,19 @@ bool ranked_before(const SearchResult& left, const SearchResult& right) {
 }
 
 MultiPVResult iterative_multi_pv(Position& position, int max_depth, int count,
-    const SearchOptions& options, const SearchLimits& limits, const RepetitionHistory* history) {
+    const SearchOptions& options, const SearchLimits& limits, const RepetitionHistory* history, const MultiPVObserver& observer) {
     if (count < 1 || count > maximum_multi_pv) throw std::invalid_argument("MultiPV must be between 1 and 16");
     if (max_depth < 1 || max_depth > 64) throw std::invalid_argument("search depth must be between 1 and 64");
-    if (count == 1) return single_result(iterative_search(position, max_depth, options, limits, history));
+    SearchObserver single_observer;
+    if (observer) single_observer = [&observer](const SearchResult& line) { observer(single_result(line)); };
+    if (count == 1) return single_result(iterative_search(position, max_depth, options, limits, history, single_observer));
     SearchLimits fallback_limits;
     fallback_limits.nodes = 0;
     auto fallback = iterative_search(position, 1, options, fallback_limits, history);
     const auto legal = generate_legal_moves(position);
     if (legal.empty() || position.is_insufficient_material() || is_move_count_draw(position, options.draw_policy) ||
         (history != nullptr && history->can_claim_threefold_repetition())) {
-        return single_result(iterative_search(position, max_depth, options, limits, history));
+        return single_result(iterative_search(position, max_depth, options, limits, history, single_observer));
     }
     std::vector<Move> allowed = options.root_moves;
     if (allowed.empty()) allowed.assign(legal.begin(), legal.end());
@@ -80,6 +82,7 @@ MultiPVResult iterative_multi_pv(Position& position, int max_depth, int count,
         std::sort(batch.begin(), batch.end(), ranked_before);
         result.lines = std::move(batch);
         result.completed_depth = depth;
+        if (observer) observer(result);
     }
     return result;
 }
