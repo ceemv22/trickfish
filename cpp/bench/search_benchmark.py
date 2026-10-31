@@ -140,7 +140,8 @@ def parse_result(output, fen, requested_depth, pv_extra=0):
         fields[parts[0]] = parts[1:]
     required = {"bestmove", "score", "pv", "depth", "stopped", "nodes"}
     cache_fields = {"pawn_cache_hits", "pawn_cache_misses"}
-    if set(fields) not in (required, required | cache_fields):
+    quiescence_fields = {"q_ordering_calls", "q_ordered_moves", "q_filtered_quiet_moves"}
+    if set(fields) not in (required, required | cache_fields, required | quiescence_fields):
         raise ValueError("unexpected search output fields")
     for key in ("bestmove", "score", "depth", "stopped", "nodes"):
         if len(fields[key]) != 1:
@@ -151,6 +152,11 @@ def parse_result(output, fen, requested_depth, pv_extra=0):
         for key in cache_fields:
             if len(fields[key]) != 1 or not fields[key][0].isascii() or not fields[key][0].isdecimal():
                 raise ValueError("invalid pawn cache work counter")
+            result[key] = int(fields[key][0])
+    if quiescence_fields <= set(fields):
+        for key in quiescence_fields:
+            if len(fields[key]) != 1 or not fields[key][0].isascii() or not fields[key][0].isdecimal():
+                raise ValueError("invalid quiescence work counter")
             result[key] = int(fields[key][0])
     if fields["stopped"] != ["false"] or result["nodes"] <= 0:
         raise ValueError("benchmark search stopped or visited no nodes")
@@ -175,7 +181,7 @@ def parse_result(output, fen, requested_depth, pv_extra=0):
     return result
 
 
-MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction", "scale": "--search-scale", "ordering": "--search-order-reference", "mate_distance": "--search-mdp", "pawn_cache": "--search-pawn-cache", "reference_binary": "--search"}
+MODES = {"default": "--search", "alphabeta": "--search-ab", "exchange": "--search-see", "null": "--search-null", "lmr": "--search-lmr", "futility": "--search-futility", "razor": "--search-razor", "check": "--search-check", "correction": "--search-correction", "scale": "--search-scale", "ordering": "--search-order-reference", "mate_distance": "--search-mdp", "pawn_cache": "--search-pawn-cache", "reference_binary": "--search", "quiescence_compact": "--search-q-compact", "quiescence_reference": "--search-q-reference"}
 
 
 def run_sample(binary, case, depth, timeout, mode):
@@ -186,6 +192,13 @@ def run_sample(binary, case, depth, timeout, mode):
     result = parse_result(process.stdout, case["fen"], depth, 1 if mode == "check" else 0)
     if mode == "pawn_cache" and not {"pawn_cache_hits", "pawn_cache_misses"} <= set(result):
         raise ValueError("pawn cache diagnostic omitted work counters")
+    if mode in {"quiescence_compact", "quiescence_reference"}:
+        if not {"q_ordering_calls", "q_ordered_moves", "q_filtered_quiet_moves"} <= set(result):
+            raise ValueError("quiescence diagnostic omitted work counters")
+        minimum = 2 if mode == "quiescence_compact" else 1
+        if result["q_ordered_moves"] < minimum * result["q_ordering_calls"] or (
+            mode == "quiescence_reference" and result["q_filtered_quiet_moves"] != 0):
+            raise ValueError("inconsistent quiescence work counters")
     validate_objective(case, result)
     return result, elapsed
 
@@ -271,6 +284,7 @@ def main():
     parser.add_argument("--compare-ordering", action="store_true")
     parser.add_argument("--compare-mate-distance", action="store_true")
     parser.add_argument("--compare-pawn-cache", action="store_true")
+    parser.add_argument("--compare-quiescence", action="store_true")
     parser.add_argument("--reference-binary", type=pathlib.Path)
     parser.add_argument("--reference-trace", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
@@ -305,6 +319,7 @@ def main():
     if args.compare_ordering: modes.append("ordering")
     if args.compare_mate_distance: modes.append("mate_distance")
     if args.compare_pawn_cache: modes.append("pawn_cache")
+    if args.compare_quiescence: modes.extend(("quiescence_compact", "quiescence_reference"))
     if reference_binary is not None: modes.append("reference_binary")
     results = []
     for case in suite["positions"]:
@@ -312,6 +327,17 @@ def main():
             reference_binary=reference_binary, warmups=args.warmups)
         candidate = measured["default"]
         candidate["execution_order"] = order
+        if args.compare_quiescence:
+            compact, reference = measured["quiescence_compact"], measured["quiescence_reference"]
+            if any(compact[key] != candidate[key] or reference[key] != candidate[key]
+                    for key in ("score", "depth", "nodes", "bestmove", "pv")):
+                raise ValueError(f"quiescence changed search trace: {case['id']}")
+            if compact["q_ordering_calls"] > reference["q_ordering_calls"] or compact["q_ordered_moves"] > reference["q_ordered_moves"]:
+                raise ValueError("quiescence compaction increased ordering work")
+            candidate["quiescence_comparison"] = {"compact": compact, "reference": reference, "trace_equal": True,
+                "ordering_call_delta": compact["q_ordering_calls"] - reference["q_ordering_calls"],
+                "ordered_move_delta": compact["q_ordered_moves"] - reference["q_ordered_moves"],
+                "median_paired_wall_ratio": paired_wall_ratio(compact, reference)}
         if args.compare_alphabeta:
             reference = measured["alphabeta"]
             candidate["alphabeta_comparison"] = compare_reference(candidate, reference)
@@ -366,6 +392,8 @@ def main():
             "correction_history": False, "comparison_correction_table": False,
             "compare_correction": args.compare_correction,
             "pawn_cache": False, "compare_pawn_cache": args.compare_pawn_cache,
+            "current_source_compact_quiescence_default": True, "compare_quiescence": args.compare_quiescence,
+            "quiescence_reference_policy": "sort all legal moves then skip quiets outside check",
             "comparison_pawn_cache": {"capacity": 4096, "phase_key": True, "lifetime": "one iterative search"},
             "mate_distance_pruning": False, "compare_mate_distance": args.compare_mate_distance,
             "cached_ordering": True, "comparison_cached_ordering": False, "compare_ordering": args.compare_ordering,

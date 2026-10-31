@@ -95,10 +95,12 @@ int main(int argc, char** argv) {
         const bool null_search = argc > 1 && std::string_view(argv[1]) == "--search-null";
         const bool exchange_search = argc > 1 && std::string_view(argv[1]) == "--search-see";
         const bool reference_search = argc > 1 && std::string_view(argv[1]) == "--search-ab";
+        const bool quiescence_compact = argc > 1 && std::string_view(argv[1]) == "--search-q-compact";
+        const bool quiescence_reference = argc > 1 && std::string_view(argv[1]) == "--search-q-reference";
         const bool budgeted_search = limited_search || timed_search;
-        if (argc > 1 && (std::string_view(argv[1]) == "--search" || pawn_cache_search || mate_distance_search || ordering_reference || scaling_search || correction_search || check_search || razor_search || futility_search || lmr_search || null_search || exchange_search || reference_search || budgeted_search)) {
+        if (argc > 1 && (std::string_view(argv[1]) == "--search" || quiescence_compact || quiescence_reference || pawn_cache_search || mate_distance_search || ordering_reference || scaling_search || correction_search || check_search || razor_search || futility_search || lmr_search || null_search || exchange_search || reference_search || budgeted_search)) {
             if (argc < (budgeted_search ? 4 : 3) || argc > (budgeted_search ? 5 : 4)) {
-                throw std::invalid_argument("usage: --search|--search-ab|--search-see|--search-null|--search-lmr|--search-futility|--search-razor|--search-check|--search-correction|--search-scale|--search-order-reference|--search-mdp|--search-pawn-cache depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
+                throw std::invalid_argument("usage: --search|--search-ab|--search-see|--search-null|--search-lmr|--search-futility|--search-razor|--search-check|--search-correction|--search-scale|--search-order-reference|--search-mdp|--search-pawn-cache|--search-q-compact|--search-q-reference depth [fen], --search-nodes depth nodes [fen], or --search-time depth milliseconds [fen]");
             }
             int depth = 0;
             const std::string_view text(argv[2]);
@@ -134,6 +136,7 @@ int main(int argc, char** argv) {
             auto position = trickfish::Position::from_fen(argc > fen_index ? argv[fen_index] : start_fen);
             trickfish::SearchOptions options;
             options.use_pawn_cache = pawn_cache_search;
+            options.use_compact_quiescence = !quiescence_reference;
             options.use_mate_distance = mate_distance_search;
             options.use_cached_ordering = !ordering_reference;
             options.use_correction = correction_search;
@@ -163,6 +166,11 @@ int main(int argc, char** argv) {
             std::cout << "depth " << result.completed_depth << '\n';
             std::cout << "stopped " << (result.stopped ? "true" : "false") << '\n';
             std::cout << "nodes " << result.nodes << '\n';
+            if (quiescence_compact || quiescence_reference) {
+                std::cout << "q_ordering_calls " << result.quiescence_ordering_calls << '\n';
+                std::cout << "q_ordered_moves " << result.quiescence_ordered_moves << '\n';
+                std::cout << "q_filtered_quiet_moves " << result.quiescence_filtered_quiet_moves << '\n';
+            }
             if (pawn_cache_search) {
                 std::cout << "pawn_cache_hits " << result.pawn_cache_hits << '\n';
                 std::cout << "pawn_cache_misses " << result.pawn_cache_misses << '\n';

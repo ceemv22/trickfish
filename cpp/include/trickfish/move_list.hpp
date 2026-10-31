@@ -21,6 +21,10 @@ public:
 
     [[nodiscard]] constexpr std::size_t size() const { return size_; }
     [[nodiscard]] constexpr bool empty() const { return size_ == 0; }
+    constexpr void truncate(std::size_t size) {
+        if (size > size_) throw std::out_of_range("move list truncation cannot grow the list");
+        size_ = size;
+    }
     [[nodiscard]] constexpr Move* begin() { return moves_.data(); }
     [[nodiscard]] constexpr Move* end() { return moves_.data() + size_; }
     [[nodiscard]] constexpr const Move* begin() const { return moves_.data(); }

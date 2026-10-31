@@ -78,6 +78,10 @@ struct SearchBudget {
     CorrectionHistory correction{};
     std::uint64_t correction_updates = 0;
     std::uint64_t correction_applications = 0;
+    bool use_compact_quiescence = true;
+    std::uint64_t quiescence_ordering_calls = 0;
+    std::uint64_t quiescence_ordered_moves = 0;
+    std::uint64_t quiescence_filtered_quiet_moves = 0;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -389,9 +393,23 @@ int quiescence(Position& position, int ply, int qdepth, int alpha, int beta, std
         }
         alpha = std::max(alpha, best);
     }
-    order_moves(position, moves);
+    const bool compact = budget == nullptr || budget->use_compact_quiescence;
+    if (compact && !in_check) {
+        const auto original_size = moves.size();
+        const auto retained_end = std::remove_if(moves.begin(), moves.end(),
+            [&position](const Move& move) { return is_quiet(position, move); });
+        moves.truncate(static_cast<std::size_t>(retained_end - moves.begin()));
+        if (budget != nullptr) budget->quiescence_filtered_quiet_moves += original_size - moves.size();
+    }
+    if (!compact || moves.size() > 1) {
+        if (budget != nullptr) {
+            ++budget->quiescence_ordering_calls;
+            budget->quiescence_ordered_moves += moves.size();
+        }
+        order_moves(position, moves);
+    }
     for (const auto& move : moves) {
-        if (!in_check && position.piece_at(move.to) == '.' && !move.en_passant && move.promotion == '\0') {
+        if (!compact && !in_check && is_quiet(position, move)) {
             continue;
         }
         int score = 0;
@@ -632,6 +650,9 @@ SearchResult search_impl(Position& position, int depth, TranspositionTable* tabl
     result.history_moves_searched = budget->history_moves_searched;
     result.continuation_updates = budget->continuation_updates;
     result.continuation_moves_searched = budget->continuation_moves_searched;
+    result.quiescence_ordering_calls = budget->quiescence_ordering_calls;
+    result.quiescence_ordered_moves = budget->quiescence_ordered_moves;
+    result.quiescence_filtered_quiet_moves = budget->quiescence_filtered_quiet_moves;
     return result;
 }
 
@@ -716,6 +737,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     budget.use_cached_ordering = options.use_cached_ordering;
     budget.use_mate_distance = options.use_mate_distance;
     budget.use_pawn_cache = options.use_pawn_cache;
+    budget.use_compact_quiescence = options.use_compact_quiescence;
     if (!options.root_moves.empty()) budget.root_moves = &options.root_moves;
     SearchResult result;
     if (!root_legal.empty()) {
@@ -788,6 +810,9 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     result.mate_distance_cutoffs = budget.mate_distance_cutoffs;
     result.pawn_cache_hits = budget.pawn_cache.hits();
     result.pawn_cache_misses = budget.pawn_cache.misses();
+    result.quiescence_ordering_calls = budget.quiescence_ordering_calls;
+    result.quiescence_ordered_moves = budget.quiescence_ordered_moves;
+    result.quiescence_filtered_quiet_moves = budget.quiescence_filtered_quiet_moves;
     return result;
 }
 
