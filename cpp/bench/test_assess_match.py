@@ -19,6 +19,7 @@ from uci_matches import build_schedule, DRAW_POLICY, score_games
 
 
 def fixture(root, outcomes):
+    root = root.resolve(strict=True)
     candidate, baseline = root / "candidate", root / "baseline"
     candidate.write_text("candidate")
     baseline.write_text("baseline")
@@ -68,6 +69,26 @@ def fixture(root, outcomes):
 
 
 class SignTests(unittest.TestCase):
+    def test_fixture_canonicalizes_noncanonical_temporary_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory).resolve()
+            (root / "nested").mkdir()
+            report, plan, *_ = fixture(root / "nested" / "..", [("W", "L")])
+            self.assertEqual(report["openings"]["path"], str((root / "openings.json").resolve()))
+            self.assertEqual(assessor.assess_report(report, plan)["status"], "evaluated")
+
+    def test_campaign_relocation_override_still_requires_the_original_hash(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory).resolve()
+            report, plan, _, _, campaign = fixture(root, [("W", "L")])
+            replacement = root / "replacement.json"
+            replacement.write_bytes(campaign.read_bytes() + b"\n")
+            with self.assertRaisesRegex(ValueError, "campaign differs"):
+                assessor.load_plan(plan, replacement)
+            replacement.write_bytes(campaign.read_bytes())
+            loaded, _, _ = assessor.load_plan(plan, replacement)
+            self.assertEqual(loaded["campaign_sha256"], assessor.digest(campaign))
+
     def test_exact_tail_matches_exhaustive_fair_coin_sequences(self):
         for count in range(10):
             sums = [sum(bits) for bits in itertools.product((0, 1), repeat=count)]

@@ -65,7 +65,7 @@ def create_plan(candidate, baseline, campaign_path, alpha="0.05"):
         "baseline_sha256": digest(baseline), "candidate_label": "a", "pairs": len(campaign["openings"]), "alpha": alpha}
 
 
-def load_plan(path):
+def load_plan(path, campaign_override=None):
     source = pathlib.Path(path).resolve(strict=True)
     source_hash = digest(source)
     data = read_json(source)
@@ -82,7 +82,8 @@ def load_plan(path):
     if not isinstance(data["campaign"], str) or not data["campaign"]:
         raise ValueError("missing campaign path")
     alpha_ratio(data["alpha"])
-    campaign = load_campaign((source.parent / data["campaign"]).resolve(strict=True))
+    campaign_path = source.parent / data["campaign"] if campaign_override is None else pathlib.Path(campaign_override)
+    campaign = load_campaign(campaign_path.resolve(strict=True))
     if (campaign["metadata"]["sha256"] != data["campaign_sha256"] or
         campaign["metadata"]["specification"]["rounds"] != 1 or len(campaign["openings"]) != data["pairs"]):
         raise ValueError("campaign differs from fixed sign plan")
@@ -90,8 +91,8 @@ def load_plan(path):
     return data, campaign, {"path": str(source), "sha256": source_hash}
 
 
-def assess_report(report, plan_path):
-    plan, campaign, source = load_plan(plan_path)
+def assess_report(report, plan_path, campaign_override=None):
+    plan, campaign, source = load_plan(plan_path, campaign_override)
     audit = audit_campaign(report, campaign["metadata"]["path"])
     if audit["campaign"] != campaign["metadata"]: raise ValueError("campaign changed during assessment")
     for label, key in (("a", "candidate_sha256"), ("b", "baseline_sha256")):

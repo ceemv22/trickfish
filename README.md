@@ -614,4 +614,35 @@ The plan pins campaign and candidate/baseline binary hashes, candidate label, 1.
 
 The model assumes independent decisive pair signs with null win probability at most one half, conditional on which pairs tie. The plan must precede observations and be evaluated only once; repeated looks, outcome-driven opening selection or trying many candidates require a separately controlled design. Hashes cannot prove prespecification, independence or authenticated engine execution. A rejected null concerns pair-win frequency for this design, not mean score, Elo, general strength or automatic candidate acceptance. A non-rejection does not establish equivalence. Sequential SPRT and tuning remain unimplemented.
 
-Configured tests exhaustively enumerate small fair-sign samples, exercise exact alpha boundaries and tiny tails, replay all five pair-score bins and check corruption/source/CLI protections. Core CI will also create a plan before its real 12-pair same-binary/two-ply smoke campaign and require an inconclusive assessment. The smoke campaign is a protocol check, not a strength experiment. New tooling integration awaits pushed CI; C24a remains uncredited.
+Configured tests exhaustively enumerate small fair-sign samples, exercise exact alpha boundaries and tiny tails, replay all five pair-score bins and check corruption/source/CLI protections. Core CI will also create a plan before its real 12-pair same-binary/two-ply smoke campaign and require an inconclusive assessment. The smoke campaign is a protocol check, not a strength experiment. At `a7cccaa`, Linux Core configurations passed, but Windows test fixtures failed campaign opening provenance because their temporary paths were not canonicalized. The fixture now resolves its root before recording metadata, with a noncanonical-path regression case. The corrected Windows run and new experiment integration await pushed CI; C24a remains uncredited.
+
+## Reproducible experiment runner
+
+`cpp/bench/run_experiment.py` combines planning, matches, pair checkpoints, campaign audit, sign assessment, PGN export and a Markdown summary. A new experiment directory is required; existing directories are preserved.
+
+```powershell
+python cpp/bench/run_experiment.py run candidate.exe baseline.exe --campaign cpp/bench/campaign_fixed_nodes.json --alpha 0.05 --directory build/experiment-001
+python cpp/bench/run_experiment.py resume build/experiment-001
+python cpp/bench/run_experiment.py verify build/experiment-001
+```
+
+Before play, the runner copies the exact opening/profile bytes and original campaign into the directory, writes a campaign snapshot with local input paths, then records a sign plan and manifest. The manifest binds engine hashes, snapshot hashes and the Python method/rule source hashes. Optional `--provenance build.json` snapshots reported build metadata; it does not authenticate a build. The original campaign/opening/profile files are no longer required after setup. Search budget, schedule, seed, profiles, alpha and horizon cannot be overridden on resume.
+
+The underlying match runner checkpoints completed color pairs. An engine error aborts without assigning a result; resume repeats an interrupted pair and retains earlier completed pairs. Changed engine bytes or method/snapshot/plan hashes block unfinished execution. A failure during post-processing leaves no final receipt; resume can regenerate derived reports without replaying completed games. Completed resume is read-only and launches no engines. Use one writer per experiment directory. Interrupted setup before a complete manifest requires a new directory; it is not a playable checkpoint.
+
+The evidence directory contains:
+
+| File | Purpose |
+| --- | --- |
+| `experiment.json`, `sign-plan.json` | Recorded input/method identities and fixed-horizon plan |
+| `source-campaign.json`, `campaign.json`, `openings.json`, optional `profiles.json` | Original plan and runnable snapshots |
+| `checkpoint.json`, `matches.json` | Pair checkpoint and final raw match report |
+| `audit.json`, `assessment.json` | Replayed campaign accounting and conditional sign-test result |
+| `games.pgn`, `summary.md` | Legal PGN mainlines and readable per-engine/per-opening accounting |
+| `receipt.json` | Final hashes and decision, written only after replay-derived validation |
+
+Verification checks receipt hashes, replays games, cross-checks the completed checkpoint, and regenerates audit, assessment, PGN and summary. Editing a derived report and updating its receipt hash still fails if it disagrees with replay. A completed directory can be copied elsewhere and verified without the original engines or input files. Verification validates recorded provenance before rebasing only the known campaign/input paths in memory; archived bytes and hashes remain unchanged. The matching method/rule source bytes are required. An unfinished relocated directory cannot restart engines: resume execution at its original location. Hash consistency does not prove genuine engine execution, planning chronology, independence or a strength gain.
+
+`C++ Core` now configures a real 12-pair same-binary experiment on every OS/kernel job, verifies it and resumes the completed directory. It must remain inconclusive because the binaries are identical and games are capped at two searched plies. The manually dispatched `C++ Paired Experiment` workflow builds candidate and requested baseline revisions in Release mode with ray sliders on Ubuntu and Windows, records actual Git revisions and kernel selection, runs either the smoke or fixed-node campaign, and uploads the directory even after failure, retaining partial checkpoints when available. Artifacts expire after 30 days; cross-runner checkpoint continuation is not provided. Each OS is a separate experiment; their p-values are not pooled or used as repeated opportunities for acceptance. Define a separate combined-testing policy before using both for a selection decision.
+
+The current default baseline is accepted `6b7089a`; identical compiled bytes deliberately prevent hypothesis evaluation. A fixed-node campaign can also finish with unresolved games and therefore no decision. Workflow success confirms the configured process and evidence checks, not playing strength. New runner/Windows-fix execution and the manual two-revision workflow await pushed CI. C24a/C24c remain uncredited; sequential SPRT and tuning remain separate work.

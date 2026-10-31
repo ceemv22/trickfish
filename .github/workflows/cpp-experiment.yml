@@ -1,0 +1,99 @@
+name: C++ Paired Experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: Baseline Git revision with compatible UCI and ray-kernel CLI
+        required: true
+        default: 6b7089aa96a14afa5377f8ec3c535c93795f948e
+        type: string
+      campaign:
+        description: Predeclared campaign; smoke is a protocol check
+        required: true
+        default: smoke
+        type: choice
+        options: [smoke, fixed-nodes]
+      alpha:
+        description: One-sided fixed-horizon sign-test alpha
+        required: true
+        default: '0.05'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  experiment:
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      EXPERIMENT_CAMPAIGN: ${{ inputs.campaign }}
+      EXPERIMENT_ALPHA: ${{ inputs.alpha }}
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Check out baseline
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.baseline_ref }}
+          path: baseline-source
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Configure both Release engines
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            cmake -S . -B build -A x64 -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON
+            if ($LASTEXITCODE -ne 0) { throw "Candidate configure failed" }
+            cmake -S baseline-source -B baseline-source/build -A x64 -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON
+          } else {
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON
+            if ($LASTEXITCODE -ne 0) { throw "Candidate configure failed" }
+            cmake -S baseline-source -B baseline-source/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Baseline configure failed" }
+      - name: Build both engines
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target trickfish_cpp --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "Candidate build failed" }
+          cmake --build baseline-source/build --config Release --target trickfish_cpp --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "Baseline build failed" }
+      - name: Record build provenance and run the predeclared experiment
+        shell: pwsh
+        run: |
+          $candidateBinary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $baselineBinary = if ($IsWindows) { ".\baseline-source\build\Release\trickfish_cpp.exe" } else { "./baseline-source/build/trickfish_cpp" }
+          foreach ($binary in @($candidateBinary, $baselineBinary)) {
+            $kernel = & $binary --slider-kernel
+            if ($LASTEXITCODE -ne 0 -or $kernel -ne "ray") { throw "Requested ray kernel was not selected" }
+          }
+          python -c "import json,platform,subprocess; from pathlib import Path; d={'candidate_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseline_revision':subprocess.check_output(['git','-C','baseline-source','rev-parse','HEAD'],text=True).strip(),'configuration':'Release','candidate_kernel':'ray','baseline_kernel':'ray','runner_platform':platform.platform(),'inference':'reported build provenance; not authenticated execution'}; Path('build/experiment-build.json').write_text(json.dumps(d,indent=2),encoding='utf-8')"
+          if ($LASTEXITCODE -ne 0) { throw "Build provenance recording failed" }
+          $campaign = if ($env:EXPERIMENT_CAMPAIGN -eq "smoke") { "cpp/bench/campaign_smoke.json" } else { "cpp/bench/campaign_fixed_nodes.json" }
+          python cpp/bench/run_experiment.py run $candidateBinary $baselineBinary --campaign $campaign --alpha $env:EXPERIMENT_ALPHA --provenance build/experiment-build.json --directory build/paired-experiment
+          if ($LASTEXITCODE -ne 0) { throw "Paired experiment failed" }
+          python cpp/bench/run_experiment.py verify build/paired-experiment
+          if ($LASTEXITCODE -ne 0) { throw "Paired experiment verification failed" }
+          Get-Content build/paired-experiment/summary.md
+      - name: Preserve experiment evidence including partial checkpoints
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: paired-experiment-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            build/paired-experiment/
+            build/experiment-build.json
+          if-no-files-found: warn
+          retention-days: 30
