@@ -35,6 +35,14 @@ def fixtures():
         board = list(base.board)
         board[32 + file] = "r"
         variant("attack-" + "abcdefgh"[file], board)
+    for name, square, piece in (
+        ("pawn-e2", 52, "p"), ("knight-d2", 51, "n"), ("knight-e3", 44, "n"),
+        ("knight-f3", 45, "n"), ("bishop-c4", 34, "b"), ("bishop-h5", 31, "b"),
+        ("king-g2", 54, "k"), ("king-b2", 49, "k")):
+        board = list(base.board)
+        if piece == "k": board[4] = None
+        board[square] = piece
+        variant(name, board)
     for side in ("w", "b"):
         cases.append(("start-" + side, Position.from_fen(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR " + side + " KQkq - 0 1")))
