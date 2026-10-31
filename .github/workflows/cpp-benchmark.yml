@@ -1,6 +1,9 @@
 name: C++ Binary Comparison
 
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cpp-benchmark.yml']
   workflow_dispatch:
     inputs:
       baseline_ref:
@@ -36,9 +39,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     env:
-      BENCHMARK_DEPTH: ${{ inputs.depth }}
-      BENCHMARK_REPEATS: ${{ inputs.repeats }}
-      REQUIRE_TRACE: ${{ inputs.require_identical_trace }}
+      BENCHMARK_DEPTH: ${{ inputs.depth || '3' }}
+      BENCHMARK_REPEATS: ${{ inputs.repeats || '6' }}
+      REQUIRE_TRACE: ${{ github.event_name == 'push' || inputs.require_identical_trace }}
     steps:
       - name: Check out candidate
         uses: actions/checkout@v7
@@ -48,7 +51,7 @@ jobs:
       - name: Check out baseline
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.baseline_ref }}
+          ref: ${{ inputs.baseline_ref || '989a4c76c9d8005f39e91ead2d14d9370cfa33eb' }}
           path: baseline-source
           persist-credentials: false
       - name: Install Python reference
@@ -84,4 +87,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Binary comparison failed" }
           python -c "import json,subprocess; from pathlib import Path; p=Path('build/binary-comparison.json'); d=json.loads(p.read_text()); d['build_provenance']={'candidate_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseline_revision':subprocess.check_output(['git','-C','baseline-source','rev-parse','HEAD'],text=True).strip(),'configuration':'Release','same_runner':True}; p.write_text(json.dumps(d,indent=2,allow_nan=False),encoding='utf-8')"
           if ($LASTEXITCODE -ne 0) { throw "Build provenance recording failed" }
+          python cpp/bench/summarize_binary_benchmark.py build/binary-comparison.json --output build/binary-comparison-summary.json
+          if ($LASTEXITCODE -ne 0) { throw "Binary benchmark summary failed" }
           Get-Content build/binary-comparison.json
+          Get-Content build/binary-comparison-summary.json
