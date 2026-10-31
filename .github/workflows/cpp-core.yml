@@ -62,6 +62,13 @@ jobs:
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           $actualKernel = & $binary --slider-kernel
           if ($LASTEXITCODE -ne 0 -or $actualKernel -ne $env:EXPECTED_SLIDER_KERNEL) { throw "Configured sliding kernel mismatch: $actualKernel" }
+      - name: Verify castling legal trees against Python
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/tests/castling_parity.py $binary
+          if ($LASTEXITCODE -ne 0) { throw "Castling depth-two divide parity failed" }
       - name: Verify FEN round-trip
         shell: pwsh
         run: |
@@ -236,6 +243,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Sliding profile validation failed" }
           python cpp/bench/test_sliding_assessment.py
           if ($LASTEXITCODE -ne 0) { throw "Sliding assessment validation failed" }
+          python cpp/bench/test_castling_fixtures.py
+          if ($LASTEXITCODE -ne 0) { throw "Castling reference fixture validation failed" }
           python cpp/bench/test_binary_benchmark.py
           if ($LASTEXITCODE -ne 0) { throw "Two-binary benchmark regressions failed" }
           python cpp/bench/test_binary_summary.py

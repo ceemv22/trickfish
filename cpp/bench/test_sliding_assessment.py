@@ -54,6 +54,20 @@ def inputs(depth=6, repeats=6, warmups=2, ratio=0.8, kernel_ratio=0.5):
 
 
 class SlidingAssessmentTests(unittest.TestCase):
+    def test_same_ray_policy_requires_search_gain_without_using_kernel_microtiming(self):
+        report, profile = inputs(kernel_ratio=1.2)
+        report["build_provenance"]["baseline_kernel_requested"] = "ray"
+        result = assessment.assess_candidate(report, profile, SUITE, "ray")
+        self.assertTrue(result["timing_ready"])
+        self.assertEqual(result["sliding_assessment_schema_version"], 2)
+        self.assertEqual(result["comparison_policy"], "same_ray_search")
+        self.assertNotIn("kernel_median_below_one", result["checks"])
+        self.assertFalse(assessment.assess_candidate(report, profile, SUITE)["timing_ready"])
+        report, profile = inputs(ratio=1)
+        report["build_provenance"]["baseline_kernel_requested"] = "ray"
+        self.assertFalse(assessment.assess_candidate(report, profile, SUITE, "ray")["timing_ready"])
+        with self.assertRaises(ValueError): assessment.assess_candidate(report, profile, SUITE, "other")
+
     def test_timing_boundaries_and_scope_are_explicit(self):
         report, profile = inputs(ratio=1)
         result = assessment.assess_candidate(report, profile, SUITE)
@@ -96,6 +110,14 @@ class SlidingAssessmentTests(unittest.TestCase):
             data = json.loads(result.stdout)
             self.assertTrue(data["timing_ready"])
             self.assertEqual(len(data["source_inputs"]), 3)
+            report["build_provenance"]["baseline_kernel_requested"] = "ray"
+            binary_path.write_text(json.dumps(report))
+            result = subprocess.run([sys.executable, str(pathlib.Path(assessment.__file__)), str(binary_path), str(profile_path),
+                "--baseline-kernel", "ray"], capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            data = json.loads(result.stdout)
+            self.assertTrue(data["timing_ready"])
+            self.assertEqual(data["comparison_policy"], "same_ray_search")
 
 
 if __name__ == "__main__":
