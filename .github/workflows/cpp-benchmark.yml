@@ -14,7 +14,7 @@ on:
       depth:
         description: Fixed search depth from 1 to 64
         required: true
-        default: '3'
+        default: '6'
         type: string
       repeats:
         description: Paired repeats, at least 2
@@ -39,7 +39,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     env:
-      BENCHMARK_DEPTH: ${{ inputs.depth || '3' }}
+      BENCHMARK_DEPTH: ${{ inputs.depth || '6' }}
       BENCHMARK_REPEATS: ${{ inputs.repeats || '6' }}
       REQUIRE_TRACE: ${{ github.event_name == 'push' || inputs.require_identical_trace }}
     steps:
@@ -91,3 +91,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Binary benchmark summary failed" }
           Get-Content build/binary-comparison.json
           Get-Content build/binary-comparison-summary.json
+      - name: Preserve comparison reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: binary-comparison-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            build/binary-comparison.json
+            build/binary-comparison-summary.json
+          if-no-files-found: warn
+          retention-days: 30
