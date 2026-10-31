@@ -11,7 +11,7 @@ void require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
 }
 
-std::array<int, 3> reference_terms(const trickfish::Position& position) {
+std::array<int, 2> reference_terms(const trickfish::Position& position) {
     int material = 0;
     int activity = 0;
     bool white_pawn = false;
@@ -46,20 +46,19 @@ std::array<int, 3> reference_terms(const trickfish::Position& position) {
         if (symbol == 'R' && square / 8 == 1 && black_pawn) full_activity += 20;
         if (symbol == 'r' && square / 8 == 6 && white_pawn) full_activity -= 20;
     }
-    return {material, activity, full_activity};
+    return {material, full_activity};
 }
 
 void verify_tree(trickfish::Position& root, int depth) {
     const auto fen = root.to_fen();
     const auto key = root.key();
     const auto pawn_key = root.pawn_key();
-    const auto material = root.material_score();
-    const auto base = root.base_activity_score();
+    const auto material = trickfish::evaluate_material(root);
+    const auto activity = trickfish::evaluate_piece_activity(root);
     const auto phase = root.phase_units();
     const auto reference = reference_terms(root);
-    require(material == reference[0] && base == reference[1] &&
-        trickfish::evaluate_material(root) == reference[0] && trickfish::evaluate_piece_activity(root) == reference[2],
-        "incremental material/activity differs from mailbox reference");
+    require(material == reference[0] && activity == reference[1],
+        "material/activity differs from mailbox reference");
     if (depth > 0) {
         for (const auto& move : trickfish::generate_legal_moves(root)) {
             const auto undo = root.make_move(move);
@@ -68,7 +67,7 @@ void verify_tree(trickfish::Position& root, int depth) {
         }
     }
     require(root.to_fen() == fen && root.key() == key && root.pawn_key() == pawn_key &&
-        root.material_score() == material && root.base_activity_score() == base && root.phase_units() == phase,
+        trickfish::evaluate_material(root) == material && trickfish::evaluate_piece_activity(root) == activity && root.phase_units() == phase,
         "evaluation-state unmake changed root");
 }
 
@@ -96,18 +95,17 @@ int main() {
             const auto legal = trickfish::generate_legal_moves(root);
             require(std::find(legal.begin(), legal.end(), move) != legal.end(), "last-pawn capture is not legal");
             const auto undo = root.make_move(move);
-            require(root.material_score() == sign * 820 && root.base_activity_score() == sign * 4 &&
-                trickfish::evaluate_piece_activity(root) == sign * 4, "last enemy pawn left stale rook-seventh bonus");
+            require(trickfish::evaluate_material(root) == sign * 820 && trickfish::evaluate_piece_activity(root) == sign * 4, "last enemy pawn left stale rook-seventh bonus");
             root.unmake_move(move, undo);
             require(trickfish::evaluate_piece_activity(root) == sign * 36, "last-pawn undo did not restore rook bonus");
-            const auto material = root.material_score();
-            const auto activity = root.base_activity_score();
+            const auto material = trickfish::evaluate_material(root);
+            const auto activity = trickfish::evaluate_piece_activity(root);
             const auto key = root.key();
             const auto null_undo = root.make_null_move();
-            require(root.material_score() == material && root.base_activity_score() == activity,
+            require(trickfish::evaluate_material(root) == material && trickfish::evaluate_piece_activity(root) == activity,
                 "null move changed white-positive evaluation state");
             root.unmake_null_move(null_undo);
-            require(root.key() == key && root.material_score() == material && root.base_activity_score() == activity,
+            require(root.key() == key && trickfish::evaluate_material(root) == material && trickfish::evaluate_piece_activity(root) == activity,
                 "null undo changed evaluation state");
         }
         return 0;

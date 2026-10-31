@@ -50,8 +50,6 @@ public:
     [[nodiscard]] std::uint64_t key() const;
     [[nodiscard]] std::uint64_t pawn_key() const;
     [[nodiscard]] int phase_units() const;
-    [[nodiscard]] int material_score() const;
-    [[nodiscard]] int base_activity_score() const;
     [[nodiscard]] UndoState make_move(const Move& move);
     void unmake_move(const Move& move, const UndoState& undo);
     [[nodiscard]] NullUndoState make_null_move();
@@ -78,8 +76,6 @@ private:
     std::uint64_t key_ = 0;
     std::uint64_t pawn_key_ = 0;
     int phase_units_ = 0;
-    int material_score_ = 0;
-    int base_activity_score_ = 0;
 };
 
 }

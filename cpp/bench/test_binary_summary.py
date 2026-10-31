@@ -41,6 +41,30 @@ def report():
 
 
 class BinarySummaryTests(unittest.TestCase):
+    def test_warmup_metadata_is_validated_and_legacy_defaults_to_zero(self):
+        source = report()
+        self.assertEqual(summary.summarize_report(source)["method"]["warmups_per_mode_per_fixture"], 0)
+        source["search"]["warmups_per_mode_per_fixture"] = 2
+        order = [["default", "reference_binary"], ["reference_binary", "default"]]
+        for case in source["results"]:
+            case["warmup_execution_order"] = copy.deepcopy(order)
+            case["binary_comparison"]["reference"]["warmup_execution_order"] = copy.deepcopy(order)
+        result = summary.summarize_report(source)
+        self.assertEqual(result["method"]["warmups_per_mode_per_fixture"], 2)
+        self.assertEqual(result["totals"]["candidate_suite_wall_ms"], [40, 80])
+        for count in (-1, 21, True, 1.5):
+            changed = copy.deepcopy(source)
+            changed["search"]["warmups_per_mode_per_fixture"] = count
+            with self.assertRaisesRegex(ValueError, "warmup"):
+                summary.summarize_report(changed)
+        for target in ("candidate", "reference"):
+            changed = copy.deepcopy(source)
+            case = changed["results"][-1]
+            if target == "reference": case = case["binary_comparison"]["reference"]
+            case["warmup_execution_order"].reverse()
+            with self.assertRaisesRegex(ValueError, "warmup"):
+                summary.summarize_report(changed)
+
     def test_suite_aggregation_sums_raw_times_before_ratios(self):
         source = report()
         original = copy.deepcopy(source)
@@ -61,7 +85,7 @@ class BinarySummaryTests(unittest.TestCase):
             reference.write_bytes(b"reference")
             suite.write_text(json.dumps({"version": 1, "positions": [{"id": "capture", "fen": FEN}]}))
             arguments = ["benchmark", str(candidate), "--reference-binary", str(reference), "--reference-trace",
-                "--suite", str(suite), "--depth", "1", "--repeats", "2"]
+                "--suite", str(suite), "--depth", "1", "--repeats", "2", "--warmups", "2"]
             def sample(binary, case, depth, timeout, mode):
                 return {"score": 500, "depth": depth, "nodes": 23, "bestmove": "a1a2", "pv": ["a1a2"]}, 10 if mode == "default" else 20
             output = io.StringIO()
@@ -69,6 +93,7 @@ class BinarySummaryTests(unittest.TestCase):
                 with patch.object(benchmark, "run_sample", side_effect=sample), patch.object(benchmark, "revision", return_value=None):
                     benchmark.main()
             result = summary.summarize_report(json.loads(output.getvalue()))
+            self.assertEqual(result["method"]["warmups_per_mode_per_fixture"], 2)
             self.assertEqual(result["totals"]["median_suite_wall_ratio"], 0.5)
             self.assertEqual(result["comparison_kind"], "distinct-binaries")
             self.assertEqual(result["candidate"]["sha256"], benchmark.digest(candidate))

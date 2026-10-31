@@ -9,7 +9,7 @@ on:
       baseline_ref:
         description: Baseline Git ref with compatible diagnostic search CLI
         required: true
-        default: 989a4c76c9d8005f39e91ead2d14d9370cfa33eb
+        default: 02c3416d5bd4a8f14f660e2c6de0aad1250790e0
         type: string
       depth:
         description: Fixed search depth from 1 to 64
@@ -51,7 +51,7 @@ jobs:
       - name: Check out baseline
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.baseline_ref || '989a4c76c9d8005f39e91ead2d14d9370cfa33eb' }}
+          ref: ${{ inputs.baseline_ref || '02c3416d5bd4a8f14f660e2c6de0aad1250790e0' }}
           path: baseline-source
           persist-credentials: false
       - name: Install Python reference
@@ -81,7 +81,7 @@ jobs:
         run: |
           $candidateBinary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           $baselineBinary = if ($IsWindows) { ".\baseline-source\build\Release\trickfish_cpp.exe" } else { "./baseline-source/build/trickfish_cpp" }
-          $benchmarkArguments = @("cpp/bench/search_benchmark.py", $candidateBinary, "--reference-binary", $baselineBinary, "--depth", $env:BENCHMARK_DEPTH, "--repeats", $env:BENCHMARK_REPEATS, "--timeout", "120", "--output", "build/binary-comparison.json")
+          $benchmarkArguments = @("cpp/bench/search_benchmark.py", $candidateBinary, "--reference-binary", $baselineBinary, "--depth", $env:BENCHMARK_DEPTH, "--repeats", $env:BENCHMARK_REPEATS, "--warmups", "2", "--timeout", "120", "--output", "build/binary-comparison.json")
           if ($env:REQUIRE_TRACE -eq "true") { $benchmarkArguments += "--reference-trace" }
           python @benchmarkArguments
           if ($LASTEXITCODE -ne 0) { throw "Binary comparison failed" }

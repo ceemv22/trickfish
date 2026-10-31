@@ -66,6 +66,9 @@ def summarize_report(report):
         raise ValueError("binary identity flag disagrees with hashes")
     search = report["search"]
     depth, repeats = search["requested_depth"], search["repeats"]
+    warmups = search.get("warmups_per_mode_per_fixture", 0)
+    if type(warmups) is not int or not 0 <= warmups <= 20:
+        raise ValueError("invalid benchmark warmup count")
     if type(depth) is not int or not 1 <= depth <= 64 or type(repeats) is not int or repeats < 2:
         raise ValueError("invalid benchmark depth/repeats")
     strict = search.get("reference_trace_required")
@@ -75,6 +78,7 @@ def summarize_report(report):
         raise ValueError("invalid benchmark mode/trace policy")
     if search.get("timing") != "process-inclusive wall time": raise ValueError("unsupported timing scope")
     order = [list(modes if index % 2 == 0 else reversed(modes)) for index in range(repeats)]
+    warmup_order = [list(modes if index % 2 == 0 else reversed(modes)) for index in range(warmups)]
     cases = report.get("results")
     if not isinstance(cases, list) or not cases: raise ValueError("benchmark requires fixtures")
     candidate_totals, reference_totals = [0.0] * repeats, [0.0] * repeats
@@ -90,6 +94,8 @@ def summarize_report(report):
             raise ValueError("nonmoving king checked in benchmark fixture")
         comparison = case["binary_comparison"]
         reference = comparison["reference"]
+        if any(run.get("warmup_execution_order", []) != warmup_order for run in (case, reference)):
+            raise ValueError("warmup execution order mismatch")
         if (reference.get("id") != name or reference.get("fen") != case["fen"] or reference.get("expect") != case.get("expect") or
             case.get("execution_order") != order):
             raise ValueError("fixture identity or execution order mismatch")
@@ -126,6 +132,8 @@ def summarize_report(report):
         "suite": {"path": report["suite"], "sha256": report["suite_sha256"]}, "environment": report.get("environment"),
         "reported_build_provenance": report.get("build_provenance"), "depth": depth, "repeats": repeats,
         "method": {"ratio": "candidate/reference process-inclusive wall time", "inference": "none",
+            "warmups_per_mode_per_fixture": warmups,
+            "warmup_scope": "fresh processes; excluded from measured samples; engine state is not retained",
             "suite_aggregation": "sum corresponding repeat-index times across fixtures before taking paired ratios",
             "trace_required": strict, "same_binary_control_is_optimization_evidence": False},
         "totals": {"fixtures": len(fixtures), "trace_changed_fixtures": changed,

@@ -141,7 +141,9 @@ def run_sample(binary, case, depth, timeout, mode):
     return result, elapsed
 
 
-def run_modes(binary, case, depth, repeats, timeout, modes, reference_binary=None):
+def run_modes(binary, case, depth, repeats, timeout, modes, reference_binary=None, warmups=0):
+    if type(warmups) is not int or not 0 <= warmups <= 20:
+        raise ValueError("warmups must be an integer from 0 to 20")
     if repeats < 2 or not modes or len(set(modes)) != len(modes) or any(mode not in MODES for mode in modes):
         raise ValueError("benchmark requires at least two repeats and unique supported modes")
     if "reference_binary" in modes and reference_binary is None:
@@ -149,17 +151,21 @@ def run_modes(binary, case, depth, repeats, timeout, modes, reference_binary=Non
     expected = {}
     samples = {mode: [] for mode in modes}
     execution_order = []
-    for repeat in range(repeats):
-        order = list(modes if repeat % 2 == 0 else reversed(modes))
-        execution_order.append(order)
+    warmup_order = []
+    for repeat in range(-warmups, repeats):
+        index = repeat + warmups if repeat < 0 else repeat
+        order = list(modes if index % 2 == 0 else reversed(modes))
+        (warmup_order if repeat < 0 else execution_order).append(order)
         for mode in order:
             selected_binary = reference_binary if mode == "reference_binary" else binary
             result, elapsed = run_sample(selected_binary, case, depth, timeout, mode)
             if mode in expected and result != expected[mode]:
                 raise ValueError(f"nondeterministic search output: {case['id']} ({mode})")
             expected[mode] = result
-            samples[mode].append(elapsed)
+            if repeat >= 0:
+                samples[mode].append(elapsed)
     results = {mode: dict(case, **expected[mode], process_wall_ms=samples[mode],
+        warmup_execution_order=warmup_order,
         median_process_wall_ms=statistics.median(samples[mode]),
         min_process_wall_ms=min(samples[mode]), max_process_wall_ms=max(samples[mode])) for mode in modes}
     return results, execution_order
@@ -202,6 +208,7 @@ def main():
     parser.add_argument("--suite", type=pathlib.Path, default=pathlib.Path(__file__).with_name("search_suite.json"))
     parser.add_argument("--depth", type=int, default=3)
     parser.add_argument("--repeats", type=int, default=4)
+    parser.add_argument("--warmups", type=int, default=0)
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--compare-alphabeta", action="store_true")
     parser.add_argument("--compare-exchange", action="store_true")
@@ -219,6 +226,8 @@ def main():
     parser.add_argument("--reference-trace", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
+    if not 0 <= args.warmups <= 20:
+        parser.error("warmups must be 0..20")
     if not 1 <= args.depth <= 64 or args.repeats < 2 or not 0 < args.timeout < float("inf"):
         parser.error("depth must be 1..64, repeats at least 2, timeout finite and positive")
     if args.reference_trace and args.reference_binary is None:
@@ -250,7 +259,8 @@ def main():
     if reference_binary is not None: modes.append("reference_binary")
     results = []
     for case in suite["positions"]:
-        measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes, reference_binary=reference_binary)
+        measured, order = run_modes(binary, case, args.depth, args.repeats, args.timeout, modes,
+            reference_binary=reference_binary, warmups=args.warmups)
         candidate = measured["default"]
         candidate["execution_order"] = order
         if args.compare_alphabeta:
@@ -314,7 +324,9 @@ def main():
             "comparison_scale": {"enabled": args.compare_scale, "normal": 256, "opposite_bishop_pawn_ending": 128, "wrong_bishop_rook_pawn_corner": 0,
                 "rounding": "toward zero", "draw_adjudication": False},
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
-            "repeats": args.repeats, "timeout_seconds_per_process": args.timeout,
+            "repeats": args.repeats, "warmups_per_mode_per_fixture": args.warmups,
+            "warmup_policy": "fresh processes; validated output; excluded from timing samples",
+            "timeout_seconds_per_process": args.timeout,
             "table": "fresh per process", "repetition_history": False,
             "draw_policy": "automatic_only", "timing": "process-inclusive wall time",
             "execution_schedule": "forward/reverse alternation per fixture",

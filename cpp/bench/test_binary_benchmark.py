@@ -52,6 +52,48 @@ class BinaryBenchmarkTests(unittest.TestCase):
             self.assertEqual(run.call_args.args[0], ["reference", "--search", "1", FEN])
             self.assertEqual(result["score"], 500)
 
+    def test_warmup_timings_are_excluded_and_measured_order_restarts(self):
+        case = {"id": "capture", "fen": FEN}
+        calls = []
+        def sample(binary, case, depth, timeout, mode):
+            calls.append(mode)
+            result, elapsed = self.sample(binary, case, depth, timeout, mode)
+            return result, 10000 if len(calls) <= 6 else elapsed
+        with patch.object(benchmark, "run_sample", side_effect=sample):
+            measured, order = benchmark.run_modes(pathlib.Path("candidate"), case, 1, 2, 10,
+                ["default", "reference_binary"], reference_binary=pathlib.Path("reference"), warmups=3)
+        self.assertEqual(calls, ["default", "reference_binary", "reference_binary", "default",
+            "default", "reference_binary", "default", "reference_binary", "reference_binary", "default"])
+        self.assertEqual(order, [["default", "reference_binary"], ["reference_binary", "default"]])
+        self.assertEqual(measured["default"]["process_wall_ms"], [10, 10])
+        self.assertEqual(measured["reference_binary"]["process_wall_ms"], [20, 20])
+        self.assertEqual(len(measured["default"]["warmup_execution_order"]), 3)
+
+    def test_warmup_output_drift_and_process_errors_abort_measurement(self):
+        for failure in (False, True):
+            calls = 0
+            def sample(binary, case, depth, timeout, mode):
+                nonlocal calls
+                calls += 1
+                if failure and calls == 1:
+                    raise subprocess.TimeoutExpired("engine", timeout)
+                result, elapsed = self.sample(binary, case, depth, timeout, mode)
+                if calls == 1: result["nodes"] += 1
+                return result, elapsed
+            with patch.object(benchmark, "run_sample", side_effect=sample):
+                with self.assertRaises(subprocess.TimeoutExpired if failure else ValueError):
+                    benchmark.run_modes(pathlib.Path("candidate"), {"id": "capture", "fen": FEN},
+                        1, 2, 10, ["default"], warmups=1)
+            self.assertEqual(calls, 1 if failure else 2)
+
+    def test_invalid_warmup_counts_start_no_process(self):
+        with patch.object(benchmark, "run_sample") as sample:
+            for value in (-1, 21, True, 1.5):
+                with self.assertRaisesRegex(ValueError, "warmups"):
+                    benchmark.run_modes(pathlib.Path("candidate"), {"id": "capture", "fen": FEN},
+                        1, 2, 10, ["default"], warmups=value)
+            sample.assert_not_called()
+
     def test_both_binary_hashes_ratio_and_optional_same_bytes_are_recorded(self):
         with tempfile.TemporaryDirectory() as directory:
             candidate, reference, suite = self.files(pathlib.Path(directory))

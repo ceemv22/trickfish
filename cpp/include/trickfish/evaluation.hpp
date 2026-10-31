@@ -12,9 +12,16 @@
 namespace trickfish {
 
 inline constexpr int mate_score = 100000;
+inline constexpr std::array piece_values = {100, 320, 330, 500, 900, 0};
 
 [[nodiscard]] inline int evaluate_material(const Position& position) {
-    return position.material_score();
+    int score = 0;
+    for (std::size_t type = 0; type < piece_values.size(); ++type) {
+        const auto piece = static_cast<PieceType>(type);
+        score += piece_values[type] * (std::popcount(position.pieces(Color::white, piece)) -
+            std::popcount(position.pieces(Color::black, piece)));
+    }
+    return score;
 }
 
 [[nodiscard]] inline int evaluate_bishop_pair(const Position& position) {
@@ -167,13 +174,30 @@ inline int king_activity_total(const Position& position, int phase) {
 }
 
 [[nodiscard]] inline int evaluate_piece_activity(const Position& position) {
-    int score = position.base_activity_score();
+    int score = 0;
     for (const auto color : {Color::white, Color::black}) {
+        int bonus = 0;
+        auto pawns = position.pieces(color, PieceType::pawn);
+        while (pawns != 0) {
+            const auto square = pop_lsb(pawns);
+            const int rank = square / 8;
+            const int file = square % 8;
+            const int advance = color == Color::white ? 6 - rank : rank - 1;
+            bonus += 5 * advance + (file == 3 || file == 4 ? 6 : 0);
+        }
+        auto knights = position.pieces(color, PieceType::knight);
+        while (knights != 0) {
+            bonus += std::max(0, 28 - 2 * detail::center_distance(pop_lsb(knights)));
+        }
+        auto bishops = position.pieces(color, PieceType::bishop);
+        while (bishops != 0) {
+            bonus += std::max(0, 16 - detail::center_distance(pop_lsb(bishops)));
+        }
         if (position.pieces(opposite(color), PieceType::pawn) != 0) {
             const auto seventh_rank = Bitboard{0xff} << (color == Color::white ? 8 : 48);
-            const int bonus = 20 * std::popcount(position.pieces(color, PieceType::rook) & seventh_rank);
-            score += color == Color::white ? bonus : -bonus;
+            bonus += 20 * std::popcount(position.pieces(color, PieceType::rook) & seventh_rank);
         }
+        score += color == Color::white ? bonus : -bonus;
     }
     return score;
 }
