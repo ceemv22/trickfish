@@ -2,7 +2,7 @@
   "version": 1,
   "name": "Twelve-family fixed-node diagnostic campaign",
   "openings": "match_openings_extended.json",
-  "openings_sha256": "e48ee46aec9a49696c8d94a59680fd66e0cb06b946646f333db747a40dd7f706",
+  "openings_sha256": "5ddf09130d8560d28d9e1d3d8980ba7e49c1c4b3035c6a8521409f76272c4d1b",
   "opening_ids": [
     "open-game",
     "sicilian",

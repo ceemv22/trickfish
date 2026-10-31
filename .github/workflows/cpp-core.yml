@@ -3,11 +3,13 @@ name: C++ Core
 on:
   push:
     paths:
+      - .gitattributes
       - CMakeLists.txt
       - cpp/**
       - .github/workflows/cpp-core.yml
   pull_request:
     paths:
+      - .gitattributes
       - CMakeLists.txt
       - cpp/**
       - .github/workflows/cpp-core.yml

@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import io
 import json
 import pathlib
@@ -139,6 +140,38 @@ class CampaignTests(unittest.TestCase):
         for name in ("campaign_smoke.json", "campaign_fixed_nodes.json"):
             loaded = campaign.load_campaign(pathlib.Path(__file__).with_name(name))
             self.assertEqual(len(loaded["openings"]), 12)
+
+    def test_versioned_hashes_bind_committed_bytes_and_portable_worktree_bytes(self):
+        root = pathlib.Path(__file__).resolve().parents[2]
+        if not (root / ".git").exists(): self.skipTest("Git checkout required for committed-byte comparison")
+        relative = "cpp/bench/match_openings_extended.json"
+        content = (root / relative).read_bytes()
+        self.assertNotIn(b"\r", content)
+        expected = hashlib.sha256(content).hexdigest()
+        for name in ("campaign_smoke.json", "campaign_fixed_nodes.json"):
+            loaded = campaign.load_campaign(pathlib.Path(__file__).with_name(name))
+            self.assertEqual(loaded["metadata"]["specification"]["openings_sha256"], expected)
+            self.assertEqual(loaded["opening_path"].read_bytes(), content)
+        difference = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", relative], cwd=root)
+        self.assertIn(difference.returncode, (0, 1))
+        if difference.returncode == 0:
+            blob = subprocess.check_output(["git", "show", "HEAD:" + relative], cwd=root)
+            self.assertEqual(content, blob)
+        attribute = subprocess.check_output(["git", "check-attr", "eol", "--", "cpp/bench/match_openings_extended.json"], cwd=root, text=True)
+        self.assertEqual(attribute.strip(), "cpp/bench/match_openings_extended.json: eol: lf")
+
+    def test_line_ending_changes_still_break_raw_byte_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            _, plan, data = self.prepare(root)
+            opening = root / "openings.json"
+            lf = (json.dumps(json.loads(opening.read_text()), indent=2) + "\n").encode("utf-8")
+            opening.write_bytes(lf)
+            data["openings_sha256"] = digest(opening)
+            plan.write_text(json.dumps(data))
+            campaign.load_campaign(plan)
+            opening.write_bytes(lf.replace(b"\n", b"\r\n"))
+            with self.assertRaisesRegex(ValueError, "hash mismatch"): campaign.load_campaign(plan)
 
     def test_profile_bytes_are_bound_and_audit_output_cannot_replace_the_plan(self):
         with tempfile.TemporaryDirectory() as directory:
