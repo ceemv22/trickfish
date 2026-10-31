@@ -194,10 +194,13 @@ bool Position::in_check(Color color) const {
         (king_attacks(square) & pieces(enemy, PieceType::king)) != 0) {
         return true;
     }
-    const auto occupied = occupancy();
     const auto queens = pieces(enemy, PieceType::queen);
-    return (bishop_attacks(square, occupied) & (pieces(enemy, PieceType::bishop) | queens)) != 0 ||
-        (rook_attacks(square, occupied) & (pieces(enemy, PieceType::rook) | queens)) != 0;
+    const auto diagonal = detail::bishop_alignment[square] & (pieces(enemy, PieceType::bishop) | queens);
+    const auto orthogonal = detail::rook_alignment[square] & (pieces(enemy, PieceType::rook) | queens);
+    if ((diagonal | orthogonal) == 0) return false;
+    const auto occupied = occupancy();
+    return (diagonal != 0 && (bishop_attacks(square, occupied) & diagonal) != 0) ||
+        (orthogonal != 0 && (rook_attacks(square, occupied) & orthogonal) != 0);
 }
 
 bool Position::is_insufficient_material() const {

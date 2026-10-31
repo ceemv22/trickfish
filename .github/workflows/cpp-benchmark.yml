@@ -50,6 +50,7 @@ jobs:
       REQUIRE_TRACE: ${{ github.event_name == 'push' || inputs.require_identical_trace }}
       BASELINE_KERNEL: ${{ inputs.baseline_kernel || 'ray' }}
       BASELINE_RAY_SLIDERS: ${{ inputs.baseline_kernel == 'reference' && 'OFF' || 'ON' }}
+      BENCHMARK_EXPERIMENT: aligned-king-checks
     steps:
       - name: Check out candidate
         uses: actions/checkout@v7
@@ -99,7 +100,7 @@ jobs:
           if ($env:REQUIRE_TRACE -eq "true") { $benchmarkArguments += "--reference-trace" }
           python @benchmarkArguments
           if ($LASTEXITCODE -ne 0) { throw "Binary comparison failed" }
-          python -c "import json,subprocess,os; from pathlib import Path; p=Path('build/binary-comparison.json'); d=json.loads(p.read_text()); d['build_provenance']={'candidate_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseline_revision':subprocess.check_output(['git','-C','baseline-source','rev-parse','HEAD'],text=True).strip(),'configuration':'Release','same_runner':True,'candidate_kernel':'ray','baseline_kernel_requested':os.environ['BASELINE_KERNEL']}; p.write_text(json.dumps(d,indent=2,allow_nan=False),encoding='utf-8')"
+          python -c "import json,subprocess,os; from pathlib import Path; p=Path('build/binary-comparison.json'); d=json.loads(p.read_text()); d['build_provenance']={'candidate_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'baseline_revision':subprocess.check_output(['git','-C','baseline-source','rev-parse','HEAD'],text=True).strip(),'configuration':'Release','same_runner':True,'candidate_kernel':'ray','baseline_kernel_requested':os.environ['BASELINE_KERNEL'],'experiment':os.environ['BENCHMARK_EXPERIMENT']}; p.write_text(json.dumps(d,indent=2,allow_nan=False),encoding='utf-8')"
           if ($LASTEXITCODE -ne 0) { throw "Build provenance recording failed" }
           python cpp/bench/summarize_binary_benchmark.py build/binary-comparison.json --output build/binary-comparison-summary.json
           if ($LASTEXITCODE -ne 0) { throw "Binary benchmark summary failed" }

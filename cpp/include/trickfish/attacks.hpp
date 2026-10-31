@@ -128,6 +128,18 @@ inline constexpr auto bishop_rays = make_sliding_rays(bishop_directions);
 inline constexpr auto rook_rays = make_sliding_rays(rook_directions);
 
 template<std::size_t Size>
+consteval std::array<Bitboard, 64> make_alignment_masks(const std::array<std::array<Bitboard, 64>, Size>& rays) {
+    std::array<Bitboard, 64> masks{};
+    for (std::size_t square = 0; square < masks.size(); ++square) {
+        for (const auto& ray : rays) masks[square] |= ray[square];
+    }
+    return masks;
+}
+
+inline constexpr auto bishop_alignment = make_alignment_masks(bishop_rays);
+inline constexpr auto rook_alignment = make_alignment_masks(rook_rays);
+
+template<std::size_t Size>
 constexpr Bitboard ray_attacks_for(std::uint8_t square, Bitboard occupancy,
     const std::array<std::pair<int, int>, Size>& directions,
     const std::array<std::array<Bitboard, 64>, Size>& rays) {

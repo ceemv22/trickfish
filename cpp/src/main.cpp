@@ -47,6 +47,13 @@ int main(int argc, char** argv) {
             }
             throw std::invalid_argument("exchange move must be legal");
         }
+        if (argc > 1 && std::string_view(argv[1]) == "--check-detail") {
+            if (argc > 3) throw std::invalid_argument("usage: --check-detail [fen]");
+            const auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
+            std::cout << std::boolalpha << "white_check " << position.in_check(trickfish::Color::white) << '\n';
+            std::cout << "black_check " << position.in_check(trickfish::Color::black) << '\n';
+            return 0;
+        }
         if (argc > 1 && std::string_view(argv[1]) == "--eval-scale") {
             if (argc > 3) throw std::invalid_argument("usage: --eval-scale [fen]");
             auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
