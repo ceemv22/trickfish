@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(trickfish LANGUAGES CXX)
-option(TRICKFISH_RAY_SLIDERS "Use experimental table-driven sliding attacks" OFF)
+option(TRICKFISH_RAY_SLIDERS "Use table-driven sliding attacks" ON)
 
 add_library(trickfish_core
     cpp/src/pawn_cache.cpp

@@ -104,6 +104,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Sliding kernel profile validation failed" }
           Get-Content build/sliding-kernel.json
           Get-Content build/sliding-kernel-summary.json
+      - name: Report per-job sliding timing readiness
+        shell: pwsh
+        run: |
+          python cpp/bench/assess_sliding_candidate.py build/binary-comparison.json build/sliding-kernel.json --output build/sliding-assessment.json
+          if ($LASTEXITCODE -ne 0) { throw "Invalid sliding assessment inputs" }
+          Get-Content build/sliding-assessment.json
       - name: Preserve comparison reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
@@ -114,5 +120,6 @@ jobs:
             build/binary-comparison-summary.json
             build/sliding-kernel.json
             build/sliding-kernel-summary.json
+            build/sliding-assessment.json
           if-no-files-found: warn
           retention-days: 30

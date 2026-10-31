@@ -25,15 +25,18 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
+        kernel: [default, reference]
     runs-on: ${{ matrix.os }}
+    env:
+      EXPECTED_SLIDER_KERNEL: ${{ matrix.kernel == 'reference' && 'reference' || 'ray' }}
     steps:
       - uses: actions/checkout@v7
       - name: Configure Linux
         if: runner.os == 'Linux'
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTRICKFISH_RAY_SLIDERS=ON
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.kernel == 'reference' && '-DTRICKFISH_RAY_SLIDERS=OFF' || '' }}
       - name: Configure Windows
         if: runner.os == 'Windows'
-        run: cmake -S . -B build -A x64 -DTRICKFISH_RAY_SLIDERS=ON
+        run: cmake -S . -B build -A x64 ${{ matrix.kernel == 'reference' && '-DTRICKFISH_RAY_SLIDERS=OFF' || '' }}
       - name: Build Linux
         if: runner.os == 'Linux'
         run: cmake --build build --config Release
@@ -53,6 +56,12 @@ jobs:
             Write-Output "::error title=Windows compiler output::$message"
             exit $exitCode
           }
+      - name: Verify configured sliding kernel
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $actualKernel = & $binary --slider-kernel
+          if ($LASTEXITCODE -ne 0 -or $actualKernel -ne $env:EXPECTED_SLIDER_KERNEL) { throw "Configured sliding kernel mismatch: $actualKernel" }
       - name: Verify FEN round-trip
         shell: pwsh
         run: |
@@ -225,6 +234,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Forced-mate objective checks failed" }
           python cpp/bench/test_sliding_profile.py
           if ($LASTEXITCODE -ne 0) { throw "Sliding profile validation failed" }
+          python cpp/bench/test_sliding_assessment.py
+          if ($LASTEXITCODE -ne 0) { throw "Sliding assessment validation failed" }
           python cpp/bench/test_binary_benchmark.py
           if ($LASTEXITCODE -ne 0) { throw "Two-binary benchmark regressions failed" }
           python cpp/bench/test_binary_summary.py
