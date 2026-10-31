@@ -280,7 +280,9 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(benchmark.MODES["scale"], "--search-scale")
         self.assertFalse(report["search"]["endgame_scaling"])
         self.assertEqual(report["search"]["comparison_scale"], {"enabled": True, "normal": 256,
-            "opposite_bishop_pawn_ending": 128, "wrong_bishop_rook_pawn_corner": 0, "rounding": "toward zero", "draw_adjudication": False})
+            "opposite_bishop_pawn_ending": 128, "wrong_bishop_rook_pawn_corner": 0,
+            "two_knights_bare_king": 32, "rook_minor": 64, "rook_minor_rook": 64,
+            "rounding": "toward zero", "draw_adjudication": False})
 
     def test_extended_pv_budget_is_explicit_and_bounded(self):
         extended = OUTPUT.replace("pv a1a2", "pv a1a2 e8e7")

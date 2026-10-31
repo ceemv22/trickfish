@@ -5,6 +5,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdlib>
+#include <string_view>
 
 #include "trickfish/game_status.hpp"
 #include "trickfish/position.hpp"
@@ -246,11 +247,40 @@ inline EvaluationBreakdown breakdown_with_pawns(const Position& position, int ph
 
 inline constexpr int endgame_scale_normal = 256;
 
-[[nodiscard]] inline int endgame_scale(const Position& position) {
+struct EndgameScaling {
+    int factor = endgame_scale_normal;
+    std::string_view reason = "normal";
+};
+
+[[nodiscard]] inline EndgameScaling endgame_scaling(const Position& position) {
+    const bool pawnless = (position.pieces(Color::white, PieceType::pawn) |
+        position.pieces(Color::black, PieceType::pawn)) == 0;
+    const bool queenless = (position.pieces(Color::white, PieceType::queen) |
+        position.pieces(Color::black, PieceType::queen)) == 0;
+    if (pawnless && queenless) {
+        for (const auto strong : {Color::white, Color::black}) {
+            const auto weak = opposite(strong);
+            const int rooks = std::popcount(position.pieces(strong, PieceType::rook));
+            const int knights = std::popcount(position.pieces(strong, PieceType::knight));
+            const int bishops = std::popcount(position.pieces(strong, PieceType::bishop));
+            const int other_rooks = std::popcount(position.pieces(weak, PieceType::rook));
+            const int other_minors = std::popcount(position.pieces(weak, PieceType::knight)) +
+                std::popcount(position.pieces(weak, PieceType::bishop));
+            if (rooks == 0 && knights == 2 && bishops == 0 && other_rooks == 0 && other_minors == 0) {
+                return {32, "two_knights_bare_king"};
+            }
+            if (rooks == 1 && knights + bishops == 1 && other_rooks == 1 && other_minors == 0) {
+                return {64, "rook_minor_rook"};
+            }
+            if (rooks == 1 && knights + bishops == 0 && other_rooks == 0 && other_minors == 1) {
+                return {64, "rook_minor"};
+            }
+        }
+    }
     for (const auto color : {Color::white, Color::black}) {
         if (position.pieces(color, PieceType::knight) != 0 ||
             position.pieces(color, PieceType::rook) != 0 || position.pieces(color, PieceType::queen) != 0) {
-            return endgame_scale_normal;
+            return {};
         }
     }
     for (const auto attacker : {Color::white, Color::black}) {
@@ -268,19 +298,23 @@ inline constexpr int endgame_scale_normal = 256;
         const auto corner = static_cast<std::uint8_t>((attacker == Color::white ? 0 : 56) + file);
         if (position.pieces(defender, PieceType::king) != square_bit(corner)) continue;
         const auto bishop = pop_lsb(bishops);
-        if ((bishop / 8 + bishop % 8) % 2 != (corner / 8 + corner % 8) % 2) return 0;
+        if ((bishop / 8 + bishop % 8) % 2 != (corner / 8 + corner % 8) % 2) return {0, "wrong_bishop_rook_pawn_corner"};
     }
     auto white = position.pieces(Color::white, PieceType::bishop);
     auto black = position.pieces(Color::black, PieceType::bishop);
     if (std::popcount(white) != 1 || std::popcount(black) != 1 ||
         (position.pieces(Color::white, PieceType::pawn) | position.pieces(Color::black, PieceType::pawn)) == 0) {
-        return endgame_scale_normal;
+        return {};
     }
     const auto white_square = pop_lsb(white);
     const auto black_square = pop_lsb(black);
     const auto white_color = (white_square / 8 + white_square % 8) % 2;
     const auto black_color = (black_square / 8 + black_square % 8) % 2;
-    return white_color != black_color ? 128 : endgame_scale_normal;
+    return white_color != black_color ? EndgameScaling{128, "opposite_bishop_pawns"} : EndgameScaling{};
+}
+
+[[nodiscard]] inline int endgame_scale(const Position& position) {
+    return endgame_scaling(position).factor;
 }
 
 [[nodiscard]] inline int evaluate_scaled_static(const Position& position) {

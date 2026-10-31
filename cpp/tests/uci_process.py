@@ -88,6 +88,21 @@ class UciProcessTests(unittest.TestCase):
         self.assertEqual(scores[1], scores[0] // 2)
         self.assertEqual(scores[2], scores[0])
 
+    def test_pawnless_scaling_can_be_enabled_and_restored_for_both_colors(self):
+        for fen in ("7k/8/8/8/8/8/8/1N2K1N1 w - - 0 1",
+                "1n2k1n1/8/8/8/8/8/8/7K b - - 0 1"):
+            scores = []
+            for enabled in ("false", "true", "false"):
+                self.send("setoption name Experimental Endgame Scaling value " + enabled)
+                self.send("position fen " + fen)
+                self.send("go depth 1")
+                self.until("bestmove ")
+                line = next(line for line in reversed(self.transcript) if line.startswith("info depth 1 "))
+                scores.append(int(line.split(" score cp ")[1].split()[0]))
+            self.assertGreater(scores[0], 0)
+            self.assertEqual(scores[1], scores[0] // 8)
+            self.assertEqual(scores[2], scores[0])
+
     def test_pawn_cache_preserves_depth_search_and_can_be_disabled(self):
         results = []
         for enabled in ("false", "true", "false"):

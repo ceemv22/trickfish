@@ -322,6 +322,7 @@ def main():
             "cached_ordering": True, "comparison_cached_ordering": False, "compare_ordering": args.compare_ordering,
             "endgame_scaling": False, "compare_scale": args.compare_scale,
             "comparison_scale": {"enabled": args.compare_scale, "normal": 256, "opposite_bishop_pawn_ending": 128, "wrong_bishop_rook_pawn_corner": 0,
+                "two_knights_bare_king": 32, "rook_minor": 64, "rook_minor_rook": 64,
                 "rounding": "toward zero", "draw_adjudication": False},
             "compare_alphabeta": args.compare_alphabeta, "requested_depth": args.depth,
             "repeats": args.repeats, "warmups_per_mode_per_fixture": args.warmups,

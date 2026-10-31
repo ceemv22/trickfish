@@ -1,0 +1,583 @@
+{
+  "version": 1,
+  "positions": [
+    {
+      "id": "two-knights-w",
+      "fen": "7k/8/8/8/8/8/8/1N2K1N1 w - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      }
+    },
+    {
+      "id": "two-knights-w-reflected",
+      "fen": "1n2k1n1/8/8/8/8/8/8/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      }
+    },
+    {
+      "id": "two-knights-b",
+      "fen": "7k/8/8/8/8/8/8/1N2K1N1 b - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      }
+    },
+    {
+      "id": "two-knights-b-reflected",
+      "fen": "1n2k1n1/8/8/8/8/8/8/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      }
+    },
+    {
+      "id": "rook-bishop-w",
+      "fen": "2b4k/8/8/8/8/8/8/R3K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-bishop-w-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/2B4K b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-bishop-b",
+      "fen": "2b4k/8/8/8/8/8/8/R3K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-bishop-b-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/2B4K w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-knight-w",
+      "fen": "1n5k/8/8/8/8/8/8/R3K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-knight-w-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/1N5K b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-knight-b",
+      "fen": "1n5k/8/8/8/8/8/8/R3K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-knight-b-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/1N5K w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor"
+      }
+    },
+    {
+      "id": "rook-bishop-rook-w",
+      "fen": "r6k/8/8/8/8/8/8/R1B1K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "rook-bishop-rook-w-reflected",
+      "fen": "r1b1k3/8/8/8/8/8/8/R6K b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "rook-bishop-rook-b",
+      "fen": "r6k/8/8/8/8/8/8/R1B1K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "rook-bishop-rook-b-reflected",
+      "fen": "r1b1k3/8/8/8/8/8/8/R6K w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "rook-knight-rook-w",
+      "fen": "r6k/8/8/8/8/8/8/RN2K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "rook-knight-rook-w-reflected",
+      "fen": "rn2k3/8/8/8/8/8/8/R6K b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "rook-knight-rook-b",
+      "fen": "r6k/8/8/8/8/8/8/RN2K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "rook-knight-rook-b-reflected",
+      "fen": "rn2k3/8/8/8/8/8/8/R6K w - - 0 1",
+      "expect_scale": {
+        "factor": 64,
+        "reason": "rook_minor_rook"
+      }
+    },
+    {
+      "id": "white-pawn-w",
+      "fen": "7k/8/8/8/8/8/1P6/1N2K1N1 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "white-pawn-w-reflected",
+      "fen": "1n2k1n1/1p6/8/8/8/8/8/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "white-pawn-b",
+      "fen": "7k/8/8/8/8/8/1P6/1N2K1N1 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "white-pawn-b-reflected",
+      "fen": "1n2k1n1/1p6/8/8/8/8/8/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "black-pawn-w",
+      "fen": "7k/1p6/8/8/8/8/8/1N2K1N1 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "black-pawn-w-reflected",
+      "fen": "1n2k1n1/8/8/8/8/8/1P6/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "black-pawn-b",
+      "fen": "7k/1p6/8/8/8/8/8/1N2K1N1 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "black-pawn-b-reflected",
+      "fen": "1n2k1n1/8/8/8/8/8/1P6/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "queen-w",
+      "fen": "7k/8/8/8/8/8/6Q1/1N2K1N1 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "queen-w-reflected",
+      "fen": "1n2k1n1/6q1/8/8/8/8/8/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "queen-b",
+      "fen": "7k/8/8/8/8/8/6Q1/1N2K1N1 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "queen-b-reflected",
+      "fen": "1n2k1n1/6q1/8/8/8/8/8/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "three-knights-w",
+      "fen": "7k/8/8/8/8/8/3N4/1N2K1N1 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "three-knights-w-reflected",
+      "fen": "1n2k1n1/3n4/8/8/8/8/8/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "three-knights-b",
+      "fen": "7k/8/8/8/8/8/3N4/1N2K1N1 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "three-knights-b-reflected",
+      "fen": "1n2k1n1/3n4/8/8/8/8/8/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "bishop-knight-w",
+      "fen": "7k/8/8/8/8/8/8/2B1K1N1 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "bishop-knight-w-reflected",
+      "fen": "2b1k1n1/8/8/8/8/8/8/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "bishop-knight-b",
+      "fen": "7k/8/8/8/8/8/8/2B1K1N1 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "bishop-knight-b-reflected",
+      "fen": "2b1k1n1/8/8/8/8/8/8/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-bishops-w",
+      "fen": "7k/8/8/8/8/8/8/2B1KB2 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-bishops-w-reflected",
+      "fen": "2b1kb2/8/8/8/8/8/8/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-bishops-b",
+      "fen": "7k/8/8/8/8/8/8/2B1KB2 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-bishops-b-reflected",
+      "fen": "2b1kb2/8/8/8/8/8/8/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-bare-w",
+      "fen": "7k/8/8/8/8/8/8/R3K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-bare-w-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/7K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-bare-b",
+      "fen": "7k/8/8/8/8/8/8/R3K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-bare-b-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-rooks-minor-w",
+      "fen": "2b4k/8/8/8/8/8/8/RR2K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-rooks-minor-w-reflected",
+      "fen": "rr2k3/8/8/8/8/8/8/2B4K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-rooks-minor-b",
+      "fen": "2b4k/8/8/8/8/8/8/RR2K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-rooks-minor-b-reflected",
+      "fen": "rr2k3/8/8/8/8/8/8/2B4K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-w",
+      "fen": "1nb4k/8/8/8/8/8/8/R3K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-w-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/1NB4K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-b",
+      "fen": "1nb4k/8/8/8/8/8/8/R3K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-b-reflected",
+      "fen": "r3k3/8/8/8/8/8/8/1NB4K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-rook-w",
+      "fen": "r6k/8/8/8/8/8/8/RNB1K3 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-rook-w-reflected",
+      "fen": "rnb1k3/8/8/8/8/8/8/R6K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-rook-b",
+      "fen": "r6k/8/8/8/8/8/8/RNB1K3 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "rook-two-minors-rook-b-reflected",
+      "fen": "rnb1k3/8/8/8/8/8/8/R6K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-knights-minor-w",
+      "fen": "2b4k/8/8/8/8/8/8/1N2K1N1 w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-knights-minor-w-reflected",
+      "fen": "1n2k1n1/8/8/8/8/8/8/2B4K b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-knights-minor-b",
+      "fen": "2b4k/8/8/8/8/8/8/1N2K1N1 b - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "two-knights-minor-b-reflected",
+      "fen": "1n2k1n1/8/8/8/8/8/8/2B4K w - - 0 1",
+      "expect_scale": {
+        "factor": 256,
+        "reason": "normal"
+      }
+    },
+    {
+      "id": "mate",
+      "fen": "7k/5K2/5NN1/8/8/8/8/8 b - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      },
+      "expect": {
+        "score": -100000
+      }
+    },
+    {
+      "id": "mate-reflected",
+      "fen": "8/8/8/8/8/5nn1/5k2/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      },
+      "expect": {
+        "score": -100000
+      }
+    },
+    {
+      "id": "stalemate",
+      "fen": "7k/5K2/5N1N/8/8/8/8/8 b - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      },
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "stalemate-reflected",
+      "fen": "8/8/8/8/8/5n1n/5k2/7K w - - 0 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      },
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "clock",
+      "fen": "7k/8/8/8/8/8/8/1N2K1N1 w - - 150 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      },
+      "expect": {
+        "score": 0
+      }
+    },
+    {
+      "id": "clock-reflected",
+      "fen": "1n2k1n1/8/8/8/8/8/8/7K b - - 150 1",
+      "expect_scale": {
+        "factor": 32,
+        "reason": "two_knights_bare_king"
+      },
+      "expect": {
+        "score": 0
+      }
+    }
+  ]
+}

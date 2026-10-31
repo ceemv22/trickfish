@@ -43,6 +43,17 @@ int main(int argc, char** argv) {
             }
             throw std::invalid_argument("exchange move must be legal");
         }
+        if (argc > 1 && std::string_view(argv[1]) == "--eval-scale") {
+            if (argc > 3) throw std::invalid_argument("usage: --eval-scale [fen]");
+            auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);
+            const auto scaling = trickfish::endgame_scaling(position);
+            std::cout << "factor " << scaling.factor << '\n';
+            std::cout << "reason " << scaling.reason << '\n';
+            std::cout << "static_total " << trickfish::evaluate_static(position) << '\n';
+            std::cout << "scaled_static " << trickfish::evaluate_scaled_static(position) << '\n';
+            std::cout << "reference_evaluation " << trickfish::evaluate(position) << '\n';
+            return 0;
+        }
         if (argc > 1 && std::string_view(argv[1]) == "--eval-detail") {
             if (argc > 3) throw std::invalid_argument("usage: --eval-detail [fen]");
             auto position = trickfish::Position::from_fen(argc == 3 ? argv[2] : start_fen);

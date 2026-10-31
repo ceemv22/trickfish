@@ -66,7 +66,7 @@ The pawn term matches the current Python reference: -15 per extra pawn on a file
 
 CI is configured to compare the complete C++ evaluation breakdown and terminal-aware score with the public Python evaluator on 893 positions, including color reflections and legal children, promotions, en passant, and systematic piece-square/color coverage. Pawns cover ranks 2..7; knights, bishops, rooks and queens cover all squares, with rook cases both with and without an enemy pawn. These fixtures check reference agreement on selected positions; they do not prove universal equivalence or a playing-strength improvement.
 
-Piece activity rewards pawn advancement/central files, knight/bishop centrality, and rooks on the enemy seventh rank while enemy pawns remain. King safety combines a c/g home-rank square bonus with neighboring home-pawn shields, scaled by material phase. The square bonus does not infer castling history. King centrality is scaled toward the endgame and disabled whenever any queen or rook remains. These formulas preserve the current Python reference and have not been tuned. C++ maintains the additive pawn/knight/bishop activity through piece updates and counts the conditional seventh-rank rook bonus from current bitboards. Scores are intended to remain identical. The expanded parity suite awaits CI for this revision; no measured speedup is claimed.
+Piece activity rewards pawn advancement/central files, knight/bishop centrality, and rooks on the enemy seventh rank while enemy pawns remain. King safety combines a c/g home-rank square bonus with neighboring home-pawn shields, scaled by material phase. The square bonus does not infer castling history. King centrality is scaled toward the endgame and disabled whenever any queen or rook remains. These formulas preserve the current Python reference and have not been tuned. C++ computes pawn/knight/bishop activity and the conditional seventh-rank rook bonus from current bitboards; the incremental material/activity experiment was rolled back after the measured workload slowdown. Scores are intended to remain identical. The expanded parity suite awaits CI for this revision; no measured speedup is claimed.
 
 ### Verification coverage
 
@@ -380,7 +380,7 @@ Run `python cpp/bench/summarize_binary_benchmark.py build/binary-comparison.json
 
 Suite timing totals sum corresponding repeat-index times across all fixtures before dividing candidate/reference and taking the median of those paired ratios. This measures the configured suite workload; it is not an unweighted average of fixture ratios or a single chronological suite run. Per-fixture ratios and changed-trace counts remain visible. Same-byte binaries are explicitly labeled as a control, not optimization evidence; optional trace differences mean the timing ratio can also reflect different search work.
 
-The summary provides descriptive timings, not confidence, significance or playing strength. Source/build provenance is reported, not independently authenticated. Standard CI validates a same-binary smoke summary; the comparison workflow logs full and summarized cross-revision data. Automatic triggering and summary integration passed in run `41160032644`; depth 6 and artifact upload passed in run `41160361591`. The new warmup path and comparison against `02c3416` await push/CI.
+The summary provides descriptive timings, not confidence, significance or playing strength. Source/build provenance is reported, not independently authenticated. Standard CI validates a same-binary smoke summary; the comparison workflow logs full and summarized cross-revision data. Automatic triggering and summary integration passed in run `41160032644`; depth 6 and artifact upload passed in run `41160361591`. Warmups and comparison against `02c3416` passed in [run 41160777519](https://github.com/ceemv22/trickfish/actions/runs/41160777519): median paired candidate/reference ratios were 0.957907 on Ubuntu and 0.941414 on Windows, with identical 175,164-node traces. These are descriptive results from that workload, without statistical or strength inference.
 
 ## UCI match baseline
 
@@ -449,6 +449,22 @@ New CTests compare cached/uncached static values on legal move trees, force slot
 The same optional mode uses scale 0/256 for a narrower corner pattern: an attacking side has exactly one bishop and one or more pawns all on file a or all on file h, neither side has knights/rooks/queens, the defender has only a king exactly on the attacking pawns' promotion corner, and the bishop is on the opposite square color. Correct-colored or additional bishops, pawns on multiple files, defending material, or a king outside the corner exclude it. This modifies static evaluation without adjudicating a draw or suppressing a legal move. Leaving the pattern can restore a nonzero evaluation at deeper horizons, and optional correction history can adjust the scaled baseline. The rule is not a tablebase result. New corner-pattern boundary/search/undo checks await CI.
 
 Scaling applies to the complete static score before conversion to side-to-move perspective, with integer division toward zero. Main/quiescence evaluation, interrupted depth-zero fallback and correction-history training use the same baseline. Search TT keys distinguish the scaling policy. Mate/stalemate, insufficient material and move-count/repetition adjudication retain precedence. Public `--eval`, `--eval-detail`, Python reference evaluation and default search remain unchanged. Material-boundary, capture/undo, legal-PV, TT/reference, interruption and terminal checks passed CI at `c2f40d1`; no strength benefit is established.
+
+### Optional pawnless scaling and reason diagnostics
+
+The same default-off scaling option now recognizes three exact pawnless, queenless signatures, independent of the side to move:
+
+| Material, excluding kings | Factor | Diagnostic reason |
+| --- | ---: | --- |
+| Two knights versus bare king | 32/256 | `two_knights_bare_king` |
+| Rook versus exactly one bishop or knight | 64/256 | `rook_minor` |
+| Rook plus exactly one bishop or knight versus rook | 64/256 | `rook_minor_rook` |
+
+Any pawn or queen excludes these rules. Extra rooks/minors exclude the exact signatures; bishop+knight or two bishops versus bare king retain normal scaling. These are nonzero, untuned conversion heuristics, not tablebase outcomes or automatic draws. A two-knight checkmate still receives the full mate score. Factors are not established strength improvements.
+
+`trickfish_cpp --eval-scale "fen"` prints `factor`, `reason`, white-positive `static_total`, `scaled_static` and the unchanged terminal-aware `reference_evaluation`. Static fields intentionally remain static even for mate, stalemate or rule-clock draws; search adjudicates terminal/draw states before applying scaling. Existing opposite-bishop and wrong-bishop patterns also expose their reasons. `--eval-detail`, Python reference evaluation and default search retain their behavior.
+
+Native regressions cover legal search/PVs, table and pawn-cache parity, correction integration, interrupted fallback, null state, captures, underpromotion, undo and terminal precedence. `cpp/bench/pawnless_suite.json` adds 70 process fixtures covering color reflections, both moving colors, extra material and terminal/clock boundaries. CI compares each scaling diagnostic and the public evaluation against independently recorded factors and Python reference terms, then runs both default/scaled depth-two searches twice. UCI process checks toggle the option on and off for both colors. These new C++ checks await this revision's push/CI.
 
 ### Endgame comparison suite
 
