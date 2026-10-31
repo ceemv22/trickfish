@@ -80,12 +80,7 @@ Position position_from_board(const std::array<char, 64>& board) {
 
 void verify(const Position& position) {
     for (const auto color : {Color::white, Color::black}) {
-        const auto attacks = position.attacks_by(opposite(color));
-        const bool full_map = (position.pieces(color, PieceType::king) & attacks) != 0;
-        for (std::uint8_t square = 0; square < 64; ++square) {
-            require(position.is_square_attacked(square, opposite(color)) == ((attacks & square_bit(square)) != 0),
-                "targeted/full-map square attack mismatch");
-        }
+        const bool full_map = (position.pieces(color, PieceType::king) & position.attacks_by(opposite(color))) != 0;
         require(position.in_check(color) == reference_check(position, color), "filtered/unfiltered check mismatch");
         require(position.in_check(color) == full_map, "filtered/full-map check mismatch");
     }
@@ -110,18 +105,6 @@ std::uint64_t verify_tree(Position& root, int depth) {
 
 int main() {
     try {
-        const auto empty = Position::from_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
-        for (const auto square : {64, 127, 255}) {
-            for (const auto color : {Color::white, Color::black}) {
-                bool rejected = false;
-                try { static_cast<void>(empty.is_square_attacked(static_cast<std::uint8_t>(square), color)); }
-                catch (const std::invalid_argument&) { rejected = true; }
-                require(rejected, "invalid attack target was accepted");
-            }
-        }
-        const auto pinned = Position::from_fen("4k3/4n3/8/8/8/8/8/4R1K1 w - - 0 1");
-        require(pinned.is_square_attacked(29, Color::black), "pinned knight lost its static attack");
-        verify(pinned);
         std::uint64_t cases = 0;
         for (std::uint8_t king = 0; king < 64; ++king) {
             Bitboard bishop_mask = 0, rook_mask = 0;

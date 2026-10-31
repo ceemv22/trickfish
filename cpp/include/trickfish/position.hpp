@@ -39,7 +39,6 @@ public:
     [[nodiscard]] Bitboard occupancy(Color color) const;
     [[nodiscard]] Bitboard occupancy() const;
     [[nodiscard]] Bitboard attacks_by(Color color) const;
-    [[nodiscard]] bool is_square_attacked(std::uint8_t square, Color attacker) const;
     [[nodiscard]] bool in_check(Color color) const;
     [[nodiscard]] bool is_insufficient_material() const;
     [[nodiscard]] Color side_to_move() const;

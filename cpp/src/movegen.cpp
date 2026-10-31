@@ -39,33 +39,36 @@ void append_pawn_move(MoveList& moves, std::uint8_t from, std::uint8_t to, bool 
 
 void append_castling_moves(MoveList& moves, const Position& position) {
     const auto color = position.side_to_move();
-    const bool kingside_right = position.has_castling_right(color, true);
-    const bool queenside_right = position.has_castling_right(color, false);
-    if (!kingside_right && !queenside_right) return;
+    const auto enemy_attacks = position.attacks_by(opposite(color));
+    const auto occupied = position.occupancy();
     const std::uint8_t king_square = color == Color::white ? 60 : 4;
     const std::uint8_t kingside_rook = color == Color::white ? 63 : 7;
     const std::uint8_t queenside_rook = color == Color::white ? 56 : 0;
-    if ((position.pieces(color, PieceType::king) & square_bit(king_square)) == 0) return;
+    const auto king = position.pieces(color, PieceType::king);
     const auto rooks = position.pieces(color, PieceType::rook);
-    const auto occupied = position.occupancy();
+
+    if ((king & square_bit(king_square)) == 0 || (enemy_attacks & square_bit(king_square)) != 0) {
+        return;
+    }
+
     const auto kingside_path = square_bit(static_cast<std::uint8_t>(king_square + 1)) |
         square_bit(static_cast<std::uint8_t>(king_square + 2));
+    if (position.has_castling_right(color, true) &&
+        (rooks & square_bit(kingside_rook)) != 0 &&
+        (occupied & kingside_path) == 0 &&
+        (enemy_attacks & kingside_path) == 0) {
+        moves.push(Move(king_square, static_cast<std::uint8_t>(king_square + 2), '\0', false, true));
+    }
+
     const auto queenside_empty = square_bit(static_cast<std::uint8_t>(king_square - 1)) |
         square_bit(static_cast<std::uint8_t>(king_square - 2)) |
         square_bit(static_cast<std::uint8_t>(king_square - 3));
-    const bool kingside = kingside_right && (rooks & square_bit(kingside_rook)) != 0 &&
-        (occupied & kingside_path) == 0;
-    const bool queenside = queenside_right && (rooks & square_bit(queenside_rook)) != 0 &&
-        (occupied & queenside_empty) == 0;
-    if (!kingside && !queenside) return;
-    const auto enemy = opposite(color);
-    if (position.is_square_attacked(king_square, enemy)) return;
-    if (kingside && !position.is_square_attacked(static_cast<std::uint8_t>(king_square + 1), enemy) &&
-        !position.is_square_attacked(static_cast<std::uint8_t>(king_square + 2), enemy)) {
-        moves.push(Move(king_square, static_cast<std::uint8_t>(king_square + 2), '\0', false, true));
-    }
-    if (queenside && !position.is_square_attacked(static_cast<std::uint8_t>(king_square - 1), enemy) &&
-        !position.is_square_attacked(static_cast<std::uint8_t>(king_square - 2), enemy)) {
+    const auto queenside_king_path = square_bit(static_cast<std::uint8_t>(king_square - 1)) |
+        square_bit(static_cast<std::uint8_t>(king_square - 2));
+    if (position.has_castling_right(color, false) &&
+        (rooks & square_bit(queenside_rook)) != 0 &&
+        (occupied & queenside_empty) == 0 &&
+        (enemy_attacks & queenside_king_path) == 0) {
         moves.push(Move(king_square, static_cast<std::uint8_t>(king_square - 2), '\0', false, true));
     }
 }

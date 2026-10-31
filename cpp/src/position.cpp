@@ -182,25 +182,25 @@ Bitboard Position::attacks_by(Color color) const {
     return attacks;
 }
 
-bool Position::is_square_attacked(std::uint8_t square, Color attacker) const {
-    if (square >= 64) throw std::invalid_argument("square must be between 0 and 63");
-    if ((pawn_attacks(opposite(attacker), square) & pieces(attacker, PieceType::pawn)) != 0 ||
-        (knight_attacks(square) & pieces(attacker, PieceType::knight)) != 0 ||
-        (king_attacks(square) & pieces(attacker, PieceType::king)) != 0) {
+bool Position::in_check(Color color) const {
+    const auto king = pieces(color, PieceType::king);
+    if (king == 0) {
+        return false;
+    }
+    const auto square = static_cast<std::uint8_t>(std::countr_zero(king));
+    const auto enemy = opposite(color);
+    if ((pawn_attacks(color, square) & pieces(enemy, PieceType::pawn)) != 0 ||
+        (knight_attacks(square) & pieces(enemy, PieceType::knight)) != 0 ||
+        (king_attacks(square) & pieces(enemy, PieceType::king)) != 0) {
         return true;
     }
-    const auto queens = pieces(attacker, PieceType::queen);
-    const auto diagonal = detail::bishop_alignment[square] & (pieces(attacker, PieceType::bishop) | queens);
-    const auto orthogonal = detail::rook_alignment[square] & (pieces(attacker, PieceType::rook) | queens);
+    const auto queens = pieces(enemy, PieceType::queen);
+    const auto diagonal = detail::bishop_alignment[square] & (pieces(enemy, PieceType::bishop) | queens);
+    const auto orthogonal = detail::rook_alignment[square] & (pieces(enemy, PieceType::rook) | queens);
     if ((diagonal | orthogonal) == 0) return false;
     const auto occupied = occupancy();
     return (diagonal != 0 && (bishop_attacks(square, occupied) & diagonal) != 0) ||
         (orthogonal != 0 && (rook_attacks(square, occupied) & orthogonal) != 0);
-}
-
-bool Position::in_check(Color color) const {
-    const auto king = pieces(color, PieceType::king);
-    return king != 0 && is_square_attacked(static_cast<std::uint8_t>(std::countr_zero(king)), opposite(color));
 }
 
 bool Position::is_insufficient_material() const {
