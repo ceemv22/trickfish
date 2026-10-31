@@ -11,6 +11,7 @@
 #include "trickfish/pawn_cache.hpp"
 #include "trickfish/exchange.hpp"
 #include "trickfish/movegen.hpp"
+#include "trickfish/ordering.hpp"
 
 namespace trickfish {
 namespace {
@@ -243,24 +244,16 @@ int move_priority(const Position& position, const Move& move) {
 void order_moves(const Position& position, MoveList& moves, std::optional<Move> preferred = std::nullopt,
     SearchBudget* budget = nullptr, int ply = 0, std::optional<Move> previous = std::nullopt) {
     if (budget == nullptr || budget->use_cached_ordering) {
-        struct RankedMove {
-            Move move;
-            int priority = 0;
-            int history = 0;
-            int exchange = 0;
-            bool preferred = false;
-            bool tactical = false;
-        };
         const bool exchange_ordering = budget != nullptr && budget->use_exchange_ordering;
-        std::array<RankedMove, MoveList::capacity> ranked{};
-        for (std::size_t index = 0; index < moves.size(); ++index) {
+        std::array<detail::CachedMoveKey, MoveList::capacity> ranked;
+        const auto size = moves.size();
+        for (std::size_t index = 0; index < size; ++index) {
             const auto& move = moves[index];
             auto& rank = ranked[index];
-            rank.move = move;
-            rank.preferred = move == preferred;
-            rank.tactical = !is_quiet(position, move);
-            rank.priority = move_priority(position, move) + killer_priority(position, move, budget, ply);
-            rank.history = history_priority(position, move, budget) + continuation_priority(position, move, budget, previous);
+            rank = {detail::move_order_tie(move),
+                move_priority(position, move) + killer_priority(position, move, budget, ply),
+                history_priority(position, move, budget) + continuation_priority(position, move, budget, previous),
+                0, static_cast<std::uint16_t>(index), move == preferred, !is_quiet(position, move)};
             if (exchange_ordering && rank.tactical) {
                 const auto exchange = analyze_exchange(position, move, false, [budget] { check_stop(budget); });
                 rank.exchange = exchange.score;
@@ -269,19 +262,11 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
                 budget->exchange_cutoffs += exchange.cutoffs;
             }
         }
-        std::sort(ranked.begin(), ranked.begin() + moves.size(), [exchange_ordering](const RankedMove& left, const RankedMove& right) {
-            if (left.preferred != right.preferred) return left.preferred;
-            if (exchange_ordering) {
-                if (left.tactical != right.tactical) return left.tactical;
-                if (left.tactical && left.exchange != right.exchange) return left.exchange > right.exchange;
-            }
-            if (left.priority != right.priority) return left.priority > right.priority;
-            if (left.history != right.history) return left.history > right.history;
-            if (left.move.from != right.move.from) return left.move.from < right.move.from;
-            if (left.move.to != right.move.to) return left.move.to < right.move.to;
-            return left.move.promotion < right.move.promotion;
-        });
-        for (std::size_t index = 0; index < moves.size(); ++index) moves[index] = ranked[index].move;
+        std::sort(ranked.begin(), ranked.begin() + size,
+            [exchange_ordering](const auto& left, const auto& right) {
+                return detail::cached_move_less(left, right, exchange_ordering);
+            });
+        detail::apply_cached_move_order(moves, std::span{ranked}.first(size));
         return;
     }
     if (budget != nullptr && budget->use_exchange_ordering) {
