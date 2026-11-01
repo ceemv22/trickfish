@@ -47,6 +47,46 @@ void write_multi_pv(std::ostream& output, const trickfish::MultiPVResult& result
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc > 1 && (std::string_view(argv[1]) == "--tablebase" || std::string_view(argv[1]) == "--search-tablebase")) {
+            const bool searching = std::string_view(argv[1]) == "--search-tablebase";
+            if (argc != (searching ? 5 : 4)) throw std::invalid_argument("usage: --tablebase directory fen or --search-tablebase depth directory fen");
+            int depth = 0;
+            if (searching) {
+                const std::string_view text(argv[2]);
+                const auto parsed = std::from_chars(text.data(), text.data() + text.size(), depth);
+                if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size()) throw std::invalid_argument("invalid tablebase search depth");
+            }
+            const auto provider = trickfish::SyzygyTablebase::open(argv[searching ? 3 : 2]);
+            auto position = trickfish::Position::from_fen(argv[searching ? 4 : 3]);
+            if (searching) {
+                trickfish::SearchOptions options;
+                options.tablebase = provider;
+                options.draw_policy = trickfish::MoveCountDrawPolicy::claim_fifty_moves;
+                const auto result = trickfish::iterative_search(position, depth, options);
+                std::cout << "{\"used\":" << (result.tablebase_used ? "true" : "false") << ",\"score\":" << result.score <<
+                    ",\"depth\":" << result.completed_depth << ",\"nodes\":" << result.nodes << ",\"bestmove\":\"" <<
+                    (result.best_move ? result.best_move->to_uci() : "0000") << "\",\"pv\":[";
+                for (std::size_t i = 0; i < result.principal_variation.size(); ++i) {
+                    if (i != 0) std::cout << ',';
+                    std::cout << '"' << result.principal_variation[i].to_uci() << '"';
+                }
+                std::cout << "]}\n";
+            } else {
+                const auto result = provider->probe(position);
+                if (!result) std::cout << "{\"available\":false}\n";
+                else {
+                    std::cout << "{\"available\":true,\"wdl\":" << result->wdl << ",\"dtz\":" << result->dtz <<
+                        ",\"bestmove\":\"" << result->recommended.to_uci() << "\",\"moves\":[";
+                    for (std::size_t i = 0; i < result->moves.size(); ++i) {
+                        const auto& move = result->moves[i];
+                        if (i != 0) std::cout << ',';
+                        std::cout << "{\"move\":\"" << move.move.to_uci() << "\",\"wdl\":" << move.wdl << ",\"dtz\":" << move.dtz << '}';
+                    }
+                    std::cout << "]}\n";
+                }
+            }
+            return 0;
+        }
         if (argc > 1 && std::string_view(argv[1]) == "--eval-weighted") {
             if (argc < 5 || argc > 6) throw std::invalid_argument("usage: --eval-weighted pawns activity king-safety [fen]");
             trickfish::EvaluationWeights weights;

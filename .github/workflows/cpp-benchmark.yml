@@ -9,7 +9,7 @@ on:
       baseline_ref:
         description: Baseline Git ref with compatible diagnostic search CLI
         required: true
-        default: 9cceed777bdd9dc0bfb73c09ca1e209635de4e54
+        default: 00a9f42123a8fe4d7f1a1d0bf72b3f21bec1ace3
         type: string
       baseline_kernel:
         description: Baseline kernel and timing assessment policy
@@ -50,7 +50,7 @@ jobs:
       REQUIRE_TRACE: ${{ github.event_name == 'push' || inputs.require_identical_trace }}
       BASELINE_KERNEL: ${{ inputs.baseline_kernel || 'ray' }}
       BASELINE_RAY_SLIDERS: ${{ inputs.baseline_kernel == 'reference' && 'OFF' || 'ON' }}
-      BENCHMARK_EXPERIMENT: repetition-index-default-search-compatibility
+      BENCHMARK_EXPERIMENT: optional-tablebase-default-search-compatibility
     steps:
       - name: Check out candidate
         uses: actions/checkout@v7
@@ -60,7 +60,7 @@ jobs:
       - name: Check out baseline
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.baseline_ref || '9cceed777bdd9dc0bfb73c09ca1e209635de4e54' }}
+          ref: ${{ inputs.baseline_ref || '00a9f42123a8fe4d7f1a1d0bf72b3f21bec1ace3' }}
           path: baseline-source
           persist-credentials: false
       - name: Install Python reference

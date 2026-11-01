@@ -1,0 +1,62 @@
+name: C++ Syzygy Integration
+
+on:
+  push:
+    paths: ['cpp/**', 'CMakeLists.txt', '.github/workflows/cpp-tablebase.yml']
+  pull_request:
+    paths: ['cpp/**', 'CMakeLists.txt', '.github/workflows/cpp-tablebase.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  tablebase:
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: jdart1/Fathom
+          ref: c9c6fef0dddc05d2e242c183acf5833149ab676d
+          path: external/fathom
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: niklasf/python-chess
+          ref: 0c6bdaccfcb3b09cdbe94b0f81e948cb2a356015
+          path: external/python-chess
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Build optional external Fathom integration
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            cmake -S . -B build -A x64 -DTRICKFISH_FATHOM_SOURCE="$pwd/external/fathom"
+          } else {
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTRICKFISH_FATHOM_SOURCE="$pwd/external/fathom"
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Syzygy configure failed" }
+          cmake --build build --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "Syzygy build failed" }
+          ctest --test-dir build -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw "Syzygy native regressions failed" }
+      - name: Compare actual WDL and DTZ files with independent Python reader
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/tests/tablebase_parity.py $binary external/python-chess external/python-chess/data/syzygy/regular --output build/tablebase-validation.json
+          if ($LASTEXITCODE -ne 0) { throw "Real Syzygy parity failed" }
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: syzygy-${{ matrix.os }}-${{ github.sha }}
+          path: build/tablebase-validation.json
+          if-no-files-found: warn
+          retention-days: 30

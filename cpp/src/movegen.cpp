@@ -37,7 +37,30 @@ void append_pawn_move(MoveList& moves, std::uint8_t from, std::uint8_t to, bool 
     }
 }
 
-void append_castling_moves(MoveList& moves, const Position& position) {
+void append_castling_moves(MoveList& moves, const Position& position
+#ifdef TRICKFISH_LAZY_CASTLING
+    , Color color, Bitboard occupied, Bitboard king, Bitboard rooks
+#endif
+) {
+#ifdef TRICKFISH_LAZY_CASTLING
+    const auto rights = position.castling_rights();
+    if (rights == 0) return;
+    const bool white = color == Color::white;
+    const std::uint8_t home = white ? 60 : 4;
+    if ((king & square_bit(home)) == 0) return;
+    const auto king_path = square_bit(static_cast<std::uint8_t>(home + 1)) | square_bit(static_cast<std::uint8_t>(home + 2));
+    const auto queen_path = square_bit(static_cast<std::uint8_t>(home - 1)) | square_bit(static_cast<std::uint8_t>(home - 2));
+    const bool kingside = (rights & (white ? 1 : 4)) != 0 &&
+        (rooks & square_bit(static_cast<std::uint8_t>(home + 3))) != 0 && (occupied & king_path) == 0;
+    const bool queenside = (rights & (white ? 2 : 8)) != 0 &&
+        (rooks & square_bit(static_cast<std::uint8_t>(home - 4))) != 0 &&
+        (occupied & (queen_path | square_bit(static_cast<std::uint8_t>(home - 3)))) == 0;
+    if (!kingside && !queenside) return;
+    const auto attacks = position.attacks_by(opposite(color));
+    if ((attacks & square_bit(home)) != 0) return;
+    if (kingside && (attacks & king_path) == 0) moves.push(Move(home, static_cast<std::uint8_t>(home + 2), '\0', false, true));
+    if (queenside && (attacks & queen_path) == 0) moves.push(Move(home, static_cast<std::uint8_t>(home - 2), '\0', false, true));
+#else
     const auto color = position.side_to_move();
     const auto enemy_attacks = position.attacks_by(opposite(color));
     const auto occupied = position.occupancy();
@@ -71,12 +94,17 @@ void append_castling_moves(MoveList& moves, const Position& position) {
         (enemy_attacks & queenside_king_path) == 0) {
         moves.push(Move(king_square, static_cast<std::uint8_t>(king_square - 2), '\0', false, true));
     }
+#endif
 }
 
 void append_non_pawn_moves(MoveList& moves, const Position& position) {
     const auto color = position.side_to_move();
     const auto own_occupancy = position.occupancy(color);
     const auto occupancy = position.occupancy();
+#ifdef TRICKFISH_LAZY_CASTLING
+    const auto own_rooks = position.pieces(color, PieceType::rook);
+    const auto own_king = position.pieces(color, PieceType::king);
+#endif
 
     append_moves(
         moves,
@@ -92,7 +120,11 @@ void append_non_pawn_moves(MoveList& moves, const Position& position) {
     );
     append_moves(
         moves,
+#ifdef TRICKFISH_LAZY_CASTLING
+        own_rooks,
+#else
         position.pieces(color, PieceType::rook),
+#endif
         own_occupancy,
         [occupancy](std::uint8_t square) { return rook_attacks(square, occupancy); }
     );
@@ -104,11 +136,19 @@ void append_non_pawn_moves(MoveList& moves, const Position& position) {
     );
     append_moves(
         moves,
+#ifdef TRICKFISH_LAZY_CASTLING
+        own_king,
+#else
         position.pieces(color, PieceType::king),
+#endif
         own_occupancy,
         [](std::uint8_t square) { return king_attacks(square); }
     );
-    append_castling_moves(moves, position);
+    append_castling_moves(moves, position
+#ifdef TRICKFISH_LAZY_CASTLING
+        , color, occupancy, own_king, own_rooks
+#endif
+    );
 }
 
 void append_pawn_moves(MoveList& moves, const Position& position) {

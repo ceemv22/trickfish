@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 
 project(trickfish LANGUAGES CXX)
 option(TRICKFISH_RAY_SLIDERS "Use table-driven sliding attacks" ON)
+option(TRICKFISH_LAZY_CASTLING "Experimental packed castling eligibility" OFF)
+option(TRICKFISH_PACKED_ORDERING "Experimental packed active-prefix move keys" OFF)
 
 add_library(trickfish_core
     cpp/src/pawn_cache.cpp
@@ -12,9 +14,16 @@ add_library(trickfish_core
     cpp/src/perft.cpp
     cpp/src/position.cpp
     cpp/src/search.cpp
+    cpp/src/tablebase.cpp
 )
 
 target_include_directories(trickfish_core PUBLIC cpp/include)
+if(TRICKFISH_LAZY_CASTLING)
+    target_compile_definitions(trickfish_core PRIVATE TRICKFISH_LAZY_CASTLING)
+endif()
+if(TRICKFISH_PACKED_ORDERING)
+    target_compile_definitions(trickfish_core PRIVATE TRICKFISH_PACKED_ORDERING)
+endif()
 if(TRICKFISH_RAY_SLIDERS)
     target_compile_definitions(trickfish_core PUBLIC TRICKFISH_RAY_SLIDERS)
 endif()
@@ -22,6 +31,17 @@ target_compile_features(trickfish_core PUBLIC cxx_std_23)
 set_target_properties(trickfish_core PROPERTIES CXX_EXTENSIONS NO)
 
 find_package(Threads REQUIRED)
+target_link_libraries(trickfish_core PUBLIC Threads::Threads)
+set(TRICKFISH_FATHOM_SOURCE "" CACHE PATH "External Fathom source directory; empty disables Syzygy")
+if(TRICKFISH_FATHOM_SOURCE)
+    enable_language(C)
+    configure_file("${TRICKFISH_FATHOM_SOURCE}/LICENSE" "${CMAKE_CURRENT_BINARY_DIR}/FATHOM-LICENSE.txt" COPYONLY)
+    add_library(trickfish_fathom STATIC "${TRICKFISH_FATHOM_SOURCE}/src/tbprobe.c")
+    target_include_directories(trickfish_fathom PUBLIC "${TRICKFISH_FATHOM_SOURCE}/src")
+    target_compile_definitions(trickfish_fathom PRIVATE TB_NO_THREADS TB_NO_HELPER_API)
+    target_link_libraries(trickfish_core PRIVATE trickfish_fathom Threads::Threads)
+    target_compile_definitions(trickfish_core PRIVATE TRICKFISH_FATHOM)
+endif()
 add_library(trickfish_uci cpp/src/uci.cpp)
 target_link_libraries(trickfish_uci PUBLIC trickfish_core Threads::Threads)
 set_target_properties(trickfish_uci PROPERTIES CXX_EXTENSIONS NO)
@@ -41,6 +61,14 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(trickfish_packed_ordering_test cpp/tests/packed_ordering.cpp)
+    target_link_libraries(trickfish_packed_ordering_test PRIVATE trickfish_core)
+    add_test(NAME packed_ordering_permutations COMMAND trickfish_packed_ordering_test)
+    set_tests_properties(packed_ordering_permutations PROPERTIES TIMEOUT 90)
+    add_executable(trickfish_tablebase_test cpp/tests/tablebase.cpp)
+    target_link_libraries(trickfish_tablebase_test PRIVATE trickfish_core)
+    add_test(NAME guarded_tablebase_root COMMAND trickfish_tablebase_test)
+    set_tests_properties(guarded_tablebase_root PROPERTIES TIMEOUT 120)
     add_executable(trickfish_evaluation_weights_test cpp/tests/evaluation_weights.cpp)
     target_link_libraries(trickfish_evaluation_weights_test PRIVATE trickfish_core)
     add_test(NAME tunable_evaluation_weights COMMAND trickfish_evaluation_weights_test)

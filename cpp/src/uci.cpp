@@ -223,6 +223,8 @@ public:
                     emit("id name Trickfish C++\nid author ceemv22\noption name Move Overhead type spin default " +
                         std::to_string(default_move_overhead_ms) + " min 0 max 10000");
                     emit("option name Ponder type check default false");
+                    emit("option name Claim Fifty Move Draw type check default false");
+                    if (SyzygyTablebase::available()) emit("option name SyzygyPath type string default <empty>");
                     emit("option name MultiPV type spin default 1 min 1 max " + std::to_string(maximum_multi_pv));
                     const SearchOptions defaults;
                     for (const auto& option : check_options) {
@@ -274,8 +276,8 @@ private:
     void set_option(const std::vector<std::string>& tokens) {
         if (tokens.size() < 5 || tokens[1] != "name") throw std::invalid_argument("invalid setoption command");
         const auto value = std::find(tokens.begin() + 2, tokens.end(), "value");
-        if (value == tokens.end() || value + 1 == tokens.end() || value + 2 != tokens.end()) {
-            throw std::invalid_argument("setoption requires one value");
+        if (value == tokens.end() || value + 1 == tokens.end()) {
+            throw std::invalid_argument("setoption requires a value");
         }
         std::string name;
         for (auto word = tokens.begin() + 2; word != value; ++word) {
@@ -283,6 +285,24 @@ private:
             name += *word;
         }
         name = lowercase(std::move(name));
+        if (name == "syzygypath" && SyzygyTablebase::available()) {
+            std::string path;
+            for (auto word = value + 1; word != tokens.end(); ++word) {
+                if (!path.empty()) path += ' ';
+                path += *word;
+            }
+            stop_search();
+            if (path == "<empty>") search_options_.tablebase.reset();
+            else search_options_.tablebase = SyzygyTablebase::open(path);
+            return;
+        }
+        if (value + 2 != tokens.end()) throw std::invalid_argument("setoption requires one value");
+        if (name == "claim fifty move draw") {
+            const auto selected = lowercase(*(value + 1));
+            if (selected != "true" && selected != "false") throw std::invalid_argument("Claim Fifty Move Draw requires true or false");
+            search_options_.draw_policy = selected == "true" ? MoveCountDrawPolicy::claim_fifty_moves : MoveCountDrawPolicy::automatic_only;
+            return;
+        }
         if (name == "move overhead") {
             const auto overhead = number_for(*(value + 1));
             if (overhead > 10000) throw std::invalid_argument("Move Overhead must be between 0 and 10000");

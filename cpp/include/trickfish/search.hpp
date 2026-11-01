@@ -10,6 +10,7 @@
 #include "trickfish/history.hpp"
 #include "trickfish/draw.hpp"
 #include "trickfish/transposition.hpp"
+#include "trickfish/tablebase.hpp"
 
 namespace trickfish {
 
@@ -52,6 +53,7 @@ struct SearchResult {
     std::uint64_t quiescence_ordering_calls = 0;
     std::uint64_t quiescence_ordered_moves = 0;
     std::uint64_t quiescence_filtered_quiet_moves = 0;
+    bool tablebase_used = false;
 };
 
 using SearchObserver = std::function<void(const SearchResult&)>;
@@ -84,6 +86,7 @@ struct SearchOptions {
     int eval_pawn_weight = 100;
     int eval_activity_weight = 100;
     int eval_king_safety_weight = 100;
+    std::shared_ptr<const TablebaseProvider> tablebase;
 };
 
 struct SearchLimits {

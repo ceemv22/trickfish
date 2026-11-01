@@ -13,6 +13,9 @@
 #include "trickfish/movegen.hpp"
 #include "trickfish/move_table.hpp"
 #include "trickfish/evaluation_weights.hpp"
+#ifdef TRICKFISH_PACKED_ORDERING
+#include "trickfish/packed_ordering.hpp"
+#endif
 
 namespace trickfish {
 namespace {
@@ -86,6 +89,8 @@ struct SearchBudget {
     std::uint64_t quiescence_filtered_quiet_moves = 0;
     std::optional<MoveOrderingTable> repetition_ordering;
     EvaluationWeights evaluation_weights;
+    std::uint64_t evaluation_key = 0;
+    bool weighted_evaluation = false;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -97,14 +102,7 @@ std::uint64_t search_key(const Position& position, const SearchBudget* budget) {
     const auto policy = draw_policy(budget) == MoveCountDrawPolicy::claim_fifty_moves
         ? 0xd1b54a32d192ed03ULL : 0ULL;
     const auto scaling = budget != nullptr && budget->use_endgame_scaling ? 0x94d049bb133111ebULL : 0ULL;
-    std::uint64_t weights = 0;
-    if (budget != nullptr && !budget->evaluation_weights.standard()) {
-        const auto& values = budget->evaluation_weights;
-        weights = static_cast<std::uint64_t>(values.pawns) |
-            (static_cast<std::uint64_t>(values.activity) << 8) |
-            (static_cast<std::uint64_t>(values.king_safety) << 16);
-        weights = (weights ^ 0x646464ULL) * 0xbf58476d1ce4e5b9ULL;
-    }
+    const auto weights = budget != nullptr ? budget->evaluation_key : 0;
     return position.key() ^ (clock * 0x9e3779b97f4a7c15ULL) ^ policy ^ scaling ^ weights;
 }
 
@@ -255,6 +253,26 @@ int move_priority(const Position& position, const Move& move) {
 void order_moves(const Position& position, MoveList& moves, std::optional<Move> preferred = std::nullopt,
     SearchBudget* budget = nullptr, int ply = 0, std::optional<Move> previous = std::nullopt) {
     if (budget == nullptr || budget->use_cached_ordering) {
+#ifdef TRICKFISH_PACKED_ORDERING
+        std::array<PackedMoveKey, MoveList::capacity> keys;
+        const bool exchange_ordering = budget != nullptr && budget->use_exchange_ordering;
+        for (std::size_t index = 0; index < moves.size(); ++index) {
+            const auto& move = moves[index];
+            const bool tactical = !is_quiet(position, move);
+            int exchange = 0;
+            if (exchange_ordering && tactical) {
+                const auto result = analyze_exchange(position, move, false, [budget] { check_stop(budget); });
+                exchange = result.score;
+                ++budget->exchange_evaluations;
+                budget->exchange_nodes += result.nodes;
+                budget->exchange_cutoffs += result.cutoffs;
+            }
+            keys[index] = packed_move_key(move, index, move == preferred, exchange_ordering, tactical, exchange,
+                move_priority(position, move) + killer_priority(position, move, budget, ply),
+                history_priority(position, move, budget) + continuation_priority(position, move, budget, previous));
+        }
+        apply_packed_order(moves, keys);
+#else
         struct RankedMove {
             Move move;
             int priority = 0;
@@ -294,6 +312,7 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
             return left.move.promotion < right.move.promotion;
         });
         for (std::size_t index = 0; index < moves.size(); ++index) moves[index] = ranked[index].move;
+#endif
         return;
     }
     if (budget != nullptr && budget->use_exchange_ordering) {
@@ -346,7 +365,7 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
 
 int raw_static_for_side(const Position& position, SearchBudget* budget) {
     int score = budget != nullptr && budget->use_pawn_cache ? budget->pawn_cache.evaluate(position) : evaluate_static(position);
-    if (budget != nullptr && !budget->evaluation_weights.standard()) {
+    if (budget != nullptr && budget->weighted_evaluation) {
         score = budget->evaluation_weights.apply(position, score);
     }
     if (budget != nullptr && budget->use_endgame_scaling) {
@@ -779,7 +798,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         active_history.emplace(*history);
     }
     std::optional<TranspositionTable> table;
-    if (options.use_table && history == nullptr && options.root_moves.empty() && !options.use_correction &&
+    if (options.use_table && !options.tablebase && history == nullptr && options.root_moves.empty() && !options.use_correction &&
         !(options.use_check_extensions && options.check_extension_limit > 0)) {
         table.emplace();
     }
@@ -788,6 +807,14 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         budget.repetition_ordering.emplace();
     }
     budget.evaluation_weights = evaluation_weights;
+    budget.weighted_evaluation = !evaluation_weights.standard();
+    if (budget.weighted_evaluation) {
+        const auto& values = evaluation_weights;
+        const auto packed = static_cast<std::uint64_t>(values.pawns) |
+            (static_cast<std::uint64_t>(values.activity) << 8) |
+            (static_cast<std::uint64_t>(values.king_safety) << 16);
+        budget.evaluation_key = (packed ^ 0x646464ULL) * 0xbf58476d1ce4e5b9ULL;
+    }
     budget.use_killers = options.use_killers;
     budget.use_history = options.use_history;
     budget.use_exchange_ordering = options.use_exchange_ordering;
@@ -822,8 +849,25 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     }
     std::uint64_t fail_low = 0;
     std::uint64_t fail_high = 0;
+    std::optional<TablebaseMove> tablebase_choice;
+    std::vector<Move> tablebase_roots;
+    const auto apply_tablebase = [&tablebase_choice](SearchResult& output) {
+        if (tablebase_choice && output.completed_depth > 0) {
+            output.tablebase_used = true;
+            if (std::abs(output.score) < mate_threshold) output.score = tablebase_score(tablebase_choice->wdl);
+        }
+    };
     for (int depth = 1; depth <= max_depth; ++depth) {
         try {
+            if (depth == 1 && options.tablebase) {
+                check_stop(&budget);
+                tablebase_choice = select_tablebase_root(position, *options.tablebase, options.root_moves, history, options.draw_policy);
+                if (tablebase_choice) {
+                    tablebase_roots = {tablebase_choice->move};
+                    budget.root_moves = &tablebase_roots;
+                }
+                check_stop(&budget);
+            }
             int radius = options.aspiration_window;
             const int center = result.score;
             const bool narrow = depth > 1 && radius > 0 && std::abs(center) < mate_threshold;
@@ -848,6 +892,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         if (observer) {
             auto progress = result;
             update_counters(progress, budget, fail_low, fail_high);
+            apply_tablebase(progress);
             observer(progress);
         }
         if (!result.best_move) {
@@ -855,6 +900,7 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         }
     }
     update_counters(result, budget, fail_low, fail_high);
+    apply_tablebase(result);
     return result;
 }
 

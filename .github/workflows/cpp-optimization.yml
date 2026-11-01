@@ -1,0 +1,87 @@
+name: C++ Isolated Optimization Gates
+
+on:
+  push:
+    paths: ['cpp/**', 'CMakeLists.txt', '.github/workflows/cpp-optimization.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated:
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        candidate: [castling, ordering]
+    runs-on: ${{ matrix.os }}
+    env:
+      OPTIMIZATION_OPTION: ${{ matrix.candidate == 'castling' && 'TRICKFISH_LAZY_CASTLING' || 'TRICKFISH_PACKED_ORDERING' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          ref: 6b7089aa96a14afa5377f8ec3c535c93795f948e
+          path: accepted-source
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Build isolated candidate and exercise both slider kernels
+        shell: pwsh
+        run: |
+          foreach ($kernel in @("OFF", "ON")) {
+            $flags = @("-DTRICKFISH_RAY_SLIDERS=$kernel", "-DTRICKFISH_LAZY_CASTLING=OFF", "-DTRICKFISH_PACKED_ORDERING=OFF", "-D$($env:OPTIMIZATION_OPTION)=ON")
+            if ($IsWindows) {
+              cmake -S . -B candidate-build -A x64 @flags
+            } else {
+              cmake -S . -B candidate-build -DCMAKE_BUILD_TYPE=Release @flags
+            }
+            if ($LASTEXITCODE -ne 0) { throw "Candidate configure failed" }
+            cmake --build candidate-build --config Release --parallel 2
+            if ($LASTEXITCODE -ne 0) { throw "Candidate build failed" }
+            ctest --test-dir candidate-build -C Release --output-on-failure
+            if ($LASTEXITCODE -ne 0) { throw "Candidate native parity failed" }
+            $binary = if ($IsWindows) { ".\candidate-build\Release\trickfish_cpp.exe" } else { "./candidate-build/trickfish_cpp" }
+            python cpp/tests/castling_parity.py $binary
+            if ($LASTEXITCODE -ne 0) { throw "Candidate independent castling parity failed" }
+          }
+      - name: Build same-head off control and original accepted ray reference
+        shell: pwsh
+        run: |
+          foreach ($source in @(".", "accepted-source")) {
+            $directory = if ($source -eq ".") { "control-build" } else { "accepted-source/build" }
+            if ($IsWindows) {
+              cmake -S $source -B $directory -A x64 -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON -DTRICKFISH_LAZY_CASTLING=OFF -DTRICKFISH_PACKED_ORDERING=OFF
+            } else {
+              cmake -S $source -B $directory -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON -DTRICKFISH_LAZY_CASTLING=OFF -DTRICKFISH_PACKED_ORDERING=OFF
+            }
+            if ($LASTEXITCODE -ne 0) { throw "Reference configure failed" }
+            cmake --build $directory --config Release --target trickfish_cpp --parallel 2
+            if ($LASTEXITCODE -ne 0) { throw "Reference build failed" }
+          }
+      - name: Measure unchanged ray traces against both references
+        shell: pwsh
+        run: |
+          $candidate = if ($IsWindows) { ".\candidate-build\Release\trickfish_cpp.exe" } else { "./candidate-build/trickfish_cpp" }
+          $control = if ($IsWindows) { ".\control-build\Release\trickfish_cpp.exe" } else { "./control-build/trickfish_cpp" }
+          $accepted = if ($IsWindows) { ".\accepted-source\build\Release\trickfish_cpp.exe" } else { "./accepted-source/build/trickfish_cpp" }
+          New-Item -ItemType Directory -Force -Path evidence | Out-Null
+          foreach ($name in @("control", "accepted")) {
+            $reference = if ($name -eq "control") { $control } else { $accepted }
+            python cpp/bench/search_benchmark.py $candidate --reference-binary $reference --reference-trace --depth 6 --repeats 6 --warmups 2 --timeout 120 --output "evidence/$name.json"
+            if ($LASTEXITCODE -ne 0) { throw "Isolated trace/timing comparison failed" }
+            python cpp/bench/summarize_binary_benchmark.py "evidence/$name.json" --output "evidence/$name-summary.json"
+            if ($LASTEXITCODE -ne 0) { throw "Timing evidence validation failed" }
+          }
+          python -c "import json,os,subprocess; from pathlib import Path; s={n:json.loads(Path('evidence/'+n+'-summary.json').read_text()) for n in ('control','accepted')}; d={'revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'option':os.environ['OPTIMIZATION_OPTION'],'isolated':True,'configuration':'Release','kernel':'ray','timing_gate_met':all(v['totals']['median_suite_wall_ratio']<1 and v['totals']['trace_changed_fixtures']==0 for v in s.values()),'medians':{n:v['totals']['median_suite_wall_ratio'] for n,v in s.items()},'inference':'per-job engineering gate only; requires the other OS and Core results; not statistical significance or strength'}; Path('evidence/gate.json').write_text(json.dumps(d,indent=2),encoding='utf-8'); print(json.dumps(d,indent=2))"
+          if ($LASTEXITCODE -ne 0) { throw "Gate receipt generation failed" }
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: isolated-${{ matrix.candidate }}-${{ matrix.os }}-${{ github.sha }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
