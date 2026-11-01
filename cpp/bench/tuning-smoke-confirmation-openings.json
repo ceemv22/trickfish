@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "openings": [
+    {
+      "id": "other-white-mate",
+      "fen": "7k/8/6QK/8/8/8/8/8 w - - 0 1"
+    },
+    {
+      "id": "other-black-mate",
+      "fen": "8/8/8/8/8/6qk/8/7K b - - 0 1"
+    }
+  ]
+}

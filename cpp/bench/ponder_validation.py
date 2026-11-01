@@ -89,7 +89,7 @@ def run_probes(binary):
     for count in (1, 3):
         with ProbeEngine(binary, count, True) as engine:
             before = begin(engine, STARTING_FEN, "go ponder depth 2")
-            engine.until("info depth 2 ")
+            engine.until("info depth 2")
             barrier(engine, before)
             saved = validate_uci_batches([line for line in engine.records[before:] if line.startswith("info depth ")], STARTING_FEN, count)[-1]
             engine.send("setoption name Ponder value false")
@@ -114,7 +114,7 @@ def run_probes(binary):
             ("black-clock", black.to_fen(), "go ponder wtime 1000 btime 0 depth 64")):
         with ProbeEngine(binary, 3, False) as engine:
             before = begin(engine, fen, go)
-            engine.until("info depth 1 ")
+            engine.until("info depth 1")
             barrier(engine, before)
             engine.send("ponderhit")
             engine.until("bestmove")
@@ -127,7 +127,7 @@ def run_probes(binary):
             ("zero-nodes", STARTING_FEN, "go ponder nodes 0", "ponderhit", 1)):
         with ProbeEngine(binary, count, True) as engine:
             before = begin(engine, fen, go)
-            if name != "zero-nodes": engine.until("info depth 1 ")
+            if name != "zero-nodes": engine.until("info depth 1")
             barrier(engine, before)
             if name == "stop":
                 expect_rejection(engine, "ponderhit extra")
@@ -145,7 +145,7 @@ def run_probes(binary):
             expect_rejection(engine, command)
             require_pending(engine.records[before:])
         before = begin(engine, STARTING_FEN, "go infinite depth 1")
-        engine.until("info depth 1 ")
+        engine.until("info depth 1")
         expect_rejection(engine, "ponderhit")
         require_pending(engine.records[before:])
         engine.send("stop")

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "tuning-smoke-confirmation",
+  "openings": "tuning-smoke-confirmation-openings.json",
+  "openings_sha256": "a412025d6a05633d6cc0ea45297b6a13861254a92b1a3a55a3c73c2c901e40eb",
+  "opening_ids": [
+    "other-white-mate",
+    "other-black-mate"
+  ],
+  "profiles": null,
+  "profiles_sha256": null,
+  "search_budget": {
+    "kind": "depth",
+    "value": 1
+  },
+  "rounds": 1,
+  "seed": 20261101,
+  "max_plies": 2,
+  "timeout": 30
+}

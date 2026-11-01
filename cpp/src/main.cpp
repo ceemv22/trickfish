@@ -9,6 +9,7 @@
 
 #include "trickfish/attacks.hpp"
 #include "trickfish/evaluation.hpp"
+#include "trickfish/evaluation_weights.hpp"
 #include "trickfish/exchange.hpp"
 #include "trickfish/game_status.hpp"
 #include "trickfish/move_list.hpp"
@@ -46,6 +47,25 @@ void write_multi_pv(std::ostream& output, const trickfish::MultiPVResult& result
 int main(int argc, char** argv) {
     constexpr auto start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "--eval-weighted") {
+            if (argc < 5 || argc > 6) throw std::invalid_argument("usage: --eval-weighted pawns activity king-safety [fen]");
+            trickfish::EvaluationWeights weights;
+            for (const auto& item : {std::pair{std::string_view(argv[2]), &weights.pawns},
+                    std::pair{std::string_view(argv[3]), &weights.activity},
+                    std::pair{std::string_view(argv[4]), &weights.king_safety}}) {
+                const auto parsed = std::from_chars(item.first.data(), item.first.data() + item.first.size(), *item.second);
+                if (parsed.ec != std::errc{} || parsed.ptr != item.first.data() + item.first.size()) {
+                    throw std::invalid_argument("evaluation weights must be integers");
+                }
+            }
+            weights.validate();
+            auto position = trickfish::Position::from_fen(argc == 6 ? argv[5] : start_fen);
+            const auto status = trickfish::game_status(position);
+            const bool terminal = status == trickfish::GameStatus::checkmate || status == trickfish::GameStatus::stalemate ||
+                position.is_insufficient_material();
+            std::cout << (terminal ? trickfish::evaluate(position) : weights.apply(position, trickfish::evaluate_static(position))) << '\n';
+            return 0;
+        }
         if (argc == 2 && std::string_view(argv[1]) == "--slider-kernel") {
             std::cout << (trickfish::use_ray_sliders ? "ray" : "reference") << '\n';
             return 0;

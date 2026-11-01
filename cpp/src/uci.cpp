@@ -92,13 +92,17 @@ constexpr CheckOption check_options[] = {
     {"Experimental Correction History", &SearchOptions::use_correction},
     {"Experimental Endgame Scaling", &SearchOptions::use_endgame_scaling},
     {"Experimental Mate Distance Pruning", &SearchOptions::use_mate_distance},
-    {"Experimental Pawn Cache", &SearchOptions::use_pawn_cache}
+    {"Experimental Pawn Cache", &SearchOptions::use_pawn_cache},
+    {"Experimental Repetition Ordering", &SearchOptions::use_repetition_ordering}
 };
 
 constexpr SpinOption spin_options[] = {
     {"Futility Margin", &SearchOptions::futility_margin, 0, 10000},
     {"Razor Margin", &SearchOptions::razor_margin, 0, 10000},
-    {"Check Extension Limit", &SearchOptions::check_extension_limit, 0, 4}
+    {"Check Extension Limit", &SearchOptions::check_extension_limit, 0, 4},
+    {"Eval Pawn Weight", &SearchOptions::eval_pawn_weight, 0, 200},
+    {"Eval Activity Weight", &SearchOptions::eval_activity_weight, 0, 200},
+    {"Eval King Safety Weight", &SearchOptions::eval_king_safety_weight, 0, 200}
 };
 
 std::string lowercase(std::string text) {

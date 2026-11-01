@@ -232,6 +232,14 @@ jobs:
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           python cpp/tests/uci_process.py $binary
           if ($LASTEXITCODE -ne 0) { throw "Interactive UCI checks failed" }
+      - name: Verify indexed repetition and move-only table ordering
+        timeout-minutes: 4
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/repetition_validation.py $binary --output build/repetition-validation.json
+          if ($LASTEXITCODE -ne 0) { throw "Repetition ordering replay failed" }
+          Get-Content build/repetition-validation.json
       - name: Replay MultiPV diagnostics against Python rules
         timeout-minutes: 3
         shell: pwsh
@@ -280,6 +288,7 @@ jobs:
             build/multipv-validation.json
             build/search-progress-validation.json
             build/ponder-validation.json
+            build/repetition-validation.json
             build/ponder-match-smoke.json
             build/ponder-match-smoke.pgn
             build/multipv-match-smoke.json
@@ -292,6 +301,8 @@ jobs:
         run: |
           $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
           python cpp/tests/evaluation_parity.py $binary
+          if ($LASTEXITCODE -ne 0) { throw "Reference evaluator parity failed" }
+          python cpp/tests/weighted_evaluation_parity.py $binary
           if ($LASTEXITCODE -ne 0) { throw "C++/Python evaluation term parity failed" }
       - name: Validate search benchmark runner
         shell: pwsh
@@ -305,7 +316,15 @@ jobs:
           python cpp/bench/test_search_progress.py
           if ($LASTEXITCODE -ne 0) { throw "Search progress validator checks failed" }
           python cpp/bench/test_ponder_validation.py
-          if ($LASTEXITCODE -ne 0) { throw "Ponder parser and validation checks failed" }
+          if ($LASTEXITCODE -ne 0) { throw "Ponder validator checks failed" }
+          python cpp/bench/test_repetition_validation.py
+          if ($LASTEXITCODE -ne 0) { throw "Repetition replay validation checks failed" }
+          python cpp/bench/test_sequential_test.py
+          if ($LASTEXITCODE -ne 0) { throw "Exact sequential-test arithmetic failed" }
+          python cpp/bench/test_sequential_experiment.py
+          if ($LASTEXITCODE -ne 0) { throw "Sequential experiment recovery checks failed" }
+          python cpp/bench/test_tune_evaluation.py
+          if ($LASTEXITCODE -ne 0) { throw "Evaluation grid and confirmation checks failed" }
           python cpp/bench/test_uci_multipv.py
           if ($LASTEXITCODE -ne 0) { throw "MultiPV match-client information checks failed" }
           python cpp/bench/test_mate_objectives.py
@@ -326,6 +345,27 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Two-binary benchmark regressions failed" }
           python cpp/bench/test_binary_summary.py
           if ($LASTEXITCODE -ne 0) { throw "Binary summary regressions failed" }
+      - name: Run evaluation grid and disjoint sequential confirmation protocol smoke
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/tune_evaluation.py run $binary --spec cpp/bench/tuning_smoke.json --directory build/tuning-smoke
+          if ($LASTEXITCODE -ne 0) { throw "Evaluation tuning protocol smoke failed" }
+          python cpp/bench/tune_evaluation.py verify build/tuning-smoke
+          if ($LASTEXITCODE -ne 0) { throw "Tuning replay verification failed" }
+          python cpp/bench/tune_evaluation.py resume build/tuning-smoke
+          if ($LASTEXITCODE -ne 0) { throw "Completed tuning resume failed" }
+          python -c "import json; from pathlib import Path; r=json.loads(Path('build/tuning-smoke/receipt.json').read_text()); assert r['confirmation_decision']=='inconclusive_horizon',r; s=json.loads(Path('build/tuning-smoke/selection.json').read_text()); assert len(s['trials'])==2 and all(t['complete'] for t in s['trials']),s"
+          if ($LASTEXITCODE -ne 0) { throw "Mate-only tuning smoke claimed acceptance or omitted training games" }
+      - name: Preserve tuning and sequential evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: tuning-smoke-${{ matrix.os }}-${{ matrix.kernel }}-${{ github.sha }}
+          path: build/tuning-smoke/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Repeat fixed-suite search benchmark
         timeout-minutes: 3
         shell: pwsh

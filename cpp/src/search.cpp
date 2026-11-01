@@ -11,6 +11,8 @@
 #include "trickfish/pawn_cache.hpp"
 #include "trickfish/exchange.hpp"
 #include "trickfish/movegen.hpp"
+#include "trickfish/move_table.hpp"
+#include "trickfish/evaluation_weights.hpp"
 
 namespace trickfish {
 namespace {
@@ -82,6 +84,8 @@ struct SearchBudget {
     std::uint64_t quiescence_ordering_calls = 0;
     std::uint64_t quiescence_ordered_moves = 0;
     std::uint64_t quiescence_filtered_quiet_moves = 0;
+    std::optional<MoveOrderingTable> repetition_ordering;
+    EvaluationWeights evaluation_weights;
 };
 
 MoveCountDrawPolicy draw_policy(const SearchBudget* budget) {
@@ -93,7 +97,15 @@ std::uint64_t search_key(const Position& position, const SearchBudget* budget) {
     const auto policy = draw_policy(budget) == MoveCountDrawPolicy::claim_fifty_moves
         ? 0xd1b54a32d192ed03ULL : 0ULL;
     const auto scaling = budget != nullptr && budget->use_endgame_scaling ? 0x94d049bb133111ebULL : 0ULL;
-    return position.key() ^ (clock * 0x9e3779b97f4a7c15ULL) ^ policy ^ scaling;
+    std::uint64_t weights = 0;
+    if (budget != nullptr && !budget->evaluation_weights.standard()) {
+        const auto& values = budget->evaluation_weights;
+        weights = static_cast<std::uint64_t>(values.pawns) |
+            (static_cast<std::uint64_t>(values.activity) << 8) |
+            (static_cast<std::uint64_t>(values.king_safety) << 16);
+        weights = (weights ^ 0x646464ULL) * 0xbf58476d1ce4e5b9ULL;
+    }
+    return position.key() ^ (clock * 0x9e3779b97f4a7c15ULL) ^ policy ^ scaling ^ weights;
 }
 
 bool is_repetition(const SearchBudget* budget) {
@@ -334,6 +346,9 @@ void order_moves(const Position& position, MoveList& moves, std::optional<Move> 
 
 int raw_static_for_side(const Position& position, SearchBudget* budget) {
     int score = budget != nullptr && budget->use_pawn_cache ? budget->pawn_cache.evaluate(position) : evaluate_static(position);
+    if (budget != nullptr && !budget->evaluation_weights.standard()) {
+        score = budget->evaluation_weights.apply(position, score);
+    }
     if (budget != nullptr && budget->use_endgame_scaling) {
         score = score * endgame_scale(position) / endgame_scale_normal;
     }
@@ -526,6 +541,14 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
             }
         }
     }
+    if (budget->synthetic_null == 0 && budget->repetition_ordering) {
+        const auto hint = budget->repetition_ordering->probe(position.key());
+        if (hint && std::find(moves.begin(), moves.end(), *hint) != moves.end()) {
+            preferred = hint;
+            ++hits;
+            ++budget->hits;
+        }
+    }
     order_moves(position, moves, preferred, budget, ply, previous);
     int best = -mate_score - 1;
     std::optional<Move> selected;
@@ -618,6 +641,9 @@ int negamax(Position& position, int depth, int ply, int alpha, int beta,
         selected && is_quiet(position, *selected) && best > original_alpha && best < beta) {
         const int raw = raw_static_for_side(position, budget);
         if (budget->correction.update(position, best, raw, depth)) ++budget->correction_updates;
+    }
+    if (budget->synthetic_null == 0 && budget->repetition_ordering && selected) {
+        budget->repetition_ordering->store(position.key(), *selected);
     }
     if (table != nullptr) {
         const auto bound = best <= original_alpha ? Bound::upper : best >= beta ? Bound::lower : Bound::exact;
@@ -735,6 +761,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
     if (options.check_extension_limit < 0 || options.check_extension_limit > 4) {
         throw std::invalid_argument("check extension limit must be between 0 and 4");
     }
+    const EvaluationWeights evaluation_weights{options.eval_pawn_weight, options.eval_activity_weight, options.eval_king_safety_weight};
+    evaluation_weights.validate();
     const auto root_legal = generate_legal_moves(position);
     for (std::size_t index = 0; index < options.root_moves.size(); ++index) {
         const auto& move = options.root_moves[index];
@@ -756,6 +784,10 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         table.emplace();
     }
     SearchBudget budget{limits.nodes, limits.deadline, limits.stop_requested, active_history ? &*active_history : nullptr, options.draw_policy};
+    if (options.use_table && options.use_repetition_ordering && active_history) {
+        budget.repetition_ordering.emplace();
+    }
+    budget.evaluation_weights = evaluation_weights;
     budget.use_killers = options.use_killers;
     budget.use_history = options.use_history;
     budget.use_exchange_ordering = options.use_exchange_ordering;
@@ -780,7 +812,8 @@ SearchResult iterative_search(Position& position, int max_depth, const SearchOpt
         result.best_move = options.root_moves.empty() ? root_legal[0] : options.root_moves.front();
     }
     result.score = evaluate_for_side_to_move(position);
-    if ((options.use_endgame_scaling || options.use_pawn_cache) && !root_legal.empty() && !position.is_insufficient_material()) {
+    if ((options.use_endgame_scaling || options.use_pawn_cache || !evaluation_weights.standard()) &&
+        !root_legal.empty() && !position.is_insufficient_material()) {
         result.score = raw_static_for_side(position, &budget);
     }
     if (is_move_count_draw(position, options.draw_policy)) {

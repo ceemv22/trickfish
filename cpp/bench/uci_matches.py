@@ -205,6 +205,8 @@ class Engine:
         self.process.stdin.flush()
 
     def until(self, prefix):
+        prefix = prefix.rstrip()
+        if not prefix: raise ValueError("UCI wait prefix must not be empty")
         deadline = time.monotonic() + self.timeout
         info = None
         while True:

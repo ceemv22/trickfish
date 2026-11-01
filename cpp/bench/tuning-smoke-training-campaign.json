@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "tuning-smoke-training",
+  "openings": "tuning-smoke-training-openings.json",
+  "openings_sha256": "e51dd699c348c24e989ad3d6dc6041986c3763b7d9361efcf4e36966fb81f2b5",
+  "opening_ids": [
+    "white-mate",
+    "black-mate"
+  ],
+  "profiles": null,
+  "profiles_sha256": null,
+  "search_budget": {
+    "kind": "depth",
+    "value": 1
+  },
+  "rounds": 1,
+  "seed": 20261101,
+  "max_plies": 2,
+  "timeout": 30
+}

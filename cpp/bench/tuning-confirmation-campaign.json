@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "name": "tuning-confirmation",
+  "openings": "tuning-confirmation-openings.json",
+  "openings_sha256": "06d3bd45e539f7ffb356b23c9efc80f5109bc7bff6192b3cd78c851322b38ff5",
+  "opening_ids": [
+    "queens-gambit",
+    "slav",
+    "kings-indian",
+    "nimzo-indian",
+    "english",
+    "reti"
+  ],
+  "profiles": null,
+  "profiles_sha256": null,
+  "search_budget": {
+    "kind": "nodes",
+    "value": 10000
+  },
+  "rounds": 1,
+  "seed": 20261101,
+  "max_plies": 200,
+  "timeout": 30
+}

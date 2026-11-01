@@ -1,6 +1,7 @@
 import copy
 import json
 import pathlib
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -19,6 +20,58 @@ def completed_records(hint=True):
 
 
 class PonderValidationTests(unittest.TestCase):
+    def test_completed_ponder_wait_crosses_real_subprocess_pipes(self):
+        program = '''
+import sys
+count = 1
+for command in sys.stdin:
+    command = command.strip()
+    if command == "uci":
+        print("option name MultiPV type spin default 1 min 1 max 16")
+        print("option name Ponder type check default false")
+        print("uciok", flush=True)
+    elif command.startswith("setoption name MultiPV value "):
+        count = int(command.split()[-1])
+    elif command == "isready":
+        print("readyok", flush=True)
+    elif command == "go ponder depth 2":
+        for depth, nodes in ((1, 21), (2, 120)):
+            for rank, (first, second) in enumerate((("e2e4", "e7e5"), ("d2d4", "d7d5"), ("g1f3", "g8f6")), 1):
+                if rank > count: break
+                marker = " multipv " + str(rank) if count > 1 else ""
+                pv = first + (" " + second if depth == 2 else "")
+                print(f"info depth {depth}{marker} nodes {nodes} time 0 nps 0 score cp {30 - rank * 10} pv {pv}", flush=True)
+    elif command == "ponderhit":
+        print("bestmove e2e4 ponder e7e5", flush=True)
+    elif command == "quit":
+        break
+'''
+        launch = subprocess.Popen
+        def synthetic_process(*args, **kwargs):
+            return launch([sys.executable, "-u", "-c", program], **kwargs)
+        for count in (1, 3):
+            with patch("uci_matches.subprocess.Popen", side_effect=synthetic_process):
+                with validator.ProbeEngine("synthetic Python protocol fixture", count, True) as engine:
+                    before = validator.begin(engine, STARTING_FEN, "go ponder depth 2")
+                    engine.until("info depth 2 ")
+                    validator.barrier(engine, before)
+                    engine.send("ponderhit")
+                    engine.until("bestmove")
+                    summary = validator.validate_reply(engine.records[before:], STARTING_FEN, count, True)
+                    self.assertEqual((summary["depth"], summary["nodes"]), (2, 120))
+
+    def test_wait_prefix_normalization_preserves_token_boundaries(self):
+        for prefix in ("info depth 2", "info depth 2 ", "info depth 2\t"):
+            engine = Engine("synthetic fixture", 1)
+            engine.events.put("info depth 20 nodes 900")
+            engine.events.put("info depth 2 nodes 120")
+            line, _ = engine.until(prefix)
+            self.assertEqual(line, "info depth 2 nodes 120")
+            self.assertTrue(engine.events.empty())
+        for prefix in ("", " ", "\t"):
+            engine = Engine("synthetic fixture", 1)
+            with self.assertRaises(ValueError): engine.until(prefix)
+
     def test_search_error_aborts_a_client_wait_without_needing_bestmove(self):
         engine = Engine("synthetic fixture", 1)
         engine.events.put("info string search error: injected failure")

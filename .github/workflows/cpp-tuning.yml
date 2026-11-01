@@ -1,0 +1,61 @@
+name: C++ Evaluation Tuning
+
+on:
+  workflow_dispatch:
+    inputs:
+      specification:
+        description: Mate-only protocol smoke or small fixed-node diagnostic grid
+        required: true
+        default: smoke
+        type: choice
+        options: [smoke, diagnostic]
+
+permissions:
+  contents: read
+
+jobs:
+  tuning:
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      TUNING_SPECIFICATION: ${{ inputs.specification }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Configure and build Release engine
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            cmake -S . -B build -A x64 -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON
+          } else {
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DTRICKFISH_RAY_SLIDERS=ON
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Tuning configure failed" }
+          cmake --build build --config Release --target trickfish_cpp --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "Tuning build failed" }
+      - name: Run predeclared grid and sequential confirmation
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          $spec = if ($env:TUNING_SPECIFICATION -eq "diagnostic") { "cpp/bench/tuning_example.json" } else { "cpp/bench/tuning_smoke.json" }
+          python cpp/bench/tune_evaluation.py run $binary --spec $spec --directory build/tuning-experiment
+          if ($LASTEXITCODE -ne 0) { throw "Tuning experiment failed" }
+          python cpp/bench/tune_evaluation.py verify build/tuning-experiment
+          if ($LASTEXITCODE -ne 0) { throw "Tuning evidence replay failed" }
+          Get-Content build/tuning-experiment/receipt.json
+      - name: Preserve complete or interrupted evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: evaluation-tuning-${{ matrix.os }}-${{ github.sha }}
+          path: build/tuning-experiment/
+          if-no-files-found: warn
+          retention-days: 30

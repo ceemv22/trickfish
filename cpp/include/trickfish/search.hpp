@@ -80,6 +80,10 @@ struct SearchOptions {
     bool use_mate_distance = false;
     bool use_pawn_cache = false;
     bool use_compact_quiescence = true;
+    bool use_repetition_ordering = false;
+    int eval_pawn_weight = 100;
+    int eval_activity_weight = 100;
+    int eval_king_safety_weight = 100;
 };
 
 struct SearchLimits {

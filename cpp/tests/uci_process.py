@@ -85,10 +85,11 @@ class UciProcessTests(unittest.TestCase):
         self.assertIn("option name MultiPV type spin default 1 min 1 max 16", self.transcript)
         self.assertIn("option name Ponder type check default false", self.transcript)
         self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
-        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling", "Mate Distance Pruning", "Pawn Cache"]:
+        for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling", "Mate Distance Pruning", "Pawn Cache", "Repetition Ordering"]:
             self.assertIn("option name Experimental " + name + " type check default false", self.transcript)
         for name, default, maximum in [("Futility Margin", 150, 10000), ("Razor Margin", 200, 10000),
-            ("Check Extension Limit", 1, 4)]:
+            ("Check Extension Limit", 1, 4), ("Eval Pawn Weight", 100, 200), ("Eval Activity Weight", 100, 200),
+            ("Eval King Safety Weight", 100, 200)]:
             self.assertIn(f"option name {name} type spin default {default} min 0 max {maximum}", self.transcript)
         self.send("isready")
         self.until("readyok")
@@ -461,6 +462,52 @@ class UciProcessTests(unittest.TestCase):
         self.send("go depth 2")
         _, prediction = parse_bestmove(self.until("bestmove "))
         self.assertIsNone(prediction)
+
+    def test_evaluation_weight_snapshot_invalid_value_and_newgame_persistence(self):
+        fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"
+        child = ReferencePosition.from_fen(fen)
+        child = child.make_move(next(move for move in child.legal_moves() if move.to_uci() == "e2e3"))
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        from weighted_evaluation_parity import expected
+        self.send("setoption name Eval Pawn Weight value 0")
+        self.send("setoption name Eval Pawn Weight value 201")
+        self.until("info string error:")
+        self.send("ucinewgame")
+        self.send("position fen " + fen)
+        self.send("go ponder depth 1 searchmoves e2e3")
+        line = self.until("info depth 1 ")
+        self.assertEqual(int(line.split(" score cp ")[1].split()[0]), expected(child, (0, 100, 100)))
+        self.send("setoption name Eval Pawn Weight value 200")
+        self.send("ponderhit")
+        self.assertEqual(self.until("bestmove ").split()[1], "e2e3")
+        self.send("position fen " + fen)
+        self.send("go depth 1 searchmoves e2e3")
+        line = self.until("info depth 1 ")
+        self.assertEqual(int(line.split(" score cp ")[1].split()[0]), expected(child, (200, 100, 100)))
+        self.until("bestmove ")
+
+    def test_repetition_ordering_settings_snapshot_and_invalid_value(self):
+        self.send("uci")
+        self.until("uciok")
+        self.send("setoption name eXpErImEnTaL rEpEtItIoN oRdErInG value TRUE")
+        self.send("setoption name Experimental Repetition Ordering value invalid")
+        self.until("info string error:")
+        self.send("ucinewgame")
+        self.send("position startpos moves g1f3 g8f6 f3g1 f6g8")
+        before = len(self.transcript)
+        self.send("go ponder depth 2")
+        self.until("info depth 2 ")
+        self.send("setoption name Experimental Repetition Ordering value false")
+        self.send("isready")
+        self.until("readyok")
+        self.assertFalse(any(line.startswith("bestmove") for line in self.transcript[before:]))
+        self.send("ponderhit")
+        self.assertIn(self.until("bestmove ").split()[1], WHITE_MOVES)
+        infos = [line for line in self.transcript[before:] if line.startswith("info depth ")]
+        self.assertEqual(validate_uci_batches(infos, STARTING_FEN, 1)[-1]["depth"], 2)
+        self.send("position startpos")
+        self.send("go depth 1")
+        self.assertIn(self.until("bestmove ").split()[1], WHITE_MOVES)
 
     def test_multi_pv_eof_and_quit_finish_one_search(self):
         for ending in ("", "quit\n"):
