@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 
 project(trickfish LANGUAGES CXX)
 option(TRICKFISH_RAY_SLIDERS "Use table-driven sliding attacks" ON)
-option(TRICKFISH_LAZY_CASTLING "Experimental packed castling eligibility" OFF)
-option(TRICKFISH_PACKED_ORDERING "Experimental packed active-prefix move keys" OFF)
+option(TRICKFISH_LAZY_CASTLING "Experimental cached castling safety queries" OFF)
+option(TRICKFISH_PACKED_ORDERING "Use accepted packed active-prefix move keys" ON)
 
 add_library(trickfish_core
     cpp/src/pawn_cache.cpp
