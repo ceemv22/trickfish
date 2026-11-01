@@ -11,6 +11,7 @@ from trickfish.position import Position as ReferencePosition, STARTING_FEN
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "bench"))
 from search_progress import trace_signature, validate_uci_batches
+from uci_matches import parse_bestmove, validate_prediction
 
 BINARY = str(pathlib.Path(sys.argv.pop(1)).resolve())
 WHITE_MOVES = {f"{file}2{file}{rank}" for file in "abcdefgh" for rank in "34"} | {"b1a3", "b1c3", "g1f3", "g1h3"}
@@ -82,6 +83,7 @@ class UciProcessTests(unittest.TestCase):
         self.until("uciok")
         self.assertIn("id name Trickfish C++", self.transcript)
         self.assertIn("option name MultiPV type spin default 1 min 1 max 16", self.transcript)
+        self.assertIn("option name Ponder type check default false", self.transcript)
         self.assertIn("option name Move Overhead type spin default 10 min 0 max 10000", self.transcript)
         for name in ["Exchange Ordering", "Null Move", "LMR", "Futility", "Razoring", "Check Extensions", "Correction History", "Endgame Scaling", "Mate Distance Pruning", "Pawn Cache"]:
             self.assertIn("option name Experimental " + name + " type check default false", self.transcript)
@@ -423,6 +425,42 @@ class UciProcessTests(unittest.TestCase):
         self.send("isready")
         self.until("readyok")
         self.assertEqual(sum(line.startswith("bestmove ") for line in self.transcript[before:]), 1)
+
+    def test_ponder_replacement_position_and_go_release_the_previous_search(self):
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go ponder depth 1 searchmoves e2e4")
+        self.until("info depth 1 ")
+        self.send("position startpos moves e2e4")
+        self.send("go nodes 0")
+        self.assertEqual(self.until("bestmove "), "bestmove e2e4")
+        self.assertIn(self.until("bestmove ").split()[1], BLACK_MOVES)
+        self.assertEqual(sum(line.startswith("bestmove ") for line in self.transcript[before:]), 2)
+        self.send("position startpos")
+        before = len(self.transcript)
+        self.send("go ponder depth 1 searchmoves e2e4")
+        self.until("info depth 1 ")
+        self.send("go depth 1 searchmoves d2d4")
+        self.assertEqual(self.until("bestmove "), "bestmove e2e4")
+        self.assertEqual(self.until("bestmove "), "bestmove d2d4")
+        self.assertEqual(sum(line.startswith("bestmove ") for line in self.transcript[before:]), 2)
+
+    def test_ponder_option_prediction_persists_and_invalid_values_do_not_change_it(self):
+        self.send("setoption name pOnDeR value TRUE")
+        for value in ("yes", "1", "false extra"):
+            self.send("setoption name Ponder value " + value)
+            self.until("info string error:")
+        self.send("ucinewgame")
+        self.send("position startpos")
+        self.send("go depth 2")
+        best, prediction = parse_bestmove(self.until("bestmove "))
+        self.assertIsNotNone(prediction)
+        validate_prediction(ReferencePosition.from_fen(STARTING_FEN), best, prediction)
+        self.send("setoption name Ponder value false")
+        self.send("position startpos")
+        self.send("go depth 2")
+        _, prediction = parse_bestmove(self.until("bestmove "))
+        self.assertIsNone(prediction)
 
     def test_multi_pv_eof_and_quit_finish_one_search(self):
         for ending in ("", "quit\n"):

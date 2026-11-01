@@ -7,7 +7,9 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <cstdint>
+#include <functional>
 #include <istream>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <ostream>
@@ -24,6 +26,7 @@
 #include "trickfish/search.hpp"
 #include "trickfish/multipv.hpp"
 #include "trickfish/reporting.hpp"
+#include "trickfish/ponder.hpp"
 #include "trickfish/time.hpp"
 
 namespace trickfish {
@@ -110,17 +113,13 @@ struct GoLimits {
     std::optional<std::uint64_t> nodes;
     std::optional<std::chrono::steady_clock::time_point> deadline;
     bool infinite = false;
+    bool ponder = false;
+    std::optional<std::uint64_t> ponder_budget;
     std::vector<Move> root_moves;
 };
 
 std::chrono::steady_clock::time_point deadline_after(std::uint64_t milliseconds) {
-    const auto now = std::chrono::steady_clock::now();
-    const auto maximum = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::time_point::max() - now).count();
-    if (milliseconds > static_cast<std::uint64_t>(maximum)) {
-        throw std::invalid_argument("time budget is too large");
-    }
-    return now + std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(milliseconds));
+    return search_deadline(std::chrono::steady_clock::now(), milliseconds);
 }
 
 GoLimits parse_go(const std::vector<std::string>& tokens, Position& position, std::uint64_t overhead) {
@@ -153,6 +152,11 @@ GoLimits parse_go(const std::vector<std::string>& tokens, Position& position, st
             if (limits.root_moves.empty()) throw std::invalid_argument("searchmoves requires at least one move");
             continue;
         }
+        if (name == "ponder") {
+            if (limits.ponder) throw std::invalid_argument("duplicate ponder parameter");
+            limits.ponder = true;
+            continue;
+        }
         if (name == "infinite") {
             limits.infinite = true;
             continue;
@@ -182,13 +186,17 @@ GoLimits parse_go(const std::vector<std::string>& tokens, Position& position, st
             }
         }
     }
+    if (limits.ponder && limits.infinite) throw std::invalid_argument("ponder and infinite cannot be combined");
     if (!limits.infinite) {
-        if (movetime) {
-            limits.deadline = deadline_after(*movetime);
-        } else if (has_clock_parameters) {
-            const auto budget = allocate_clock_time(side, clock, overhead);
+        std::optional<std::uint64_t> budget = movetime;
+        if (!budget && has_clock_parameters) {
+            budget = allocate_clock_time(side, clock, overhead);
             if (!budget) throw std::invalid_argument("missing time for the side to move");
-            limits.deadline = deadline_after(*budget);
+        }
+        if (budget) {
+            const auto deadline = deadline_after(*budget);
+            if (limits.ponder) limits.ponder_budget = budget;
+            else limits.deadline = deadline;
         }
     }
     return limits;
@@ -210,6 +218,7 @@ public:
                 if (name == "uci") {
                     emit("id name Trickfish C++\nid author ceemv22\noption name Move Overhead type spin default " +
                         std::to_string(default_move_overhead_ms) + " min 0 max 10000");
+                    emit("option name Ponder type check default false");
                     emit("option name MultiPV type spin default 1 min 1 max " + std::to_string(maximum_multi_pv));
                     const SearchOptions defaults;
                     for (const auto& option : check_options) {
@@ -244,7 +253,10 @@ public:
                 } else if (name == "setoption") {
                     set_option(tokens);
                 } else if (name == "ponderhit") {
-                    emit("info string unsupported command: " + name);
+                    if (tokens.size() != 1) throw std::invalid_argument("ponderhit takes no arguments");
+                    if (!active_ponder_ || !active_ponder_->hit(std::chrono::steady_clock::now())) {
+                        throw std::invalid_argument("no pending ponder search");
+                    }
                 }
             } catch (const std::exception& error) {
                 emit("info string error: " + std::string(error.what()));
@@ -271,6 +283,12 @@ private:
             const auto overhead = number_for(*(value + 1));
             if (overhead > 10000) throw std::invalid_argument("Move Overhead must be between 0 and 10000");
             move_overhead_ = overhead;
+            return;
+        }
+        if (name == "ponder") {
+            const auto selected = lowercase(*(value + 1));
+            if (selected != "true" && selected != "false") throw std::invalid_argument("Ponder requires true or false");
+            ponder_enabled_ = selected == "true";
             return;
         }
         if (name == "multipv") {
@@ -310,6 +328,7 @@ private:
             worker_.request_stop();
             worker_.join();
         }
+        active_ponder_.reset();
     }
 
     void append_info(std::ostringstream& message, const SearchResult& result, std::uint64_t nodes, SearchTiming timing, int rank = 0) {
@@ -340,16 +359,23 @@ private:
         emit(message.str());
     }
 
-    void emit_bestmove(const MultiPVResult& result) {
+    void emit_bestmove(const MultiPVResult& result, bool prediction) {
         const auto best = result.lines.empty() ? std::optional<Move>{} : result.lines.front().best_move;
-        emit("bestmove " + (best ? best->to_uci() : std::string("0000")));
+        std::string message = "bestmove " + (best ? best->to_uci() : std::string("0000"));
+        if (prediction && best && result.lines.front().principal_variation.size() >= 2) {
+            message += " ponder " + result.lines.front().principal_variation[1].to_uci();
+        }
+        emit(message);
     }
 
     void start_search(GoLimits limits) {
-        worker_ = std::jthread([this, root = position_, history = history_, limits, options = search_options_, count = multi_pv_](std::stop_token stop) mutable {
+        const auto ponder = limits.ponder ? std::make_shared<PonderControl>(limits.ponder_budget) : nullptr;
+        worker_ = std::jthread([this, root = position_, history = history_, limits, options = search_options_, count = multi_pv_,
+            ponder, prediction = ponder_enabled_](std::stop_token stop) mutable {
             try {
-                const SearchLimits search_limits{limits.nodes, limits.deadline,
-                    [stop] { return stop.stop_requested(); }};
+                std::function<bool()> stop_requested = [stop] { return stop.stop_requested(); };
+                if (ponder) stop_requested = [stop, ponder] { return stop.stop_requested() || ponder->expired(); };
+                const SearchLimits search_limits{limits.nodes, limits.deadline, std::move(stop_requested)};
                 options.root_moves = limits.root_moves;
                 const auto started = std::chrono::steady_clock::now();
                 int published_depth = -1;
@@ -366,6 +392,7 @@ private:
                 };
                 const auto result = iterative_multi_pv(root, limits.depth, count, options, search_limits, &history, observe);
                 const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
+                if (ponder) ponder->wait_for_hit(stop);
                 if (limits.infinite && !stop.stop_requested()) {
                     std::mutex wait_mutex;
                     std::unique_lock lock(wait_mutex);
@@ -375,11 +402,14 @@ private:
                 if (published_depth != result.completed_depth || published_nodes != result.nodes || published_lines != result.lines.size()) {
                     publish(result, elapsed);
                 }
-                emit_bestmove(result);
+                emit_bestmove(result, prediction);
             } catch (const std::exception& error) {
-                emit("info string search error: " + std::string(error.what()) + "\nbestmove 0000");
+                emit("info string search error: " + std::string(error.what()));
+                if (ponder) ponder->wait_for_hit(stop);
+                emit("bestmove 0000");
             }
         });
+        active_ponder_ = ponder;
     }
 
     std::istream& input_;
@@ -388,6 +418,8 @@ private:
     RepetitionHistory history_;
     SearchOptions search_options_;
     int multi_pv_ = 1;
+    bool ponder_enabled_ = false;
+    std::shared_ptr<PonderControl> active_ponder_;
     std::uint64_t move_overhead_ = default_move_overhead_ms;
     std::mutex output_mutex_;
     std::jthread worker_;

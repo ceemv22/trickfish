@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -10,6 +11,17 @@
 namespace trickfish {
 
 inline constexpr std::uint64_t default_move_overhead_ms = 10;
+
+[[nodiscard]] inline std::chrono::steady_clock::time_point search_deadline(
+    std::chrono::steady_clock::time_point now, std::uint64_t milliseconds) {
+    using Clock = std::chrono::steady_clock;
+    using Milliseconds = std::chrono::milliseconds;
+    const auto maximum = std::chrono::duration_cast<Milliseconds>(Clock::duration::max()).count();
+    if (milliseconds > static_cast<std::uint64_t>(maximum)) throw std::invalid_argument("time budget is too large");
+    const auto amount = std::chrono::duration_cast<Clock::duration>(Milliseconds(static_cast<Milliseconds::rep>(milliseconds)));
+    if (now > Clock::time_point::max() - amount) throw std::invalid_argument("time budget exceeds clock range");
+    return now + amount;
+}
 
 struct ClockControl {
     std::optional<std::uint64_t> white_time;

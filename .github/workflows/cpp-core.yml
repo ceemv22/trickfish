@@ -248,6 +248,18 @@ jobs:
           python cpp/bench/search_progress.py $binary --output build/search-progress-validation.json
           if ($LASTEXITCODE -ne 0) { throw "Search progress replay or observer parity failed" }
           Get-Content build/search-progress-validation.json
+      - name: Verify ponder lifecycle and legal reply predictions
+        timeout-minutes: 4
+        shell: pwsh
+        run: |
+          $binary = if ($IsWindows) { ".\build\Release\trickfish_cpp.exe" } else { "./build/trickfish_cpp" }
+          python cpp/bench/ponder_validation.py $binary --output build/ponder-validation.json
+          if ($LASTEXITCODE -ne 0) { throw "Ponder lifecycle/prediction probes failed" }
+          python cpp/bench/uci_matches.py $binary $binary --profiles cpp/bench/ponder_profiles.example.json --depth 2 --max-plies 2 --timeout 30 --output build/ponder-match-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "Ponder prediction match-client smoke failed" }
+          python cpp/bench/export_matches.py build/ponder-match-smoke.json --output build/ponder-match-smoke.pgn
+          if ($LASTEXITCODE -ne 0) { throw "Ponder prediction match replay failed" }
+          Get-Content build/ponder-validation.json
       - name: Verify rank-one information in real UCI matches
         timeout-minutes: 3
         shell: pwsh
@@ -267,6 +279,9 @@ jobs:
           path: |
             build/multipv-validation.json
             build/search-progress-validation.json
+            build/ponder-validation.json
+            build/ponder-match-smoke.json
+            build/ponder-match-smoke.pgn
             build/multipv-match-smoke.json
             build/multipv-match-smoke.pgn
           if-no-files-found: warn
@@ -289,6 +304,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "MultiPV validator checks failed" }
           python cpp/bench/test_search_progress.py
           if ($LASTEXITCODE -ne 0) { throw "Search progress validator checks failed" }
+          python cpp/bench/test_ponder_validation.py
+          if ($LASTEXITCODE -ne 0) { throw "Ponder parser and validation checks failed" }
           python cpp/bench/test_uci_multipv.py
           if ($LASTEXITCODE -ne 0) { throw "MultiPV match-client information checks failed" }
           python cpp/bench/test_mate_objectives.py

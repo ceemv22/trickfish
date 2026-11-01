@@ -119,6 +119,29 @@ def primary_information(line):
     return int(parts[index + 1]) == 1
 
 
+def parse_bestmove(line):
+    if not isinstance(line, str): raise RuntimeError("malformed UCI bestmove")
+    parts = line.split()
+    if len(parts) not in (2, 4) or parts[0] != "bestmove": raise RuntimeError("malformed UCI bestmove")
+    coordinate = r"[a-h][1-8][a-h][1-8][qrbn]?"
+    if parts[1] != "0000" and re.fullmatch(coordinate, parts[1]) is None:
+        raise RuntimeError("malformed UCI bestmove coordinate")
+    prediction = None
+    if len(parts) == 4:
+        if parts[2] != "ponder" or parts[1] == "0000" or re.fullmatch(coordinate, parts[3]) is None:
+            raise RuntimeError("malformed UCI ponder prediction")
+        prediction = parts[3]
+    return parts[1], prediction
+
+
+def validate_prediction(position, bestmove, prediction):
+    legal = {move.to_uci(): move for move in position.legal_moves()}
+    if bestmove not in legal: raise RuntimeError("ponder prediction follows an illegal bestmove")
+    child = position.make_move(legal[bestmove])
+    if prediction not in {move.to_uci() for move in child.legal_moves()}:
+        raise RuntimeError("illegal UCI ponder prediction")
+
+
 class Engine:
     def __init__(self, binary, timeout, profile=None):
         self.binary = binary
@@ -129,6 +152,7 @@ class Engine:
         self.profile = validate_profile({} if profile is None else profile)
         self.option_catalog = {}
         self.applied_options = {}
+        self.last_ponder = None
 
     def __enter__(self):
         self.process = subprocess.Popen([str(self.binary)], stdin=subprocess.PIPE,
@@ -195,6 +219,8 @@ class Engine:
                 raise RuntimeError(f"UCI engine exited waiting for {prefix}: {self.binary}")
             if line.startswith("info string error:"):
                 raise RuntimeError(f"UCI engine rejected command: {line}")
+            if line.startswith("info string search error:"):
+                raise RuntimeError(f"UCI search failed: {line}")
             option = re.fullmatch(r"option name (.+) type (\w+)(?: (.*))?", line)
             if option is not None:
                 name, kind, spec = option.groups()
@@ -207,6 +233,8 @@ class Engine:
                 return line, info
 
     def choose(self, fen, moves, go):
+        self.last_ponder = None
+        moves = list(moves)
         self.send("position fen " + fen + (" moves " + " ".join(moves) if moves else ""))
         self.send("isready")
         self.until("readyok")
@@ -214,10 +242,16 @@ class Engine:
         self.send(go)
         line, info = self.until("bestmove")
         elapsed = (time.perf_counter_ns() - started) / 1_000_000
-        parts = line.split()
-        if len(parts) < 2:
-            raise RuntimeError("malformed UCI bestmove")
-        return parts[1], info, elapsed
+        bestmove, prediction = parse_bestmove(line)
+        if prediction is not None:
+            position = Position.from_fen(fen)
+            for text in moves:
+                legal = {move.to_uci(): move for move in position.legal_moves()}
+                if text not in legal: raise RuntimeError("illegal prefix while validating ponder prediction")
+                position = position.make_move(legal[text])
+            validate_prediction(position, bestmove, prediction)
+        self.last_ponder = prediction
+        return bestmove, info, elapsed
 
     def close(self):
         if self.process is None:

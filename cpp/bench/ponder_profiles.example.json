@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "engines": {
+    "a": {"Ponder": true},
+    "b": {"Ponder": false}
+  }
+}
