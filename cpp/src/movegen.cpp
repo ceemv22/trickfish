@@ -56,26 +56,12 @@ void append_castling_moves(MoveList& moves, const Position& position
         (rooks & square_bit(static_cast<std::uint8_t>(home - 4))) != 0 &&
         (occupied & (queen_path | square_bit(static_cast<std::uint8_t>(home - 3)))) == 0;
     if (!kingside && !queenside) return;
-    const auto enemy = opposite(color);
-    const auto pawns = position.pieces(enemy, PieceType::pawn);
-    const auto knights = position.pieces(enemy, PieceType::knight);
-    const auto kings = position.pieces(enemy, PieceType::king);
-    const auto queens = position.pieces(enemy, PieceType::queen);
-    const auto diagonal = position.pieces(enemy, PieceType::bishop) | queens;
-    const auto orthogonal = position.pieces(enemy, PieceType::rook) | queens;
-    const auto attacked = [&](std::uint8_t square) {
-        if ((pawn_attacks(color, square) & pawns) != 0 || (knight_attacks(square) & knights) != 0 ||
-            (king_attacks(square) & kings) != 0) return true;
-        const auto bishops = detail::bishop_alignment[square] & diagonal;
-        const auto rooks_on_line = detail::rook_alignment[square] & orthogonal;
-        return (bishops != 0 && (bishop_attacks(square, occupied) & bishops) != 0) ||
-            (rooks_on_line != 0 && (rook_attacks(square, occupied) & rooks_on_line) != 0);
-    };
-    if (attacked(home)) return;
-    if (kingside && !attacked(static_cast<std::uint8_t>(home + 1)) && !attacked(static_cast<std::uint8_t>(home + 2))) {
+    const auto attacks = position.attacks_by(opposite(color));
+    if ((attacks & square_bit(home)) != 0) return;
+    if (kingside && (attacks & king_path) == 0) {
         moves.push(Move(home, static_cast<std::uint8_t>(home + 2), '\0', false, true));
     }
-    if (queenside && !attacked(static_cast<std::uint8_t>(home - 1)) && !attacked(static_cast<std::uint8_t>(home - 2))) {
+    if (queenside && (attacks & queen_path) == 0) {
         moves.push(Move(home, static_cast<std::uint8_t>(home - 2), '\0', false, true));
     }
 #else
@@ -239,6 +225,12 @@ MoveList generate_legal_moves(Position& position) {
     const auto moving_color = position.side_to_move();
     const auto pseudo_legal_moves = generate_pseudo_legal_moves(position);
     for (const auto& move : pseudo_legal_moves) {
+#ifdef TRICKFISH_LAZY_CASTLING
+        if (move.castling) {
+            legal_moves.push(move);
+            continue;
+        }
+#endif
         const auto undo = position.make_move(move);
         const bool legal = !position.in_check(moving_color);
         position.unmake_move(move, undo);
