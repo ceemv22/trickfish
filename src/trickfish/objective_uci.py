@@ -7,6 +7,7 @@ import time
 
 from .position import Position
 from .objective_score import ObjectiveScore
+from .variation import replay_uci_line
 
 
 class UciObjective:
@@ -18,6 +19,7 @@ class UciObjective:
         self.timeout = timeout
         self.records = []
         self.cache = {}
+        self.variations = {}
         self.identity = []
         self.lines = queue.Queue()
         self.process = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -105,16 +107,31 @@ class UciObjective:
                     legal = {move.to_uci() for move in position.legal_moves()}
                     if output[-1].split()[1] not in legal:
                         raise ValueError("engine returned an illegal bestmove")
+                    fields = final[4].split()
+                    if "pv" not in fields:
+                        raise ValueError("exact objective score requires a principal variation")
+                    pv = fields[fields.index("pv") + 1:]
+                    if not pv or pv[0] != output[-1].split()[1]:
+                        raise ValueError("principal variation must start with the final bestmove")
+                    final_position = replay_uci_line(position, pv)
+                    self.variations[fen] = tuple(pv)
                     score = (ObjectiveScore(cp=final[2]) if final[1] == "cp" else
                              ObjectiveScore(mate_moves=abs(final[2]), winning=final[2] > 0))
                     self.records.append({"fen": fen, "cp_side_to_move": score.cp,
-                                         "score_side_to_move": score.as_dict(), "info": final[4], "bestmove": output[-1]})
+                                         "score_side_to_move": score.as_dict(), "info": final[4], "bestmove": output[-1],
+                                         "pv": pv, "pv_final_fen": final_position.to_fen()})
                 except BaseException:
                     self.close()
                     raise
             self.cache[fen] = score
         score = self.cache[fen]
         return score if perspective == position.side_to_move else score.inverted()
+
+    def continuation(self, position):
+        fen = position.to_fen()
+        if fen not in self.cache:
+            raise ValueError("position has not been evaluated")
+        return self.variations.get(fen, ())
 
     def provenance(self):
         executable = pathlib.Path(self.command[0]).resolve(strict=True)

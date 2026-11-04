@@ -76,6 +76,14 @@ def main(argv=None):
         command = [str(args.engine.resolve(strict=True)), *args.engine_arg]
         with UciObjective(command, args.depth, args.timeout) as objective:
             analysis = analyze_practical_moves(position, objective.evaluate, model, args.rating, args.margin_cp)
+            legal = {move.to_uci(): move for move in position.legal_moves()}
+            for candidate in analysis["candidates"]:
+                child = position.make_move(legal[candidate["move"]])
+                candidate["objective_pv"] = list(objective.continuation(child))
+                replies = {move.to_uci(): move for move in child.legal_moves()}
+                for reply in candidate["reply_details"]:
+                    successor = child.make_move(replies[reply["move"]])
+                    reply["pv"] = list(objective.continuation(successor))
             report = {"schema": "trickfish.practical-analysis.v2", "fen": position.to_fen(),
                       "perspective": position.side_to_move, "margin_cp": args.margin_cp,
                       "opponent_rating": args.rating,

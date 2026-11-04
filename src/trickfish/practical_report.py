@@ -55,12 +55,16 @@ def _render_typed_report(report):
         lines.append(f"| {item['move']} | {_display_score(item['objective'])} | {expected} | {win} | {loss} |")
     for item in report["candidates"]:
         lines += ["", "### Replies after " + item["move"], "",
-                  "| Reply | Model probability | Objective outcome |", "| --- | ---: | --- |"]
+                  "Objective continuation after the candidate (UCI): " +
+                  ("`" + " ".join(item["objective_pv"]) + "`" if item.get("objective_pv") else "not available") + ".", "",
+                  "| Reply | Model probability | Objective outcome | Continuation after reply (UCI) |", "| --- | ---: | --- | --- |"]
         for reply in sorted(item["reply_details"], key=lambda value: (-value["probability"], value["move"])):
-            lines.append(f"| {reply['move']} | {reply['probability']:.4%} | {_display_score(reply['score'])} |")
+            pv = "`" + " ".join(reply["pv"]) + "`" if reply.get("pv") else "not available"
+            lines.append(f"| {reply['move']} | {reply['probability']:.4%} | {_display_score(reply['score'])} | {pv} |")
         lines += [""]
     lines += ["## All objective root evaluations", "", "| Move | Objective |", "| --- | --- |"]
     lines += [f"| {item['move']} | {_display_score(item['score'])} |" for item in report["root_evaluations"]]
     lines += ["", "Mate reply mass is model probability of reaching an engine-reported mate outcome, not a calibrated game win probability.",
+              "Displayed continuations are legal engine PV prefixes, not proofs of optimality or necessarily complete mate lines.",
               "Finite depth and horizon effects remain. See the JSON evidence; repetition history is unavailable.", ""]
     return "\n".join(lines)

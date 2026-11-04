@@ -17,11 +17,16 @@ for raw in sys.stdin:
             break
         elif mode in {"mate", "mate-loss", "mate-zero"}:
             distance = {"mate": "2", "mate-loss": "-2", "mate-zero": "0"}[mode]
-            print("info depth " + depth + " score mate " + distance, flush=True)
+            print("info depth " + depth + " score mate " + distance + " pv e2e4", flush=True)
         elif mode == "bound":
             print("info depth " + depth + " score cp 35 lowerbound", flush=True)
         elif mode == "shallow":
             print("info depth 0 score cp 35", flush=True)
+        elif mode == "pv-missing":
+            print("info depth " + depth + " score cp 35", flush=True)
+        elif mode in {"pv-mismatch", "pv-illegal-tail", "pv-empty"}:
+            pv = {"pv-mismatch": "d2d4", "pv-illegal-tail": "e2e4 e2e5", "pv-empty": ""}[mode]
+            print("info depth " + depth + " score cp 35 pv " + pv, flush=True)
         else:
             print("info depth " + depth + " score cp 35 pv e2e4", flush=True)
         print("bestmove " + ("e1e8" if mode == "illegal" else "e2e4"), flush=True)

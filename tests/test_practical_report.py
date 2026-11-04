@@ -28,13 +28,16 @@ class PracticalReportTests(unittest.TestCase):
                   "selection": "e7e5", "selection_basis": "objective_fallback_mixed_scores",
                   "root_evaluations": [{"move": "e7e5", "score": score}],
                   "candidates": [{"move": "e7e5", "objective": score, "expected_cp": None,
+                                  "objective_pv": ["g1f3", "b8c6"],
                                   "mate_win_probability": 0, "mate_loss_probability": 1,
-                                  "reply_details": [{"move": "d2d4", "probability": 1, "score": mate}]}]}
+                                  "reply_details": [{"move": "d2d4", "probability": 1, "score": mate, "pv": ["e5d4", "d1d4"]}]}]}
         text = render_report(report)
         self.assertIn("not a practical ranking", text)
         self.assertIn("mate loss in 2", text)
         self.assertIn("n/a", text)
         self.assertNotIn("None", text)
+        self.assertIn("`g1f3 b8c6`", text)
+        self.assertIn("`e5d4 d1d4`", text)
 
 
 if __name__ == "__main__":
