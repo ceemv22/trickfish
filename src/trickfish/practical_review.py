@@ -178,6 +178,12 @@ def main(argv=None):
             (args.output_dir / "nominee.pgn").write_text(nominee_pgn, encoding="utf-8")
         (args.output_dir / "screen.json").write_bytes(raw_screen)
         (args.output_dir / "verification.json").write_bytes(raw_verified)
+        feedback = {"schema": "trickfish.expert-feedback.v1", "status": "not_reviewed",
+                    "assessment_sha256": hashlib.sha256((args.output_dir / "assessment.json").read_bytes()).hexdigest(),
+                    "fen": review["fen"], "nominee": review["nominee"], "reviewer_id": None,
+                    "reviewed_at_utc": None, "soundness": None, "would_use": None,
+                    "minutes_saved": None, "would_consider_paid_pilot": None, "notes": ""}
+        (args.output_dir / "feedback.json").write_text(json.dumps(feedback, indent=2), encoding="utf-8")
     except (OSError, ValueError, TypeError, KeyError) as error:
         parser.exit(2, str(error) + "\n")
     return 0
