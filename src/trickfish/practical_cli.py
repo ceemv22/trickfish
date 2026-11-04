@@ -46,6 +46,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="trickfish-practical")
     parser.add_argument("--engine", required=True, type=pathlib.Path)
     parser.add_argument("--engine-arg", action="append", default=[])
+    parser.add_argument("--stockfish19", action="store_true")
     parser.add_argument("--fen", required=True)
     providers = parser.add_mutually_exclusive_group(required=True)
     providers.add_argument("--replies", type=pathlib.Path)
@@ -78,7 +79,7 @@ def main(argv=None):
         else:
             model = RecordedReplyModel(args.replies, args.rating)
         command = [str(args.engine.resolve(strict=True)), *args.engine_arg]
-        with UciObjective(command, args.depth, args.timeout) as objective:
+        with UciObjective(command, args.depth, args.timeout, controlled=args.stockfish19) as objective:
             analysis = analyze_practical_moves(position, objective.evaluate, model, args.rating, args.margin_cp)
             legal = {move.to_uci(): move for move in position.legal_moves()}
             for candidate in analysis["candidates"]:

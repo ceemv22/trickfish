@@ -11,6 +11,7 @@ from trickfish.practical_stability import compare_depths, render_stability
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", required=True)
+    parser.add_argument("--stockfish19", action="store_true")
     parser.add_argument("--maia-cache", required=True)
     parser.add_argument("--output-dir", required=True, type=pathlib.Path)
     depth_group = parser.add_mutually_exclusive_group()
@@ -46,6 +47,8 @@ def main():
                        "--rating", str(args.rating), "--player-rating", str(args.player_rating),
                        "--depth", str(depth), "--output", str(output), "--report", str(report),
                        "--pgn", str(output.with_suffix(".pgn"))]
+            if args.stockfish19:
+                command.append("--stockfish19")
             completed = subprocess.run(command, capture_output=True, text=True)
             summary.append({"case": case["name"], "depth": depth, "fen": position.to_fen(), "returncode": completed.returncode,
                             "stdout": completed.stdout, "stderr": completed.stderr})

@@ -33,13 +33,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.12.10'
       - name: Install optional model and objective engine
         run: |
           python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install maia2==0.11.0
-          sudo apt-get update
-          sudo apt-get install -y stockfish
+          python -m pip install -r requirements-practical.txt
+          python -m pip freeze > practical-environment.txt
+      - name: Prepare pinned Stockfish 19
+        env:
+          PYTHONPATH: src
+        run: |
+          python examples/prepare_stockfish.py --output-dir "$RUNNER_TEMP/stockfish19"
+          cp "$RUNNER_TEMP/stockfish19/release.json" stockfish-release.json
       - name: Run real-model review
         env:
           PYTHONPATH: src
@@ -55,7 +60,7 @@ jobs:
           if [ "$REVIEW_COMPARISON" = '4,6' ]; then depth_args=(--depths 4 6); fi
           if [ "$REVIEW_COMPARISON" = '6,8' ]; then depth_args=(--depths 6 8); fi
           if [ "$REVIEW_COMPARISON" = '8,12' ]; then depth_args=(--depths 8 12); fi
-          python examples/run_practical_review.py --engine /usr/games/stockfish --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review "${depth_args[@]}" "${case_args[@]}"
+          python examples/run_practical_review.py --engine "$RUNNER_TEMP/stockfish19/stockfish/stockfish-linux-x86-64-universal" --stockfish19 --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review "${depth_args[@]}" "${case_args[@]}"
           if [ "$REVIEW_COMPARISON" = '8,12' ]; then
             if [ "$REVIEW_CASE" = all ]; then
               python examples/build_expert_review.py --screen-dir review/depth-8 --verification-dir review/depth-12 --output-dir review/expert-review
@@ -67,5 +72,9 @@ jobs:
         if: always()
         with:
           name: practical-review-${{ github.sha }}
-          path: review
+          path: |
+            review
+            practical-environment.txt
+            stockfish-release.json
+            requirements-practical.txt
           if-no-files-found: warn

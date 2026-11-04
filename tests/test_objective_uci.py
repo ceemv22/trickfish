@@ -1,6 +1,7 @@
 import pathlib
 import sys
 import unittest
+from unittest.mock import patch
 
 from trickfish.objective_uci import UciObjective
 from trickfish.position import Position, STARTING_FEN
@@ -10,6 +11,12 @@ FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "objective_engine.py"
 
 
 class ObjectiveUciTests(unittest.TestCase):
+    def test_controlled_profile_rejects_unknown_binary_before_launch(self):
+        with patch("subprocess.Popen") as launch:
+            with self.assertRaises(ValueError):
+                UciObjective([sys.executable, str(FIXTURE)], controlled=True)
+            launch.assert_not_called()
+
     def engine(self, mode="cp", timeout=2):
         return UciObjective([sys.executable, str(FIXTURE), mode], depth=3, timeout=timeout)
 

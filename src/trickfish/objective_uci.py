@@ -1,5 +1,6 @@
 import hashlib
 import pathlib
+import platform
 import queue
 import subprocess
 import threading
@@ -8,10 +9,11 @@ import time
 from .position import Position
 from .objective_score import ObjectiveScore
 from .variation import replay_uci_line
+from .stockfish_profile import OPTIONS, verify_stockfish19
 
 
 class UciObjective:
-    def __init__(self, command, depth=10, timeout=30.0):
+    def __init__(self, command, depth=10, timeout=30.0, controlled=False):
         if not command or type(depth) is not int or depth < 1 or not 0 < timeout < float("inf"):
             raise ValueError("command, positive depth and finite timeout are required")
         self.command = list(command)
@@ -21,6 +23,8 @@ class UciObjective:
         self.cache = {}
         self.variations = {}
         self.identity = []
+        self.profile = verify_stockfish19(self.command[0]) if controlled else None
+        self.applied_options = dict(OPTIONS) if controlled else {}
         self.lines = queue.Queue()
         self.process = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.DEVNULL, text=True, bufsize=1)
@@ -28,9 +32,19 @@ class UciObjective:
         self.reader.start()
         try:
             self._send("uci")
-            for line in self._until("uciok"):
+            handshake = self._until("uciok")
+            for line in handshake:
                 if line.startswith("id "):
                     self.identity.append(line)
+            if controlled:
+                if "id name Stockfish 19" not in self.identity:
+                    raise ValueError("controlled release identity mismatch")
+                declared = {line[12:].split(" type ")[0] for line in handshake if line.startswith("option name ")}
+                if not self.applied_options.keys() <= declared:
+                    raise ValueError("controlled profile contains unadvertised UCI options")
+                for name, value in self.applied_options.items():
+                    text = str(value).lower() if type(value) is bool else str(value)
+                    self._send("setoption name " + name + " value " + text)
             self._send("isready")
             self._until("readyok")
         except BaseException:
@@ -137,7 +151,10 @@ class UciObjective:
         executable = pathlib.Path(self.command[0]).resolve(strict=True)
         return {"command": self.command, "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
                 "identity": self.identity, "depth": self.depth, "timeout_seconds": self.timeout,
-                "options": "engine defaults; ucinewgame before every uncached position", "evaluations": self.records}
+                "options": self.applied_options or "engine defaults; ucinewgame before every uncached position",
+                "controlled_profile": self.profile,
+                "runtime": {"system": platform.system(), "machine": platform.machine(), "python": platform.python_version()},
+                "evaluations": self.records}
 
     def close(self):
         if self.process.poll() is None:

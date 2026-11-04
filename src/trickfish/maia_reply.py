@@ -38,7 +38,7 @@ class MaiaReplyModel:
         self.metadata = {"source": "Maia-2", "package_version": version, "kind": kind,
                          "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
                          "player_rating": player_rating, "device": device,
-                         "dependency_versions": {name: importlib.metadata.version(name) for name in ("torch", "chess", "numpy")},
+                         "dependency_versions": {name: importlib.metadata.version(name) for name in ("torch", "chess", "numpy", "einops", "pandas", "PyYAML")},
                          "thread_environment": {name: os.environ.get(name) for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS")},
                          "rating_buckets": "below 1100; 100-point bins 1100..1999; 2000 and above",
                          "calibration": "pretrained human policy; not validated for this application",

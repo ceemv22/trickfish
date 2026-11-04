@@ -19,6 +19,8 @@ Optional PGN export converts recorded candidate/reply continuations to SAN analy
 
 Offline expert-review packages pair screening and deeper verification analyses under an explicit policy, preserve rejected nominees and objective baselines, and include worksheets, PGN and raw evidence. The inspected local 8/12 set produced one Italian candidate for expert review; practical benefit and payment readiness remain unverified.
 
+Controlled practical runs pin official Stockfish 19 platform assets and explicit UCI settings. Same-depth cross-build comparison reports remaining differences under matching model/rating contexts; the earlier runner-packaged Stockfish 16 result is a different configuration.
+
 ## Current implementation
 
 Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, the current Python reference static evaluation terms, and an initial search implementation with a basic asynchronous UCI frontend. Cross-language fixtures compare the complete static breakdown and terminal-aware scores; search behavior remains separate. No playing-strength or Elo claim has been established.

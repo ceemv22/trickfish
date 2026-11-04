@@ -14,6 +14,7 @@ trickfish-practical = "trickfish.practical_cli:main"
 trickfish-practical-stability = "trickfish.practical_stability:main"
 trickfish-practical-pgn = "trickfish.practical_pgn:main"
 trickfish-practical-review = "trickfish.practical_review:main"
+trickfish-practical-repro = "trickfish.practical_repro:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
