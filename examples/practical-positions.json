@@ -1,0 +1,11 @@
+{
+  "schema": "trickfish.practical-cases.v1",
+  "purpose": "Manual review and integration smoke, not held-out calibration or strength evidence",
+  "positions": [
+    {"name": "initial", "moves": []},
+    {"name": "quiet-italian", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5"]},
+    {"name": "stafford-entry", "moves": ["e2e4", "e7e5", "g1f3", "g8f6", "f3e5", "b8c6", "e5c6", "d7c6"]},
+    {"name": "englund-entry", "moves": ["d2d4", "e7e5", "d4e5", "b8c6", "g1f3", "d8e7"]},
+    {"name": "scholar-threat-black-defense", "moves": ["e2e4", "e7e5", "d1h5", "b8c6", "f1c4"]}
+  ]
+}

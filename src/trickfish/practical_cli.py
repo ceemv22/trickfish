@@ -7,6 +7,7 @@ from dataclasses import asdict
 from .objective_uci import UciObjective
 from .position import Position
 from .practical import rank_practical_moves
+from .practical_report import render_report
 
 
 class RecordedReplyModel:
@@ -46,25 +47,40 @@ def main(argv=None):
     parser.add_argument("--engine", required=True, type=pathlib.Path)
     parser.add_argument("--engine-arg", action="append", default=[])
     parser.add_argument("--fen", required=True)
-    parser.add_argument("--replies", required=True, type=pathlib.Path)
+    providers = parser.add_mutually_exclusive_group(required=True)
+    providers.add_argument("--replies", type=pathlib.Path)
+    providers.add_argument("--maia", choices=("rapid", "blitz"))
+    parser.add_argument("--maia-cache", type=pathlib.Path)
+    parser.add_argument("--player-rating", type=int)
+    parser.add_argument("--device", choices=("cpu", "cuda", "mps"), default="cpu")
     parser.add_argument("--rating", required=True, type=int)
     parser.add_argument("--depth", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--margin-cp", type=float, default=30)
     parser.add_argument("--output", required=True, type=pathlib.Path)
+    parser.add_argument("--report", type=pathlib.Path)
     args = parser.parse_args(argv)
     try:
         if args.output.exists():
             raise ValueError("output already exists")
+        if args.report and (args.report.exists() or args.report.resolve() == args.output.resolve()):
+            raise ValueError("report must be a separate new file")
         position = Position.from_fen(args.fen)
-        model = RecordedReplyModel(args.replies, args.rating)
+        if args.maia:
+            if args.maia_cache is None or args.player_rating is None:
+                raise ValueError("Maia requires --maia-cache and --player-rating")
+            from .maia_reply import MaiaReplyModel
+
+            model = MaiaReplyModel(args.maia, args.maia_cache, args.player_rating, args.device)
+        else:
+            model = RecordedReplyModel(args.replies, args.rating)
         command = [str(args.engine.resolve(strict=True)), *args.engine_arg]
         with UciObjective(command, args.depth, args.timeout) as objective:
             ranked = rank_practical_moves(position, objective, model, args.rating, args.margin_cp)
             candidates = []
             for item in ranked:
                 child = position.make_move(item.move)
-                probabilities = model.used.get(child.to_fen(), {})
+                probabilities = model(child, args.rating) if child.legal_moves() else {}
                 details = [{"move": reply.to_uci(), "probability": probabilities[reply.to_uci()],
                             "cp_original_mover": objective(child.make_move(reply), position.side_to_move)}
                            for reply in child.legal_moves() if probabilities.get(reply.to_uci(), 0) > 0]
@@ -79,7 +95,10 @@ def main(argv=None):
         rendered = json.dumps(report, indent=2, allow_nan=False) + "\n"
         with args.output.open("x", encoding="utf-8") as stream:
             stream.write(rendered)
-    except (OSError, ValueError, RuntimeError, TimeoutError, IndexError) as error:
+        if args.report:
+            with args.report.open("x", encoding="utf-8") as stream:
+                stream.write(render_report(report))
+    except (OSError, ValueError, RuntimeError, TimeoutError, IndexError, ImportError) as error:
         parser.exit(2, str(error) + "\n")
     return 0
 

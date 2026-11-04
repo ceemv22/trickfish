@@ -1,0 +1,49 @@
+name: Practical Integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      case:
+        description: Review position
+        type: choice
+        options:
+          - initial
+          - quiet-italian
+          - stafford-entry
+          - englund-entry
+          - scholar-threat-black-defense
+        default: initial
+      depth:
+        description: Objective search depth
+        type: choice
+        options: ['4', '6', '8']
+        default: '4'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install optional model and objective engine
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install maia2==0.11.0
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+      - name: Run real-model review
+        env:
+          PYTHONPATH: src
+          REVIEW_CASE: ${{ inputs.case }}
+          REVIEW_DEPTH: ${{ inputs.depth }}
+        run: |
+          python examples/run_practical_review.py --engine /usr/games/stockfish --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review --case "$REVIEW_CASE" --depth "$REVIEW_DEPTH"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: practical-review-${{ github.sha }}
+          path: review
+          if-no-files-found: warn

@@ -4,7 +4,7 @@
 
 <h1 align="center">Trickfish</h1>
 
-Trickfish is a chess-engine research project with a Python reference engine and a C++ performance core. Its long-term goal is to select, among objectively acceptable moves, the move whose adequate defense is hardest to find and execute. An offline Python practical-selection prototype filters candidates by objective loss and ranks them by expected score over supplied opponent replies. A separate-process UCI evaluator and JSON analysis export are available; human-reply distributions are supplied from a versioned input file, and Maia is not integrated. Local process smoke uses Trickfish, not Stockfish; see [the contract and limitations](docs/practical-selection.md).
+Trickfish is a chess-engine research project with a Python reference engine and a C++ performance core. Its long-term goal is to select, among objectively acceptable moves, the move whose adequate defense is hardest to find and execute. An offline Python practical-selection prototype filters candidates by objective loss and ranks them by expected score over opponent replies. A separate-process UCI evaluator, optional pinned Maia-2 adapter, JSON evidence export and Markdown review report are available. Human-policy calibration and practical usefulness remain unverified; see [the contract and limitations](docs/practical-selection.md).
 
 
 The bounded C++ roadmap is accepted at **100.000%**; see [the acceptance record](#bounded-roadmap-acceptance). This is an implementation index, and playing strength remains unmeasured.

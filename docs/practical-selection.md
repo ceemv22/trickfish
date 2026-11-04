@@ -1,6 +1,6 @@
 # Practical selection prototype
 
-`trickfish.practical.rank_practical_moves` implements an offline one-reply selection boundary. It does not change engine search or UCI move selection. An external UCI objective adapter and JSON analysis command are available. Maia is not connected yet; reply-model tests use explicitly synthetic providers and establish algorithm behavior only.
+`trickfish.practical.rank_practical_moves` implements an offline one-reply selection boundary. It does not change engine search or UCI move selection. An external UCI objective adapter, optional Maia-2 reply adapter, JSON analysis command and Markdown review export are available. Integration examples are a manual-review set, not evidence of human calibration or playing strength.
 
 The objective evaluator receives a position and the original mover's color. Every score must be finite centipawns in that fixed perspective, including scores after the opponent replies. Adapters must handle terminal results explicitly and must not pass mate-distance encodings as centipawns. A finite number alone cannot prove that an adapter uses the correct units or perspective.
 
@@ -18,7 +18,7 @@ Candidates are ordered by expected score, then objective score, then UCI string 
 
 The tests exercise objective-margin exclusion, an alternative candidate favored by expected value, a certain adequate defense removing speculative benefit, black-root score orientation, terminal positions, and rejected probability/evaluation inputs. They do not measure human prediction accuracy, practical strength or Elo.
 
-Next integration steps are a versioned human-reply adapter and held-out evaluation using the exported analysis evidence. Observational game results require controls for player strength and position selection; they are not automatically a paired causal experiment. No external model, executable, dataset, or license decision is bundled by this prototype.
+Further validation requires held-out evaluation using the exported analysis evidence. Observational game results require controls for player strength and position selection; they are not automatically a paired causal experiment. No external model, executable, dataset, or license decision is bundled by this prototype.
 
 ## External objective and analysis export
 
@@ -39,8 +39,40 @@ The adapter waits for handshake/readiness, requests fixed depth, and requires th
 - `source`: a nonempty description identifying the supplied model/version or synthetic baseline
 - `positions`: a mapping from complete successor FEN strings to complete legal UCI-reply probability mappings
 
-Distributions must be present for every objectively retained root move. Missing positions fail; there is no silent uniform fallback. The source label is user-supplied metadata, not a certification of human calibration. The core validates legal coverage and mass when a distribution is used. Full FEN keys include clocks and en-passant fields. A future Maia adapter must record the actual model checkpoint and preprocessing rather than merely labeling arbitrary probabilities as Maia.
+Distributions must be present for every objectively retained root move. Missing positions fail; there is no silent uniform fallback. The source label is user-supplied metadata, not a certification of human calibration. The core validates legal coverage and mass when a distribution is used. Full FEN keys include clocks and en-passant fields. The optional Maia adapter records its actual checkpoint and package version separately from this supplied-file provider.
 
 The output schema `trickfish.practical-analysis.v1` records the root FEN, original mover perspective, margin, all accepted candidate scores, positive-probability reply details, raw final UCI score lines, engine identity/command/executable SHA-256, depth, and the source-file SHA-256 plus used reply distributions. Existing output files are refused. The receipt does not hash external engine networks, libraries or script arguments and therefore is not a complete reproducible environment certificate. Uncached cost is roughly all legal root moves plus positive-probability replies to retained candidates; this can be expensive. Per-position caching avoids evaluating the same full FEN twice within one analysis.
 
-Local integration smoke uses the project's native C++ UCI executable at depth one with explicitly synthetic uniform responses. It exercises a real process and JSON output; it is not a Stockfish integration certification or human-strength experiment. Unit process fixtures separately exercise bounds, mate, shallow output, illegal bestmove, EOF, timeout and score orientation. The next product-facing milestone is a real versioned human-model adapter and held-out position analyses reviewed by prospective coaches or creators. Payment readiness is not inferred from passing these tests.
+## Maia-2 and coach review
+
+Maia inference is optional. Use Python 3.11 or 3.12 and install `maia2==0.11.0` in an isolated environment, or install this project's `practical` extra. The reference engine and recorded-distribution CLI do not require Torch or Maia. Python 3.13 and later are not supported by this Maia package release; the extra's environment marker does not imply support there.
+
+```powershell
+python -m trickfish.practical_cli --engine C:/engines/stockfish.exe --fen "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" --maia rapid --maia-cache C:/models/maia2 --rating 1500 --player-rating 1700 --depth 6 --output analysis.json --report analysis.md
+```
+
+`--replies` and `--maia` are mutually exclusive. Maia requires an explicit cache directory and the original player's rating. After a candidate, the opponent is the active player: `--rating` is passed as Maia's active rating, while `--player-rating` is passed as the other player's rating. Maia handles black-board mirroring internally; the adapter does not mirror again. The separate White expected-score output is ignored rather than treated as a move probability or objective evaluation.
+
+The official loader downloads or validates the selected Rapid/Blitz checkpoint in the supplied directory. Model files and dependencies are not vendored. The receipt records package version, checkpoint SHA-256, requested device, model kind, both ratings, raw and normalized distributions and raw mass. Maia-2 uses coarse rating buckets (below 1100, 100-point buckets through 1999, and 2000+); changing a rating within the same bucket is not finer personalization. The adapter requires exact legal-move coverage. Its public inference API rounds probabilities to four decimals, so only rounding-sized mass error is normalized, with the original values retained. Gross mass errors fail. Rounding can discard very small probabilities; this prototype does not recover the unrounded logits.
+
+The Markdown companion distinguishes the objectively best evaluated move from the expected-score selection and lists candidate scores and reply probabilities/results. Expected-minus-objective can include finite-depth horizon effects and is not an estimate of extra win rate. Output files must be new. If a later report write fails, an already written JSON file can remain; inspect it before retrying with new paths.
+
+`examples/practical-positions.json` contains move-replayable ordinary and trap/defense positions. Run the review set with:
+
+```powershell
+python examples/run_practical_review.py --engine C:/engines/stockfish.exe --maia-cache C:/models/maia2 --output-dir review --depth 6
+```
+
+`--case initial` runs just one case. The output directory must be new. Each case runs in its own process and produces JSON/Markdown or a recorded rejection in `summary.json`. Unsupported mate scores fail an analysis, including when encountered in a rejected-looking root candidate: this is an explicit limitation of evaluating every legal root move with a centipawn-only interface. There is no fabricated centipawn substitute. A failed case is not a successful analysis.
+
+The manual `Practical Integration` Actions workflow installs the optional model, uses the runner's packaged Stockfish, and preserves review outputs. It does not run on ordinary pushes, certify model calibration, or establish strength. Its Stockfish version can differ from local runs and is recorded in the receipt. Model download availability is an external dependency.
+
+Sources: [official Maia-2 inference interface](https://github.com/CSSLab/maia2/tree/67bee6ce7e2f264344fe6d2026a2e18c76a82efa), [official Stockfish releases](https://github.com/official-stockfish/Stockfish/releases). Maia upstream now recommends Maia-3 for new projects; this adapter deliberately implements the agreed Maia-2 experiment and pins its API rather than silently substituting another model. No commercial benefit has been established.
+
+### Local integration observations
+
+On 2026-11-04, Windows Stockfish 19 and Maia-2 0.11.0 Rapid completed the initial, quiet Italian, Stafford-entry and Englund-entry cases at depth four, rating 1500 for both players and margin 30 cp. The Scholar's Mate defense case was rejected on an unsupported mate score; the review command correctly returned failure for the full set. Four successes and one rejection are not a fully passing integration set. The accepted analyses contain 479 unique objective evaluations in total, and their exported positive-probability reply sums were checked against every reported expectation. These shallow runs establish an integration path only. They are not recommendation-quality, calibration or strength evidence.
+
+The downloaded Stockfish archive SHA-256 was `3c8bf1f9ea66a09350a40df4f632288285ac206d99f33ab5842c408fc30b48a7`, checked against the official release asset digest. The Rapid checkpoint SHA-256 was `65aae8465eed5e65df66a24ea7370715579f9e5435098d06fe18bdb1e267e997`, matching the official loader. Local inference used Torch 2.8.0 CPU; the review subprocesses set `OMP_NUM_THREADS=1` and `MKL_NUM_THREADS=1`. Repeated fresh-position depth-four Stockfish evaluation of the initial position returned 23 cp twice; a black-to-move position returned 32 cp for Black and -32 for White. Terminal and searched mate results were both rejected explicitly. This is a small repeatability check, not a determinism guarantee across engines or machines. The optional integration Actions workflow still needs a separate manual run after push.
+
+An earlier local integration smoke used the project's native C++ UCI executable at depth one with explicitly synthetic uniform responses. It exercises a real process and JSON output; it is not a Stockfish integration certification or human-strength experiment. Unit process fixtures separately exercise bounds, mate, shallow output, illegal bestmove, EOF, timeout and score orientation. The next product-facing milestone is held-out position analyses reviewed by prospective coaches or creators. Payment readiness is not inferred from passing these tests.
