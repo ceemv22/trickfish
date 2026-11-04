@@ -6,6 +6,9 @@
 
 Trickfish is a chess-engine research project with a Python reference engine and a C++ performance core. Its long-term goal is to select, among objectively acceptable moves, the move whose adequate defense is hardest to find and execute. Candidate verification and practical move selection are planned; they are not part of the current search.
 
+
+The bounded C++ roadmap is accepted at **100.000%**; see [the acceptance record](#bounded-roadmap-acceptance). This is an implementation index, and playing strength remains unmeasured.
+
 ## Current implementation
 
 Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, the current Python reference static evaluation terms, and an initial search implementation with a basic asynchronous UCI frontend. Cross-language fixtures compare the complete static breakdown and terminal-aware scores; search behavior remains separate. No playing-strength or Elo claim has been established.
@@ -219,7 +222,8 @@ The relevant failure case is a trap that works only when the opponent misses one
 - [x] Bounded tactical regression objectives with mirrored-color fixtures
 - [x] Sequential color-paired UCI match baseline with legal replay and provenance
 - [x] Replay-validated PGN mainline export with result/provenance integrity
-- [ ] Broader tactical/opening methodology, tuning, and SPRT matches
+- [x] Bounded evaluation-grid self-play tuning and disjoint paired-sign SPRT confirmation
+- [ ] Broader opening methodology and adequately powered playing-strength experiments
 
 ### Research layers
 
@@ -741,9 +745,9 @@ The first crossed boundary stops the run. A finite horizon without crossing is i
 
 Core is configured to check native weighting/cache/fallback behavior, forty independent Python weighted-evaluation expectations, real UCI weight snapshots, exact sequential-boundary arithmetic and stopped-path error accounting, interruption/resume and tamper regressions, and a real two-profile/disjoint-confirmation protocol smoke on both kernels and OS runners. The mate-only smoke must remain inconclusive. New C++ build/runtime and these configured integration checks await the new commit's Actions run.
 
-### Remaining weighted acceptance
+### Bounded roadmap acceptance
 
-The accepted implemented index is **99.000%**. C24b passed all four Core jobs at `00a9f42` in run 41267117611. C24c passed both manual two-revision Release/ray jobs in run 41268715844 against `6b7089a`, with replay-verified receipts and preserved evidence; the match assessment was inconclusive. C22h passed its isolated two-OS gate at `a29f923`; C23 passed all four Core jobs and both optional-backend jobs at `4a09c25`. Only C22c (1.000) remains pending its new isolated timing gate. New candidate code is not accepted before its configured gates. The denominator is unchanged. Completing this bounded roadmap would still not certify a world-class engine.
+The accepted implemented index is **100.000%** for the bounded roadmap in [PROGRESS.md](PROGRESS.md). C24b passed all four Core jobs at `00a9f42`; C24c passed the manual two-revision experiment in run 41268715844 with replay-verified receipts and an inconclusive match assessment. C22h passed its isolated gate at `a29f923`, and C23 passed Core and optional-backend jobs at `4a09c25`. The final C22c gate passed on both OS runners at `3c27944`, completing the unchanged 100-point denominator. This index measures the recorded implementation/acceptance scope. Playing strength remains unmeasured; NNUE/training, stronger self-play evidence and the broader research goals remain separate work.
 
 
 ## Optional Syzygy root integration
@@ -762,7 +766,7 @@ Diagnostics are `--tablebase directory fen` for decoded WDL/DTZ/moves and `--sea
 
 ## Isolated optimization candidates
 
-`TRICKFISH_PACKED_ORDERING` defaults ON after acceptance at `a29f923`; setting it OFF retains the former cached-key implementation. `TRICKFISH_LAZY_CASTLING` remains OFF while its revised candidate awaits acceptance. Castling reuses already fetched color/occupancy/king/rook inputs, checks eligibility before the opponent map, and preserves original-board origin/transit/destination safety. Generated castle moves bypass the redundant final make/unmake/check; ordinary moves retain the full legal filter. Ordering initializes only the active prefix of 16-byte scalar keys, preserves full signed comparator fields, ignores the stored source index when comparing, and applies cycles without losing Move flags.
+`TRICKFISH_PACKED_ORDERING` defaults ON after acceptance at `a29f923`; setting it OFF retains the former cached-key implementation. `TRICKFISH_LAZY_CASTLING` defaults ON after its gate passed at `3c27944`; setting it OFF retains the full reference path. Existing build directories can opt in explicitly with `-DTRICKFISH_LAZY_CASTLING=ON`. Castling reuses already fetched color/occupancy/king/rook inputs, checks eligibility before the opponent map, and preserves original-board origin/transit/destination safety. Generated castle moves bypass the redundant final make/unmake/check; ordinary moves retain the full legal filter. Ordering initializes only the active prefix of 16-byte scalar keys, preserves full signed comparator fields, ignores the stored source index when comparing, and applies cycles without losing Move flags.
 
 Native checks cover exhaustive permutations through size eight, full-capacity randomized permutations and signed-boundary/comparator equivalence. Existing cached/reference search and interruption checks apply to the real candidate path. C++ Isolated Optimization Gates tests each candidate separately under both slider kernels, then compares ray builds at depth six with six pairs/two warmups against both same-head flags-off and accepted `6b7089a` references. Each median must be below one on both OS runners, with strict score/depth/node/bestmove/PV parity and the Core gates passed. Combined builds certify compatibility only.
 
@@ -775,3 +779,13 @@ Packed ordering passed all four Core configurations and isolated two-kernel corr
 The cached-target castling revision also failed its Ubuntu gate at `7fbe9d5` (control/original medians 1.003511/1.021686) and is withdrawn. The next candidate keeps the eligible-only full map and uses the already established pseudo-castle safety certificate to avoid redundant final position updates. A full-filter reference explicitly makes/unmakes every pseudo move over 53376 systematic roots, including 8704 generated castles, and compares complete legal lists and restoration. This is additional correctness evidence; the new candidate still requires its original two-OS timing gate before credit.
 
 The first certified-castling Ubuntu comparison at `72dee16` passed functional checks but missed its original-reference timing gate (control/original 0.989516/1.021277). Optional weighted-adjustment code is now compiled separately from the hot search unit, with the same formulas and control/candidate implementation. This shared code-separation experiment does not change the C22c gate or earn points by itself.
+
+
+The final castling gate passed at `3c27944` in [isolated run 41764126972](https://github.com/ceemv22/trickfish/actions/runs/41764126972), alongside all four [Core jobs](https://github.com/ceemv22/trickfish/actions/runs/41764127002) and both [Syzygy jobs](https://github.com/ceemv22/trickfish/actions/runs/41764126968). Release/ray depth-six comparisons used six balanced pairs and two warmups, preserving score, completed depth, nodes, bestmove and PV.
+
+| Runner | Candidate / same-head control median | Candidate / accepted 6b7089a median |
+| --- | ---: | ---: |
+| Ubuntu | 0.968327 | 0.981586 |
+| Windows | 0.963750 | 0.976373 |
+
+Both explicit timing gates passed. These workload observations satisfy the recorded engineering threshold; they do not establish statistical significance or a playing-strength gain. The final follow-up promotes accepted castling to the default and records roadmap completion. Its own CI result must be checked separately from the measured acceptance at `3c27944`.
