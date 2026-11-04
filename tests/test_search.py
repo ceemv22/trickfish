@@ -9,7 +9,7 @@ class SearchTest(unittest.TestCase):
         position = Position.from_fen("6k1/8/8/8/8/8/3r4/K2Q4 w - - 0 1")
         result = search(position, 1)
         self.assertEqual(result.best_move.to_uci(), "d1d2")
-        self.assertEqual(result.score, 900)
+        self.assertEqual(result.score, 897)
         self.assertEqual(result.principal_variation[0], result.best_move)
 
     def test_search_reports_checkmate(self) -> None:

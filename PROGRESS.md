@@ -2,6 +2,8 @@
 
 Baseline: `f9ac82b` (2026-10-02).
 
+Post-roadmap research: an offline Python practical-selection boundary now filters all legal candidates by objective-loss margin and ranks retained moves by expected score over a complete supplied legal-reply distribution. Synthetic-provider tests cover adequate-defense behavior, black perspective, terminal handling and invalid inputs. External objective/human-model adapters and empirical strength validation remain pending. This work does not alter the completed C++ denominator or establish a new percentage scale. Python CI now runs the reference suite; two pre-existing capture-score expectations are corrected from material-only 900 to 897 (900 material and -3 king safety). All 98 local Python tests pass; CI for this follow-up awaits its push.
+
 Implemented-scope index: **100.000%**. This is a planning index, not an estimate of playing strength, Elo, elapsed effort, or proximity to a world-class engine. The initial weights deliberately calibrate the index to the earlier rough 22% estimate; they are project planning choices, not measured costs.
 
 The denominator is 100.000 points. The index is the sum of completed milestone weights. Three decimal places describe the arithmetic, not confidence in the weights. A documentation commit, refactor, or bug fix does not automatically earn points. Partial credit requires an explicit submilestone with an acceptance condition and a weight deducted from its parent. Submilestones must be recorded before implementation; do not assign credit retrospectively just to make the number rise.

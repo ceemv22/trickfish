@@ -79,7 +79,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(result, 0)
         lines = output.splitlines()
         self.assertEqual(lines[0], "bestmove d1d2")
-        self.assertEqual(lines[1], "score 900")
+        self.assertEqual(lines[1], "score 897")
         self.assertGreater(int(lines[2].removeprefix("nodes ")), 0)
         self.assertEqual(lines[3], "pv d1d2")
 
