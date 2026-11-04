@@ -15,6 +15,8 @@ Multi-depth review and stored-report comparison expose changes in selections, ca
 
 Practical reports include legal-replayed UCI continuations after candidates and opponent replies. The external-component CI passed at `af9aea2`; the continuation follow-up has separate local verification. Depth-six/depth-eight review still changed two of five selections, so these examples do not establish recommendation quality.
 
+Optional PGN export converts recorded candidate/reply continuations to SAN analysis lines with initial FEN, typed score/probability metadata and source-analysis hashes. Lines remain unfinished analysis records (`*`), with full JSON evidence retained separately.
+
 ## Current implementation
 
 Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, the current Python reference static evaluation terms, and an initial search implementation with a basic asynchronous UCI frontend. Cross-language fixtures compare the complete static breakdown and terminal-aware scores; search behavior remains separate. No playing-strength or Elo claim has been established.

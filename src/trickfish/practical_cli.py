@@ -7,6 +7,7 @@ from .objective_uci import UciObjective
 from .position import Position
 from .practical_analysis import analyze_practical_moves
 from .practical_report import render_report
+from .practical_pgn import render_practical_pgn
 
 
 class RecordedReplyModel:
@@ -58,12 +59,15 @@ def main(argv=None):
     parser.add_argument("--margin-cp", type=float, default=30)
     parser.add_argument("--output", required=True, type=pathlib.Path)
     parser.add_argument("--report", type=pathlib.Path)
+    parser.add_argument("--pgn", type=pathlib.Path)
+    parser.add_argument("--pgn-replies", type=int, default=5)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
-            raise ValueError("output already exists")
-        if args.report and (args.report.exists() or args.report.resolve() == args.output.resolve()):
-            raise ValueError("report must be a separate new file")
+        outputs = [path for path in (args.output, args.report, args.pgn) if path is not None]
+        if any(path.exists() for path in outputs) or len({path.resolve() for path in outputs}) != len(outputs):
+            raise ValueError("outputs must be separate new files")
+        if args.pgn_replies < 0:
+            raise ValueError("PGN reply limit must be nonnegative")
         position = Position.from_fen(args.fen)
         if args.maia:
             if args.maia_cache is None or args.player_rating is None:
@@ -93,11 +97,16 @@ def main(argv=None):
                                       "no repetition history or calibrated human-model claim",
                                       "mixed mate/cp replies disable expected-cp comparison and use objective fallback"]}
         rendered = json.dumps(report, indent=2, allow_nan=False) + "\n"
+        rendered_pgn = render_practical_pgn(report, args.pgn_replies) if args.pgn else None
+        rendered_markdown = render_report(report) if args.report else None
         with args.output.open("x", encoding="utf-8") as stream:
             stream.write(rendered)
         if args.report:
             with args.report.open("x", encoding="utf-8") as stream:
-                stream.write(render_report(report))
+                stream.write(rendered_markdown)
+        if args.pgn:
+            with args.pgn.open("x", encoding="utf-8") as stream:
+                stream.write(rendered_pgn)
     except (OSError, ValueError, RuntimeError, TimeoutError, IndexError, ImportError) as error:
         parser.exit(2, str(error) + "\n")
     return 0

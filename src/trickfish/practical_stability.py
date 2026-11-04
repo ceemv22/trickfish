@@ -16,7 +16,7 @@ def _typed_score(value):
     return score.as_dict()
 
 
-def _validate(report):
+def validate_analysis(report):
     if report.get("schema") != "trickfish.practical-analysis.v2":
         raise ValueError("stability comparison requires v2 analyses")
     position = Position.from_fen(report["fen"])
@@ -71,7 +71,7 @@ def _validate(report):
 
 
 def compare_depths(reports):
-    validated = sorted([(*_validate(report), report) for report in reports], key=lambda item: item[0])
+    validated = sorted([(*validate_analysis(report), report) for report in reports], key=lambda item: item[0])
     if len(validated) < 2 or len({item[0] for item in validated}) != len(validated):
         raise ValueError("at least two distinct analysis depths are required")
     context = validated[0][1]

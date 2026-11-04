@@ -44,7 +44,8 @@ def main():
             command = [sys.executable, "-m", "trickfish.practical_cli", "--engine", args.engine,
                        "--fen", position.to_fen(), "--maia", "rapid", "--maia-cache", args.maia_cache,
                        "--rating", str(args.rating), "--player-rating", str(args.player_rating),
-                       "--depth", str(depth), "--output", str(output), "--report", str(report)]
+                       "--depth", str(depth), "--output", str(output), "--report", str(report),
+                       "--pgn", str(output.with_suffix(".pgn"))]
             completed = subprocess.run(command, capture_output=True, text=True)
             summary.append({"case": case["name"], "depth": depth, "fen": position.to_fen(), "returncode": completed.returncode,
                             "stdout": completed.stdout, "stderr": completed.stderr})

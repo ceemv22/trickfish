@@ -116,3 +116,23 @@ New objective evaluations require a nonempty PV on the final exact score line, b
 Nonterminal objective receipts add `pv` and `pv_final_fen`. `UciObjective.continuation` returns an evaluated position's immutable UCI continuation without another search; terminal scores have an empty continuation. Practical v2 candidates add `objective_pv` (starting after our candidate), and positive-probability reply details add `pv` (starting after the opponent's specified reply). The Markdown report displays both with explicit starting context. Older v2 reports without these additive fields remain renderable, with unavailable continuations marked accordingly. A PV can be shorter than the requested search depth or reported mate distance; it is an engine-reported legal prefix, not a guaranteed full line.
 
 All 126 local Python tests pass, including missing/mismatched/illegal-tail PV process regressions and golden-FEN replay fixtures for special moves. A real Stockfish 19 / Maia Rapid depth-six Scholar-defense report was generated with continuations. Independent python-chess replay validated 366 PV plies across 89 objective records, including final FENs; exported finite expectations were also recomputed. This continuation follow-up requires its own post-push CI, separate from the accepted `af9aea2` run.
+
+Python Reference subsequently passed at `dbc3cfc` in [run 41901946264](https://github.com/ceemv22/trickfish/actions/runs/41901946264). Its optional real-component integration run is still unconfirmed; the earlier green manual integration belongs to `af9aea2`.
+
+## PGN review export
+
+New analyses can add `--pgn review.pgn --pgn-replies 5`. JSON, Markdown and PGN paths must be distinct new files; rendering is validated before output starts, although a later filesystem error can leave earlier files written. The example review runner now creates PGN alongside each JSON/Markdown pair, so subsequent integration artifacts include reviewable chess lines.
+
+Existing v2 analyses containing recorded PV fields can be exported without an engine or Maia installation:
+
+```powershell
+python -m trickfish.practical_pgn analysis.json --output review.pgn --max-replies 5
+```
+
+Each candidate produces one objective-continuation analysis game, followed by separate games for its most probable reply scenarios. These are independent analysis lines from the same root, not an observed match or a variation-tree claim. The exporter resolves every UCI move to a legal reference Move, emits SAN with move numbers, check/mate and disambiguation, and records SetUp/FEN and final FEN. Black-to-move roots retain their correct numbering. The SAN/tag escaping implementation is shared with the existing match exporter; match adjudication and results remain unchanged.
+
+All lines use Result `*`, including terminal diagrams: the exporter does not invent a played result from an engine score. Custom tags record candidate, selected status, score perspective, typed objective/reply scores, expected cp or `unavailable`, model probability, depth, engine/model labels and the canonical source-analysis SHA-256. Mate remains separate from cp. Tag strings escape quotes/backslashes and replace control characters. Labels identify the candidate and scenario so a PGN browser can distinguish lines.
+
+The default limit exports five positive-probability replies per candidate. Original probabilities are preserved without renormalization, and `TrickfishExportedReplyMass` records their total. `--max-replies 0` exports objective lines only. The full positive reply list must still sum to one and have unique legal scenarios and recorded continuations, even for lines omitted by the limit; malformed unexported tails are rejected. Missing PV fields in older v2 reports require a fresh analysis rather than fabricated continuations. The JSON companion remains the complete evidence record, including all root evaluations and unexported outcomes.
+
+Local verification includes 132 Python tests and all 13 existing match-export tests, with the known workspace-inheriting temporary-directory adapter for the latter. Independent python-chess parsing/replay checked 12 exported depth-six analysis games / 73 plies against exact source moves, probabilities, final FENs and source digest. A fresh real Stockfish 19 / Maia Rapid depth-four Scholar-defense review produced JSON, Markdown and 18 parseable PGN lines. These checks validate export/integration behavior, not objective quality or commercial usefulness. New code awaits its own push and CI results.
