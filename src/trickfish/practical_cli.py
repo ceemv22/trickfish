@@ -78,6 +78,7 @@ def main(argv=None):
             analysis = analyze_practical_moves(position, objective.evaluate, model, args.rating, args.margin_cp)
             report = {"schema": "trickfish.practical-analysis.v2", "fen": position.to_fen(),
                       "perspective": position.side_to_move, "margin_cp": args.margin_cp,
+                      "opponent_rating": args.rating,
                       **analysis, "objective": objective.provenance(),
                       "reply_model": model.provenance(),
                       "limitations": ["one-reply centipawn expectation, not win probability",

@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from trickfish.position import Position, STARTING_FEN
+from trickfish.practical_stability import compare_depths, render_stability
 
 
 def main():
@@ -12,11 +13,17 @@ def main():
     parser.add_argument("--engine", required=True)
     parser.add_argument("--maia-cache", required=True)
     parser.add_argument("--output-dir", required=True, type=pathlib.Path)
-    parser.add_argument("--depth", type=int, default=6)
+    depth_group = parser.add_mutually_exclusive_group()
+    depth_group.add_argument("--depth", type=int)
+    depth_group.add_argument("--depths", type=int, nargs="+")
     parser.add_argument("--rating", type=int, default=1500)
     parser.add_argument("--player-rating", type=int, default=1500)
     parser.add_argument("--case")
     args = parser.parse_args()
+    depths = args.depths or [args.depth if args.depth is not None else 6]
+    if min(depths) < 1 or len(set(depths)) != len(depths) or (args.depths is not None and len(depths) < 2):
+        parser.error("comparison requires distinct positive depths, at least two with --depths")
+    depths = sorted(depths)
     manifest = json.loads(pathlib.Path(__file__).with_name("practical-positions.json").read_text())
     cases = [case for case in manifest["positions"] if not args.case or case["name"] == args.case]
     if not cases:
@@ -28,17 +35,35 @@ def main():
         for uci in case["moves"]:
             legal = {move.to_uci(): move for move in position.legal_moves()}
             position = position.make_move(legal[uci])
-        output = args.output_dir / (case["name"] + ".json")
-        report = output.with_suffix(".md")
-        command = [sys.executable, "-m", "trickfish.practical_cli", "--engine", args.engine,
-                   "--fen", position.to_fen(), "--maia", "rapid", "--maia-cache", args.maia_cache,
-                   "--rating", str(args.rating), "--player-rating", str(args.player_rating),
-                   "--depth", str(args.depth), "--output", str(output), "--report", str(report)]
-        completed = subprocess.run(command, capture_output=True, text=True)
-        summary.append({"case": case["name"], "fen": position.to_fen(), "returncode": completed.returncode,
-                        "stdout": completed.stdout, "stderr": completed.stderr})
-        print(case["name"], "completed" if completed.returncode == 0 else "rejected", flush=True)
-        (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        reports = []
+        for depth in depths:
+            directory = args.output_dir / ("depth-" + str(depth)) if args.depths else args.output_dir
+            directory.mkdir(exist_ok=True)
+            output = directory / (case["name"] + ".json")
+            report = output.with_suffix(".md")
+            command = [sys.executable, "-m", "trickfish.practical_cli", "--engine", args.engine,
+                       "--fen", position.to_fen(), "--maia", "rapid", "--maia-cache", args.maia_cache,
+                       "--rating", str(args.rating), "--player-rating", str(args.player_rating),
+                       "--depth", str(depth), "--output", str(output), "--report", str(report)]
+            completed = subprocess.run(command, capture_output=True, text=True)
+            summary.append({"case": case["name"], "depth": depth, "fen": position.to_fen(), "returncode": completed.returncode,
+                            "stdout": completed.stdout, "stderr": completed.stderr})
+            print(case["name"], depth, "completed" if completed.returncode == 0 else "rejected", flush=True)
+            if completed.returncode == 0:
+                reports.append(json.loads(output.read_text(encoding="utf-8")))
+            (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        if args.depths and len(reports) == len(depths):
+            directory = args.output_dir / "comparison"
+            directory.mkdir(exist_ok=True)
+            try:
+                comparison = compare_depths(reports)
+            except (ValueError, KeyError, TypeError) as error:
+                print(case["name"], "comparison rejected:", error, flush=True)
+                summary.append({"case": case["name"], "stage": "comparison", "returncode": 1, "stderr": str(error)})
+                (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+                continue
+            (directory / (case["name"] + ".json")).write_text(json.dumps(comparison, indent=2, allow_nan=False), encoding="utf-8")
+            (directory / (case["name"] + ".md")).write_text(render_stability(comparison), encoding="utf-8")
     return int(any(item["returncode"] for item in summary))
 
 

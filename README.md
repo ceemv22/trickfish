@@ -11,6 +11,8 @@ The bounded C++ roadmap is accepted at **100.000%**; see [the acceptance record]
 
 Practical analysis JSON v2 keeps mate results separate from centipawns. Mixed reply outcomes expose mate probability mass and fall back to objective selection instead of inventing an expected cp score. The local five-position Stockfish/Maia depth-four review completes; this is integration evidence, not a playing-strength result.
 
+Multi-depth review and stored-report comparison expose changes in selections, candidate sets and score kinds under matching recorded engine/model/rating settings. The local depth-four/depth-six comparison changed selections in three of five review positions; recommendation stability and practical usefulness remain unestablished.
+
 ## Current implementation
 
 Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, the current Python reference static evaluation terms, and an initial search implementation with a basic asynchronous UCI frontend. Cross-language fixtures compare the complete static breakdown and terminal-aware scores; search behavior remains separate. No playing-strength or Elo claim has been established.

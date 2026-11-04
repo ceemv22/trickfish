@@ -19,6 +19,11 @@ on:
         type: choice
         options: ['4', '6', '8']
         default: '4'
+      comparison:
+        description: Depth comparison or single-depth review
+        type: choice
+        options: ['4,6', '6,8', 'single']
+        default: '4,6'
 
 jobs:
   smoke:
@@ -40,12 +45,16 @@ jobs:
           PYTHONPATH: src
           REVIEW_CASE: ${{ inputs.case }}
           REVIEW_DEPTH: ${{ inputs.depth }}
+          REVIEW_COMPARISON: ${{ inputs.comparison }}
           OMP_NUM_THREADS: '1'
           MKL_NUM_THREADS: '1'
         run: |
           case_args=()
           if [ "$REVIEW_CASE" != all ]; then case_args=(--case "$REVIEW_CASE"); fi
-          python examples/run_practical_review.py --engine /usr/games/stockfish --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review --depth "$REVIEW_DEPTH" "${case_args[@]}"
+          depth_args=(--depth "$REVIEW_DEPTH")
+          if [ "$REVIEW_COMPARISON" = '4,6' ]; then depth_args=(--depths 4 6); fi
+          if [ "$REVIEW_COMPARISON" = '6,8' ]; then depth_args=(--depths 6 8); fi
+          python examples/run_practical_review.py --engine /usr/games/stockfish --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review "${depth_args[@]}" "${case_args[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

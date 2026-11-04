@@ -78,3 +78,29 @@ After typed mate handling, the same five-case depth-four review completed all fi
 The downloaded Stockfish archive SHA-256 was `3c8bf1f9ea66a09350a40df4f632288285ac206d99f33ab5842c408fc30b48a7`, checked against the official release asset digest. The Rapid checkpoint SHA-256 was `65aae8465eed5e65df66a24ea7370715579f9e5435098d06fe18bdb1e267e997`, matching the official loader. Local inference used Torch 2.8.0 CPU; the review subprocesses set `OMP_NUM_THREADS=1` and `MKL_NUM_THREADS=1`. Repeated fresh-position depth-four Stockfish evaluation of the initial position returned 23 cp twice; a black-to-move position returned 32 cp for Black and -32 for White. Terminal and searched mate results were both rejected explicitly. This is a small repeatability check, not a determinism guarantee across engines or machines. The optional integration Actions workflow still needs a separate manual run after push.
 
 An earlier local integration smoke used the project's native C++ UCI executable at depth one with explicitly synthetic uniform responses. It exercises a real process and JSON output; it is not a Stockfish integration certification or human-strength experiment. Unit process fixtures separately exercise bounds, mate, shallow output, illegal bestmove, EOF, timeout and score orientation. The next product-facing milestone is held-out position analyses reviewed by prospective coaches or creators. Payment readiness is not inferred from passing these tests.
+
+## Depth sensitivity
+
+Run the same review set at multiple distinct positive depths with `--depths 4 6` instead of `--depth`. Analyses are placed in `depth-4/`, `depth-6/` and per-case comparisons in `comparison/`. A failed analysis prevents that case's comparison and makes the command fail; it is not counted as a stable recommendation. Single-depth invocation retains the existing flat output layout. The manual Practical Integration workflow now defaults to comparison `4,6` for all cases. Its `depth` input applies only when `comparison` is `single`.
+
+Existing v2 reports can also be compared without rerunning models:
+
+```powershell
+python -m trickfish.practical_stability depth-4/initial.json depth-6/initial.json --output initial-comparison.json --report initial-comparison.md
+```
+
+Comparisons require the same full FEN, perspective, margin, recorded engine executable hash/identity/options, reply-model metadata and opponent rating. A report must include every legal root move exactly once and select a retained legal candidate, or no move for a terminal root. The comparator rejects repeated depths, conflicting typed root/candidate evidence, and changed reply distributions for shared positions (absolute tolerance 1e-9). An added `opponent_rating` field records this setting explicitly; older v2 reports can infer it from used reply-model evidence. Different model-used position subsets are expected as candidate sets change. Matching recorded metadata is not proof of an identical complete runtime: external engine networks and library environments can still be incompletely captured.
+
+`trickfish.practical-stability.v1` records depth snapshots, changed selections/bases, added/removed candidates, root score changes and finite expected-cp changes for common candidates. Mate transitions do not receive cp deltas. Each snapshot includes a SHA-256 of the complete source analysis serialized as sorted compact JSON (ASCII escaping enabled, non-finite values forbidden), independent of source filename/whitespace. This is a content fingerprint, not an authenticity signature. The tool does not assign confidence, infer improvement or declare readiness from a fixed threshold.
+
+The local five-position review with Stockfish 19 / Maia Rapid, rating 1500 for both players and margin 30 cp completed at depths four and six. Selections were:
+
+| Case | Depth 4 | Depth 6 |
+| --- | --- | --- |
+| Initial | e2e4 | e2e4 |
+| Quiet Italian | c2c3 | c2c3 |
+| Stafford entry | d2d3 | f2f3 |
+| Englund entry | e2e4 | c1g5 |
+| Scholar defense | g7g6 | d8e7 |
+
+Selection changed in three of five cases, and retained candidate sets changed in all five. These are descriptive observations on a repeatedly inspected integration set, not held-out calibration or evidence that depth six is adequate. All 122 local Python tests pass, including incompatible-context, incomplete-root, changed-policy, candidate-boundary and mate-transition regressions. The automated two-depth review runner was additionally exercised on the initial position with the actual external components. New Python CI and the manual optional-model workflow require their own post-push results.
