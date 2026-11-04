@@ -22,6 +22,8 @@ def main():
     (args.output_dir / "manifest.json").write_bytes(manifest)
     guide = pathlib.Path(__file__).resolve().parents[1] / "docs" / "expert-pilot.md"
     (args.output_dir / "pilot-guide.md").write_bytes(guide.read_bytes())
+    demo = pathlib.Path(__file__).resolve().parents[1] / "docs" / "expert-demo.md"
+    (args.output_dir / "demo-walkthrough.md").write_bytes(demo.read_bytes())
     policy_path = args.output_dir / "policy.json"
     policy_path.write_text(json.dumps(asdict(policy), indent=2), encoding="utf-8")
     rows = []
@@ -42,6 +44,7 @@ def main():
         (args.output_dir / "index.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     lines = ["# Expert review package", "", "This inspected integration set is not held-out validation. No human benefit or payment readiness is established.", "",
              "Start with [the coach pilot guide](pilot-guide.md). Each completed case includes an unfilled feedback.json bound to its assessment hash.", "",
+             "For a first conversation, use [the demonstration walkthrough](demo-walkthrough.md).", "",
              "Thresholds are in policy.json; raw source analyses and their hashes accompany each worksheet.", "",
              "| Case | Status | Screening nominee | Verification selection | Reasons | Review |",
              "| --- | --- | --- | --- | --- | --- |"]
