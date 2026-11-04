@@ -6,6 +6,7 @@ option(TRICKFISH_LAZY_CASTLING "Experimental cached castling safety queries" OFF
 option(TRICKFISH_PACKED_ORDERING "Use accepted packed active-prefix move keys" ON)
 
 add_library(trickfish_core
+    cpp/src/evaluation_weights.cpp
     cpp/src/pawn_cache.cpp
     cpp/src/correction.cpp
     cpp/src/exchange.cpp
