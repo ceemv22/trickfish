@@ -17,6 +17,8 @@ Practical reports include legal-replayed UCI continuations after candidates and 
 
 Optional PGN export converts recorded candidate/reply continuations to SAN analysis lines with initial FEN, typed score/probability metadata and source-analysis hashes. Lines remain unfinished analysis records (`*`), with full JSON evidence retained separately.
 
+Offline expert-review packages pair screening and deeper verification analyses under an explicit policy, preserve rejected nominees and objective baselines, and include worksheets, PGN and raw evidence. The inspected local 8/12 set produced one Italian candidate for expert review; practical benefit and payment readiness remain unverified.
+
 ## Current implementation
 
 Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, the current Python reference static evaluation terms, and an initial search implementation with a basic asynchronous UCI frontend. Cross-language fixtures compare the complete static breakdown and terminal-aware scores; search behavior remains separate. No playing-strength or Elo claim has been established.

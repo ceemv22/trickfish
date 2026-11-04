@@ -17,12 +17,12 @@ on:
       depth:
         description: Objective search depth
         type: choice
-        options: ['4', '6', '8']
+        options: ['4', '6', '8', '12']
         default: '4'
       comparison:
         description: Depth comparison or single-depth review
         type: choice
-        options: ['4,6', '6,8', 'single']
+        options: ['4,6', '6,8', '8,12', 'single']
         default: '4,6'
 
 jobs:
@@ -54,7 +54,15 @@ jobs:
           depth_args=(--depth "$REVIEW_DEPTH")
           if [ "$REVIEW_COMPARISON" = '4,6' ]; then depth_args=(--depths 4 6); fi
           if [ "$REVIEW_COMPARISON" = '6,8' ]; then depth_args=(--depths 6 8); fi
+          if [ "$REVIEW_COMPARISON" = '8,12' ]; then depth_args=(--depths 8 12); fi
           python examples/run_practical_review.py --engine /usr/games/stockfish --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review "${depth_args[@]}" "${case_args[@]}"
+          if [ "$REVIEW_COMPARISON" = '8,12' ]; then
+            if [ "$REVIEW_CASE" = all ]; then
+              python examples/build_expert_review.py --screen-dir review/depth-8 --verification-dir review/depth-12 --output-dir review/expert-review
+            else
+              python -m trickfish.practical_review "review/depth-8/$REVIEW_CASE.json" "review/depth-12/$REVIEW_CASE.json" --output-dir review/expert-review
+            fi
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

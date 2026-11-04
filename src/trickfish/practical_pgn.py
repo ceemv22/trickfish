@@ -42,18 +42,57 @@ def _render_line(root, moves, tags):
                                            break_long_words=False, break_on_hyphens=False) + "\n\n"
 
 
-def render_practical_pgn(report, max_replies=5):
-    validate_analysis(report)
-    if type(max_replies) is not int or max_replies < 0:
-        raise ValueError("max replies must be a nonnegative integer")
+def _base_tags(report):
     root = Position.from_fen(report["fen"])
     digest = hashlib.sha256(json.dumps(report, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
-    base = {"Event": "Trickfish practical analysis", "Site": "?", "Date": "????.??.??", "Round": "?",
+    return {"Event": "Trickfish practical analysis", "Site": "?", "Date": "????.??.??", "Round": "?",
             "White": "?", "Black": "?", "Result": "*", "SetUp": "1", "FEN": root.to_fen(),
             "TrickfishPerspective": report["perspective"], "TrickfishSelectionBasis": report["selection_basis"],
             "TrickfishDepth": report["objective"]["depth"], "TrickfishSourceSHA256": digest,
             "TrickfishEngine": ", ".join(report["objective"]["identity"]),
             "TrickfishReplySource": report["reply_model"]["source"]}
+
+
+def render_nominee_probe(report, nominee):
+    validate_analysis(report)
+    root = Position.from_fen(report["fen"])
+    legal = {move.to_uci(): move for move in root.legal_moves()}
+    if nominee not in legal:
+        raise ValueError("verification nominee must be legal")
+    child = root.make_move(legal[nominee])
+    records = [record for record in report["objective"]["evaluations"] if record["fen"] == child.to_fen()]
+    if len(records) != 1:
+        raise ValueError("unique objective receipt required for verification nominee")
+    record = records[0]
+    value = record["score_side_to_move"]
+    score = ObjectiveScore(cp=value.get("cp"), mate_moves=value.get("mate_moves"), winning=value.get("winning"))
+    if value.get("kind") != score.as_dict()["kind"]:
+        raise ValueError("nominee receipt has an inconsistent score kind")
+    if child.side_to_move != root.side_to_move:
+        score = score.inverted()
+    expected = next(item["score"] for item in report["root_evaluations"] if item["move"] == nominee)
+    if score.as_dict() != expected:
+        raise ValueError("nominee receipt disagrees with objective root evidence")
+    pv = record.get("pv", [])
+    retained = next((item for item in report["candidates"] if item["move"] == nominee), None)
+    if retained is not None and retained.get("objective_pv") != pv:
+        raise ValueError("nominee continuation disagrees with its objective receipt")
+    if not pv and child.legal_moves() and not child.is_insufficient_material():
+        raise ValueError("nominee receipt is missing its continuation")
+    if pv and replay_uci_line(child, pv).to_fen() != record.get("pv_final_fen"):
+        raise ValueError("nominee PV final FEN disagrees with its receipt")
+    tags = {**_base_tags(report), "Event": "Trickfish deeper check " + nominee,
+            "TrickfishLineType": "verification-nominee", "TrickfishCandidate": nominee,
+            "TrickfishObjective": _score_text(expected)}
+    return _render_line(root, [nominee, *pv], tags)
+
+
+def render_practical_pgn(report, max_replies=5):
+    validate_analysis(report)
+    if type(max_replies) is not int or max_replies < 0:
+        raise ValueError("max replies must be a nonnegative integer")
+    root = Position.from_fen(report["fen"])
+    base = _base_tags(report)
     games = []
     if not report["candidates"]:
         return _render_line(root, [], {**base, "TrickfishLineType": "terminal",
