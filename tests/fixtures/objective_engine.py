@@ -15,8 +15,9 @@ for raw in sys.stdin:
             time.sleep(10)
         elif mode == "eof":
             break
-        elif mode == "mate":
-            print("info depth " + depth + " score mate 2", flush=True)
+        elif mode in {"mate", "mate-loss", "mate-zero"}:
+            distance = {"mate": "2", "mate-loss": "-2", "mate-zero": "0"}[mode]
+            print("info depth " + depth + " score mate " + distance, flush=True)
         elif mode == "bound":
             print("info depth " + depth + " score cp 35 lowerbound", flush=True)
         elif mode == "shallow":

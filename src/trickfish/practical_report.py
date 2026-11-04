@@ -1,4 +1,6 @@
 def render_report(report):
+    if report.get("schema") == "trickfish.practical-analysis.v2":
+        return _render_typed_report(report)
     candidates = report["candidates"]
     identity = ", ".join(report["objective"]["identity"])
     model = report["reply_model"]["source"]
@@ -22,4 +24,43 @@ def render_report(report):
             lines.append("| {move} | {probability:.4%} | {cp_original_mover:.2f} |".format(**reply))
     lines += ["", "Finite-depth evaluations can disagree across adjacent positions. A positive expected-minus-objective score can reflect horizon effects as well as predicted mistakes.",
               "", "The JSON companion contains raw evaluations and model provenance. Repetition history is unavailable.", ""]
+    return "\n".join(lines)
+
+
+def _display_score(score):
+    if score["kind"] == "cp":
+        return f"{score['cp']:.2f} cp"
+    return ("mate win in " if score["winning"] else "mate loss in ") + str(score["mate_moves"])
+
+
+def _render_typed_report(report):
+    lines = ["# Trickfish practical analysis", "", "FEN: `" + report["fen"] + "`", "",
+             "All scores use the original mover's perspective (" + report["perspective"] + ").",
+             "", "Objective engine: " + ", ".join(report["objective"]["identity"]),
+             "", "Reply source: " + report["reply_model"]["source"], "",
+             "Selection: **" + (report["selection"] or "none") + "**.", "",
+             "Selection basis: `" + report["selection_basis"] + "`.", ""]
+    if report["selection_basis"] == "objective_fallback_mixed_scores":
+        lines += ["Mate and cp reply outcomes are not averaged together. Selection falls back to the best objective cp move; this is not a practical ranking of the mixed candidates.", ""]
+    elif report["selection_basis"].startswith("objective_mate"):
+        lines += ["Selection follows engine-reported mate distance, not an expected-centipawn calculation.", ""]
+    if "terminal_score" in report:
+        lines += ["Terminal score: " + _display_score(report["terminal_score"]), ""]
+    lines += ["| Candidate | Objective | Expected cp | Mate-win reply mass | Mate-loss reply mass |",
+              "| --- | --- | ---: | ---: | ---: |"]
+    for item in report["candidates"]:
+        expected = "n/a" if item["expected_cp"] is None else f"{item['expected_cp']:.2f}"
+        win = "n/a" if "mate_win_probability" not in item else f"{item['mate_win_probability']:.4%}"
+        loss = "n/a" if "mate_loss_probability" not in item else f"{item['mate_loss_probability']:.4%}"
+        lines.append(f"| {item['move']} | {_display_score(item['objective'])} | {expected} | {win} | {loss} |")
+    for item in report["candidates"]:
+        lines += ["", "### Replies after " + item["move"], "",
+                  "| Reply | Model probability | Objective outcome |", "| --- | ---: | --- |"]
+        for reply in sorted(item["reply_details"], key=lambda value: (-value["probability"], value["move"])):
+            lines.append(f"| {reply['move']} | {reply['probability']:.4%} | {_display_score(reply['score'])} |")
+        lines += [""]
+    lines += ["## All objective root evaluations", "", "| Move | Objective |", "| --- | --- |"]
+    lines += [f"| {item['move']} | {_display_score(item['score'])} |" for item in report["root_evaluations"]]
+    lines += ["", "Mate reply mass is model probability of reaching an engine-reported mate outcome, not a calibrated game win probability.",
+              "Finite depth and horizon effects remain. See the JSON evidence; repetition history is unavailable.", ""]
     return "\n".join(lines)

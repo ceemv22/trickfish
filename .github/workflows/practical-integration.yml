@@ -7,12 +7,13 @@ on:
         description: Review position
         type: choice
         options:
+          - all
           - initial
           - quiet-italian
           - stafford-entry
           - englund-entry
           - scholar-threat-black-defense
-        default: initial
+        default: all
       depth:
         description: Objective search depth
         type: choice
@@ -39,8 +40,12 @@ jobs:
           PYTHONPATH: src
           REVIEW_CASE: ${{ inputs.case }}
           REVIEW_DEPTH: ${{ inputs.depth }}
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
         run: |
-          python examples/run_practical_review.py --engine /usr/games/stockfish --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review --case "$REVIEW_CASE" --depth "$REVIEW_DEPTH"
+          case_args=()
+          if [ "$REVIEW_CASE" != all ]; then case_args=(--case "$REVIEW_CASE"); fi
+          python examples/run_practical_review.py --engine /usr/games/stockfish --maia-cache "$RUNNER_TEMP/maia-models" --output-dir review --depth "$REVIEW_DEPTH" "${case_args[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

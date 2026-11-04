@@ -6,6 +6,7 @@ import threading
 import time
 
 from .position import Position
+from .objective_score import ObjectiveScore
 
 
 class UciObjective:
@@ -60,16 +61,24 @@ class UciObjective:
                 return output
 
     def __call__(self, position: Position, perspective: str) -> float:
+        score = self.evaluate(position, perspective)
+        if score.cp is None:
+            self.close()
+            raise ValueError("mate cannot be represented by the legacy centipawn objective")
+        return float(score.cp)
+
+    def evaluate(self, position: Position, perspective: str) -> ObjectiveScore:
         if perspective not in {"w", "b"}:
             raise ValueError("perspective must be w or b")
         fen = position.to_fen()
         if fen not in self.cache:
             status = position.game_status()
             if status == "checkmate":
-                raise ValueError("mate cannot be represented by the centipawn practical objective")
-            if status == "stalemate" or position.is_insufficient_material():
-                score = 0
-                self.records.append({"fen": fen, "cp_side_to_move": 0, "terminal": status})
+                score = ObjectiveScore(mate_moves=0, winning=False)
+                self.records.append({"fen": fen, "score_side_to_move": score.as_dict(), "terminal": status})
+            elif status == "stalemate" or position.is_insufficient_material():
+                score = ObjectiveScore(cp=0)
+                self.records.append({"fen": fen, "cp_side_to_move": 0, "score_side_to_move": score.as_dict(), "terminal": status})
             else:
                 try:
                     self._send("ucinewgame")
@@ -89,19 +98,23 @@ class UciObjective:
                         completed = int(fields[fields.index("depth") + 1])
                         final = (completed, fields[index + 1], int(fields[index + 2]),
                                  "lowerbound" in fields or "upperbound" in fields, line)
-                    if final is None or final[0] < self.depth or final[1] != "cp" or final[3]:
-                        raise ValueError("objective requires a completed exact centipawn score; mate/bounds are unsupported")
+                    if final is None or final[0] < self.depth or final[1] not in {"cp", "mate"} or final[3]:
+                        raise ValueError("objective requires a completed exact cp or mate score; bounds are unsupported")
+                    if final[1] == "mate" and final[2] == 0:
+                        raise ValueError("nonterminal position cannot report mate zero")
                     legal = {move.to_uci() for move in position.legal_moves()}
                     if output[-1].split()[1] not in legal:
                         raise ValueError("engine returned an illegal bestmove")
-                    score = final[2]
-                    self.records.append({"fen": fen, "cp_side_to_move": score, "info": final[4], "bestmove": output[-1]})
+                    score = (ObjectiveScore(cp=final[2]) if final[1] == "cp" else
+                             ObjectiveScore(mate_moves=abs(final[2]), winning=final[2] > 0))
+                    self.records.append({"fen": fen, "cp_side_to_move": score.cp,
+                                         "score_side_to_move": score.as_dict(), "info": final[4], "bestmove": output[-1]})
                 except BaseException:
                     self.close()
                     raise
             self.cache[fen] = score
         score = self.cache[fen]
-        return float(score if perspective == position.side_to_move else -score)
+        return score if perspective == position.side_to_move else score.inverted()
 
     def provenance(self):
         executable = pathlib.Path(self.command[0]).resolve(strict=True)

@@ -2,11 +2,10 @@ import argparse
 import hashlib
 import json
 import pathlib
-from dataclasses import asdict
 
 from .objective_uci import UciObjective
 from .position import Position
-from .practical import rank_practical_moves
+from .practical_analysis import analyze_practical_moves
 from .practical_report import render_report
 
 
@@ -76,22 +75,14 @@ def main(argv=None):
             model = RecordedReplyModel(args.replies, args.rating)
         command = [str(args.engine.resolve(strict=True)), *args.engine_arg]
         with UciObjective(command, args.depth, args.timeout) as objective:
-            ranked = rank_practical_moves(position, objective, model, args.rating, args.margin_cp)
-            candidates = []
-            for item in ranked:
-                child = position.make_move(item.move)
-                probabilities = model(child, args.rating) if child.legal_moves() else {}
-                details = [{"move": reply.to_uci(), "probability": probabilities[reply.to_uci()],
-                            "cp_original_mover": objective(child.make_move(reply), position.side_to_move)}
-                           for reply in child.legal_moves() if probabilities.get(reply.to_uci(), 0) > 0]
-                candidates.append({**asdict(item), "move": item.move.to_uci(), "reply_details": details})
-            report = {"schema": "trickfish.practical-analysis.v1", "fen": position.to_fen(),
+            analysis = analyze_practical_moves(position, objective.evaluate, model, args.rating, args.margin_cp)
+            report = {"schema": "trickfish.practical-analysis.v2", "fen": position.to_fen(),
                       "perspective": position.side_to_move, "margin_cp": args.margin_cp,
-                      "candidates": candidates, "objective": objective.provenance(),
+                      **analysis, "objective": objective.provenance(),
                       "reply_model": model.provenance(),
                       "limitations": ["one-reply centipawn expectation, not win probability",
                                       "no repetition history or calibrated human-model claim",
-                                      "mate scores reject the analysis rather than receiving arbitrary cp"]}
+                                      "mixed mate/cp replies disable expected-cp comparison and use objective fallback"]}
         rendered = json.dumps(report, indent=2, allow_nan=False) + "\n"
         with args.output.open("x", encoding="utf-8") as stream:
             stream.write(rendered)

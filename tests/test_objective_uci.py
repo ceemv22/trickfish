@@ -37,6 +37,23 @@ class ObjectiveUciTests(unittest.TestCase):
                 engine(Position.from_fen(STARTING_FEN), "w")
             self.assertIsNotNone(engine.process.poll())
 
+    def test_typed_mate_sign_distance_cache_and_terminal_zero(self):
+        for mode, winning in (("mate", True), ("mate-loss", False)):
+            with self.subTest(mode=mode), self.engine(mode) as engine:
+                position = Position.from_fen(STARTING_FEN)
+                score = engine.evaluate(position, "w")
+                self.assertEqual((score.mate_moves, score.winning), (2, winning))
+                self.assertIsNone(score.cp)
+                self.assertEqual(engine.evaluate(position, "b").winning, not winning)
+                self.assertEqual(len(engine.records), 1)
+        with self.engine() as engine:
+            mate = Position.from_fen("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1")
+            self.assertFalse(engine.evaluate(mate, "b").winning)
+            self.assertTrue(engine.evaluate(mate, "w").winning)
+        with self.engine("mate-zero") as engine:
+            with self.assertRaises(ValueError):
+                engine.evaluate(Position.from_fen(STARTING_FEN), "w")
+
     def test_terminal_draw_and_mate_are_not_fake_centipawns(self):
         with self.engine() as engine:
             draw = Position.from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1")
