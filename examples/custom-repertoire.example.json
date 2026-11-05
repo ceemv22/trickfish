@@ -1,0 +1,8 @@
+{
+  "schema": "trickfish.practical-cases.v1",
+  "purpose": "Example custom input for manual preparation review; not held-out validation",
+  "positions": [
+    {"name": "queens-gambit", "moves": ["d2d4", "d7d5", "c2c4", "e7e6", "g1f3", "g8f6"]},
+    {"name": "custom-black-fen", "fen": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3", "moves": []}
+  ]
+}

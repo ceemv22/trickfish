@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from trickfish.practical_review import ReviewPolicy
+from trickfish.repertoire import load_repertoire
 from dataclasses import asdict
 
 
@@ -14,10 +15,15 @@ def main():
     parser.add_argument("--verification-dir", required=True, type=pathlib.Path)
     parser.add_argument("--output-dir", required=True, type=pathlib.Path)
     parser.add_argument("--policy", type=pathlib.Path)
+    parser.add_argument("--manifest", type=pathlib.Path, default=pathlib.Path(__file__).with_name("practical-positions.json"))
     args = parser.parse_args()
     policy = ReviewPolicy(**json.loads(args.policy.read_text())) if args.policy else ReviewPolicy()
-    manifest = pathlib.Path(__file__).with_name("practical-positions.json").read_bytes()
-    cases = json.loads(manifest)["positions"]
+    try:
+        repertoire = load_repertoire(args.manifest)
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
+    manifest = repertoire.raw
+    cases = repertoire.cases
     args.output_dir.mkdir(parents=True, exist_ok=False)
     (args.output_dir / "manifest.json").write_bytes(manifest)
     guide = pathlib.Path(__file__).resolve().parents[1] / "docs" / "expert-pilot.md"
@@ -28,7 +34,16 @@ def main():
     policy_path.write_text(json.dumps(asdict(policy), indent=2), encoding="utf-8")
     rows = []
     for case in cases:
-        name = case["name"]
+        name = case.name
+        try:
+            for directory in (args.screen_dir, args.verification_dir):
+                source = json.loads((directory / (name + ".json")).read_text(encoding="utf-8"))
+                if source["fen"] != case.position.to_fen():
+                    raise ValueError("analysis FEN disagrees with repertoire case")
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            rows.append({"case": name, "status": "incomplete", "error": str(error)})
+            (args.output_dir / "index.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+            continue
         command = [sys.executable, "-m", "trickfish.practical_review",
                    str(args.screen_dir / (name + ".json")), str(args.verification_dir / (name + ".json")),
                    "--output-dir", str(args.output_dir / name), "--policy", str(policy_path)]
@@ -42,7 +57,7 @@ def main():
         rows.append(row)
         print(name, row["status"], flush=True)
         (args.output_dir / "index.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
-    lines = ["# Expert review package", "", "This inspected integration set is not held-out validation. No human benefit or payment readiness is established.", "",
+    lines = ["# Expert review package", "", "This repertoire package does not establish held-out validation, human benefit or payment readiness.", "",
              "Start with [the coach pilot guide](pilot-guide.md). Each completed case includes an unfilled feedback.json bound to its assessment hash.", "",
              "For a first conversation, use [the demonstration walkthrough](demo-walkthrough.md).", "",
              "Thresholds are in policy.json; raw source analyses and their hashes accompany each worksheet.", "",
