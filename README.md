@@ -25,6 +25,8 @@ Controlled practical runs pin official Stockfish 19 platform assets and explicit
 
 An optional local [PGN Workbook](docs/pgn-workbook.md) provides a Tkinter position selector and separate student/coach PDF exports from supplied PGN lines. It validates legal replay and hides source continuations in student sheets; it does not certify answers or run an engine. Commercial usefulness remains unverified.
 
+An internal Windows x64 folder/ZIP build bundles the Python runtime, example and dependency notices, with a frozen startup/export smoke check. Its dedicated Actions workflow preserves artifacts without publishing a release. Project/dependency licensing and clean-machine validation remain unfinished release requirements.
+
 Python provides the reference rules, positional evaluation, search, and a clock-aware UCI reference interface. C++ provides mutable position state, legal move generation, perft, the current Python reference static evaluation terms, and an initial search implementation with a basic asynchronous UCI frontend. Cross-language fixtures compare the complete static breakdown and terminal-aware scores; search behavior remains separate. No playing-strength or Elo claim has been established.
 
 ### Python reference engine

@@ -46,7 +46,24 @@ A supplied PGN continuation is author material, not a proven best move. Position
 
 ## Distribution boundary
 
-This repository still has no selected license. No project license is selected by this feature. The optional `chess` dependency has its own GPL license; inspect its installed distribution notice before planning a distributed commercial build. The prototype does not bundle external engines. Packaging, dependency-license compliance, supported-platform checks and paid-product validation remain separate unfinished release work. This source implementation is not a ready-to-sell installer.
+This repository still has no selected license. No project license is selected by this feature. The optional `chess` dependency has its own GPL license; inspect its installed distribution notice before planning a distributed commercial build. The prototype does not bundle external engines. An internal Windows folder/ZIP build is available as described below. Dependency-license compliance, supported-platform checks and paid-product validation remain separate unfinished release work. This is not a ready-to-sell installer.
+
+## Internal Windows package
+
+Build on Windows x64 with standard Python 3.12:
+
+```powershell
+python -m pip install -r packaging/requirements-workbook-build.txt
+python packaging/build_workbook.py --output dist/workbook-windows
+```
+
+The output directory must not already exist. Build dependencies are installed into the interpreter used for the command. A dedicated virtual environment is recommended. PyInstaller's onedir/windowed mode creates `app/TrickfishWorkbook/TrickfishWorkbook.exe` and its `_internal` directory. Preserve both. The ZIP contains the complete application folder; extract it before double-clicking the executable. Users do not need a separate Python installation. This claim describes the bundle format, not a completed clean-machine certification.
+
+The build runs the resulting executable with `--smoke-test` from outside the repository. It constructs Tk widgets, loads the packaged example, selects positions and generates student/coach PDFs, then requires a `frozen: true` receipt. Build output includes exact dependency versions, file hashes, ZIP SHA-256, smoke evidence and collected Python/Tk/dependency notices. The GUI remains unverified visually; this automated check does not click native dialogs or certify a clean Windows machine.
+
+The **Workbook Windows Package** workflow builds the same internal ZIP on `windows-latest`, preserves its evidence as an Actions artifact and does not create a public release. Its first result must be checked after pushing the new workflow. The package is unsigned; do not disable operating-system protections if startup is blocked. Report the message instead.
+
+See [PyInstaller's usage](https://pyinstaller.org/en/stable/usage.html) for the folder-bundle model. PyInstaller's own [license exception](https://www.pyinstaller.org/en/stable/license.html) does not remove the separate obligations of bundled dependencies or choose a license for this repository. Notice collection is preparation, not a declaration that all distribution obligations have been satisfied.
 
 ## Validation
 

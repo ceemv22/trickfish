@@ -1,0 +1,23 @@
+TRICKFISH PGN WORKBOOK - INTERNAL WINDOWS PROTOTYPE
+
+Extract the complete ZIP into a writable folder. Double-click
+TrickfishWorkbook.exe. Keep the _internal folder beside the executable.
+Python does not need to be installed separately.
+
+Click Open example, select positions and export into a NEW output folder.
+Open student.pdf and coach.pdf using your usual PDF reader. Keep the coach
+file separate from student copies. PGN comments and supplied continuations
+are not certified best answers. Review material before teaching with it.
+
+This is an unsigned development build. No automatic updater, payment,
+account or network service is included. No project license has been selected;
+this package is not approved for public distribution or sale.
+
+THIRD-PARTY-NOTICES contains dependency notices collected at build time.
+In particular, the chess library uses the GPL. Collecting notices does not
+by itself complete all source/distribution obligations. Review the full
+dependency and project licensing before any public release.
+
+If Windows blocks startup, report the message. Do not disable security
+protections to run the prototype. The --smoke-test command is an internal
+startup/export check, not visual or clean-machine certification.
