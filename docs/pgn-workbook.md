@@ -15,11 +15,11 @@ python -m venv .venv-workbook
 
 In the GUI:
 
-1. Open `examples/workbook-demo.pgn`, or your own UTF-8 PGN.
-2. Select one or more position rows using Ctrl or Shift. The preview displays the first selected position, with White at the bottom.
+1. Click **Open example** for the bundled example, or **Open PGN** for your own UTF-8 PGN. The example is included in installed Python packages; no repository checkout is needed to find it.
+2. Select one or more position rows using Ctrl or Shift, or use **Select all** and **Clear**. The selection counter shows how many pages will be exported; export is disabled for zero or more than 50 positions. The preview displays the first selected position, with White at the bottom.
 3. Set a title and a common open-ended question. Do not put an answer into the title or question: both are printed in the student PDF.
 4. Export, choose the parent directory and enter a new folder name. Existing output folders are never overwritten.
-5. Open `student.pdf` and `coach.pdf`. Keep the coach file separate when sharing with students. `receipt.json` records the exact source-byte SHA-256, selected FENs and output hashes.
+5. Use **Open student PDF**, **Open coach PDF**, or **Open output folder** after export. Files open with the operating system's associated application. If an output was moved or deleted, the app reports that it must be exported again. Keep the coach file separate when sharing with students. `receipt.json` records the exact source-byte SHA-256, selected FENs and output hashes.
 
 The preview is a position selector, not a chess-playing interface. There is no installer, payment integration or public storefront in this version. The optional dependency installation requires internet; normal importing and exporting run locally.
 
@@ -38,7 +38,7 @@ Multi-game PGN, SetUp/FEN roots, comments and side variations are supported thro
 
 Limits: 5 MB input, 2000 imported positions, 50 selected positions, title 120 characters, question 600 characters and comment 4000 characters, subject to actual page space. Oversized text fails rather than silently clipping. Long comments must be shortened in the source. Generation occurs in a temporary sibling directory; layout errors do not publish a partial output package. A process crash may leave an intermediate `.workbook-*` directory.
 
-PDF chess glyphs use an installed Segoe UI Symbol on Windows or DejaVu Sans on Linux. Apple Symbols is an unverified macOS fallback. The text font is ReportLab's bundled Vera. Windows and local PDF export have been exercised; Linux export awaits this commit's CI, and macOS has not been tested. GUI appearance has not been visually certified through the desktop automation surface.
+PDF chess glyphs use an installed Segoe UI Symbol on Windows or DejaVu Sans on Linux. Apple Symbols is an unverified macOS fallback. The text font is ReportLab's bundled Vera. Windows PDF export has been exercised; the original workbook's Linux tests passed at b90e267, and macOS has not been tested. A local real-Tk integration smoke exercised example loading, selection, actual PDF generation, result-opening dispatch and preservation of the loaded document after a failed import. File dialogs and external application launch were mocked in that smoke. GUI appearance and interactive dialog behavior have not been visually certified through the desktop automation surface.
 
 ## Answer policy
 

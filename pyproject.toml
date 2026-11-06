@@ -22,3 +22,6 @@ trickfish-practical-repro = "trickfish.practical_repro:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.setuptools.package-data]
+trickfish = ["data/*.pgn"]
