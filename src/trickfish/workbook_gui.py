@@ -6,7 +6,7 @@ from importlib.resources import as_file, files
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .workbook import export_workbook, load_pgn
+from .workbook import DEFAULT_PROMPT, export_workbook, load_pgn
 
 
 class WorkbookApp:
@@ -51,7 +51,7 @@ class WorkbookApp:
         ttk.Entry(frame, textvariable=self.title).pack(fill="x")
         ttk.Label(frame, text="Student prompt (comments and source continuations stay in the coach PDF)").pack(anchor="w", pady=(8, 0))
         self.prompt = tk.Text(frame, height=3, wrap="word")
-        self.prompt.insert("1.0", "Choose a move and explain your plan. What reply should you check?")
+        self.prompt.insert("1.0", DEFAULT_PROMPT)
         self.prompt.pack(fill="x")
         actions = ttk.Frame(frame)
         actions.pack(fill="x", pady=12)

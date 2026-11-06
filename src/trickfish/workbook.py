@@ -11,6 +11,9 @@ import chess
 import chess.pgn
 
 
+DEFAULT_PROMPT = "Choose a move and explain your plan. What reply should you check?"
+
+
 @dataclass(frozen=True)
 class Entry:
     number: int
@@ -137,7 +140,10 @@ def _pdf(path, entries, title, prompt, answers):
             _paragraph(canvas, "Supplied continuation (first 8 plies):\n" + entry.continuation, 44, 354, 507, 75)
             _paragraph(canvas, "Author comment at this position:\n" + (entry.comment or "No comment supplied."), 44, 265, 507, 170)
         else:
-            _paragraph(canvas, prompt, 44, 354, 507, 90, 600)
+            question = prompt
+            if prompt == DEFAULT_PROMPT and not any(chess.Board(entry.fen).legal_moves):
+                question = "Assess this position. Does the side to move have a legal move? Is its king in check? Explain your conclusion."
+            _paragraph(canvas, question, 44, 354, 507, 90, 600)
             canvas.setStrokeColorRGB(0.70, 0.75, 0.78)
             for y in (225, 193, 161, 129):
                 canvas.line(44, y, 551, y)
@@ -150,7 +156,7 @@ def _pdf(path, entries, title, prompt, answers):
     canvas.save()
 
 
-def export_workbook(book, numbers, output, title="Chess workbook", prompt="Choose a move and explain your plan. What reply should you check?"):
+def export_workbook(book, numbers, output, title="Chess workbook", prompt=DEFAULT_PROMPT):
     numbers = list(numbers)
     if not numbers or len(numbers) != len(set(numbers)) or len(numbers) > 50:
         raise ValueError("Select 1 to 50 distinct positions")

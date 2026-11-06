@@ -44,6 +44,8 @@ PDF chess glyphs use an installed Segoe UI Symbol on Windows or DejaVu Sans on L
 
 A supplied PGN continuation is author material, not a proven best move. Positions without a continuation are marked explicitly. The tool does not generate tactical solutions, diagnose a student or infer a stable weakness. A coach must review the selected question, comments and continuations before use. Legal-move validation is not pedagogical validation.
 
+When a selected position has no legal moves, the unchanged default question asks the student to assess legal moves and check status instead of asking for a move. A custom question is preserved as supplied; the author must ensure it fits every selected position.
+
 ## Distribution boundary
 
 This repository still has no selected license. No project license is selected by this feature. The optional `chess` dependency has its own GPL license; inspect its installed distribution notice before planning a distributed commercial build. The prototype does not bundle external engines. An internal Windows folder/ZIP build is available as described below. Dependency-license compliance, supported-platform checks and paid-product validation remain separate unfinished release work. This is not a ready-to-sell installer.
@@ -75,3 +77,11 @@ python -m unittest discover -s tests -p test_workbook.py -v
 ```
 
 Tests check branch and black-to-move positions, illegal tails, invalid roots, promotion/en-passant, hidden answer text, receipt hashes, overwrite refusal and failed-layout cleanup. The Python workflow installs workbook dependencies and runs these tests separately. Existing reference-engine tests can run without the optional dependencies.
+
+`examples/workbook-edge-cases.pgn` is an authored synthetic import fixture, not customer material or a recommended repertoire. It contains four games/24 positions, nested alternatives, Croatian comments, black-to-move and terminal roots, en passant, promotions and opposite castling. Export a six-page sample with:
+
+```powershell
+python -m trickfish.workbook examples/workbook-edge-cases.pgn --positions 1,14,16,20,21,24 --output edge-case-workbook
+```
+
+A local follow-up imported this fixture plus ten existing project review PGNs: 129 games/analysis lines and 1732 positions. Each node's available first continuation up to eight plies was replayed with the independent Trickfish reference move generator; board states matched after legal en-passant FEN normalization. This checks the exercised corpus, not arbitrary external PGN files. Student/coach text separation, Croatian text extraction and the six-page PDF layouts were checked. The new terminal-question behavior has regression checks for checkmate, stalemate and preservation of custom questions. An already downloaded executable must be rebuilt to include that change.

@@ -62,3 +62,20 @@ class WorkbookTests(unittest.TestCase):
                 export_workbook(book, [2], output)
             self.assertFalse(output.exists())
             self.assertEqual(list(pathlib.Path(folder).iterdir()), [])
+
+    def test_terminal_questions_and_custom_prompt_preservation(self):
+        roots = ["r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
+                 "7k/5K2/6Q1/8/8/8/8/8 b - - 0 1"]
+        with tempfile.TemporaryDirectory() as folder:
+            for index, fen in enumerate(roots):
+                book = self.load(f'[SetUp "1"]\n[FEN "{fen}"]\n\n*')
+                output = pathlib.Path(folder) / str(index)
+                export_workbook(book, [1], output)
+                text = PdfReader(output / "student.pdf").pages[0].extract_text()
+                self.assertIn("Assess this position.", text)
+                self.assertNotIn("Choose a move", text)
+                custom = pathlib.Path(folder) / (str(index) + "-custom")
+                export_workbook(book, [1], custom, prompt="Discuss the last move.")
+                text = PdfReader(custom / "student.pdf").pages[0].extract_text()
+                self.assertIn("Discuss the last move.", text)
+                self.assertNotIn("Assess this position.", text)
