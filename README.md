@@ -4,12 +4,41 @@
 
 <h1 align="center">Trickfish</h1>
 
+**Stockfish finds the best move. Trickfish finds the move your opponent will get wrong.**
+
+Trickfish finds opening traps that real players at a given rating actually fall for. Every candidate line is checked twice:
+
+1. **Stockfish:** each of our moves gives up at most half a pawn compared to the engine's best. Nothing dubious, nothing to refute.
+2. **Real games from the open [Lichess database](https://database.lichess.org/) (CC0):** a position counts as a trap only when at least 15% of real opponents in the rating band chose a losing reply, the most common mistake gives us at least two pawns, and we really scored 60%+ in the games where it happened.
+
+## Products
+
+- **Trap Packs**: PDF guide with diagrams, drills and an answer key, plus a PGN for any chess app. The first pack, *Italian Game Traps for White (1200-1599)*, is in preparation.
+- **[PGN Workbook](https://ceemv22.gumroad.com/l/trickfish-pgn-workbook)** (Windows, USD 9): turns your PGN lines into student worksheets and a coach key. [Free sample output](docs/workbook-preview.md).
+
+## Build a trap pack
+
+```bash
+pip install chess reportlab cairosvg pillow
+# 1. Extract rating-band games from the Lichess database (streams, nothing stored but the extract)
+curl -r 0-5000000000 https://database.lichess.org/standard/lichess_db_standard_rated_2026-10.pgn.zst \
+  | zstd -dc | PYTHONPATH=src python -m trickfish.lichess_db --low 1200 --high 1599 --output band.tsv.gz
+# 2. Find traps (needs a Stockfish binary)
+PYTHONPATH=src python -m trickfish.trappack --moves "e4 e5 Nf3 Nc6 Bc4" --color white \
+  --games band.tsv.gz --engine /usr/games/stockfish --output traps.json
+# 3. Render PDF, PGN and social cards
+PYTHONPATH=src python -m trickfish.trappack_render traps.json --notes packs/italian-white-1200/notes.json --output dist/pack
+```
+
+Business plan and launch material: [docs/business](docs/business/strategy.md).
+
+## Engine research
+
 Trickfish is a chess-engine research project with a Python reference engine and a C++ performance core. Its long-term goal is to select, among objectively acceptable moves, the move whose adequate defense is hardest to find and execute. An offline Python practical-selection prototype filters candidates by objective loss and ranks them by expected score over opponent replies. A separate-process UCI evaluator, optional pinned Maia-2 adapter, JSON evidence export and Markdown review report are available. Human-policy calibration and practical usefulness remain unverified; see [the contract and limitations](docs/practical-selection.md).
 
 
 The bounded C++ roadmap is accepted at **100.000%**; see [the acceptance record](#bounded-roadmap-acceptance). This is an implementation index, and playing strength remains unmeasured.
 
-The separate [PGN Workbook Windows preview](https://ceemv22.gumroad.com/l/trickfish-pgn-workbook) formats supplied PGN lines into student/coach PDFs. [Inspect the free input and output samples](docs/workbook-preview.md) before considering the prepared download. Workbook does not perform engine analysis; its scoped GPL license and limitations are documented separately.
 
 Practical analysis JSON v2 keeps mate results separate from centipawns. Mixed reply outcomes expose mate probability mass and fall back to objective selection instead of inventing an expected cp score. The local five-position Stockfish/Maia depth-four review completes; this is integration evidence, not a playing-strength result.
 

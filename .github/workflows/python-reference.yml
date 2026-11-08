@@ -22,3 +22,7 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m unittest discover -s tests -p test_workbook.py -v
+      - name: Trap pack tests
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p test_trappack.py -v

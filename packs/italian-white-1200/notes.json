@@ -1,0 +1,24 @@
+{
+ "_meta": {
+  "slug": "trickfish-italian-traps-white-1200-1599",
+  "title": "Italian Game Traps for White",
+  "subtitle": "The traps real 1200-1599 players actually fall for, measured on Lichess and checked by Stockfish",
+  "method": [
+   "We took every rated blitz, rapid and classical game from a large sample of October 2026 Lichess games in which <b>both</b> players were rated 1200-1599, and kept the games that began 1.e4 e5 2.Nf3 Nc6 3.Bc4. Lichess publishes its game database under CC0.",
+   "We walked the opening tree from White's side. White only plays moves that Stockfish considers sound: each one gives up at most half a pawn compared to the engine's best move. You never have to gamble to set these traps.",
+   "At every position where Black is to move, we compared what Black <i>actually played</i> with Stockfish's evaluation of each reply. A position becomes a trap only when (1) at least 15% of real opponents chose a losing reply, (2) the most common mistake gives White at least two pawns, and (3) White really did score at least 60% in the games where that mistake happened.",
+   "So every trap here is backed by thousands of real games, not by a single brilliancy or an engine fantasy."
+  ],
+  "usage": [
+   "Play through each trap on a board once. Then do the drills at the back without looking.",
+   "Import the PGN into a Lichess study or Chess.com library and review it with spaced repetition.",
+   "Pay attention to the 'Best defence' row. The traps are sound, so if your opponent finds the right move you are still fine. Know what to do then too.",
+   "The percentages are for 1200-1599 players. Stronger opponents fall for these less often."
+  ],
+  "fineprint": [
+   "Wrong: share of games reaching the position in which Black chose a reply that loses at least 1.5 pawns according to Stockfish. Your score: White's points per game (win = 1, draw = 0.5) in real games after the most common mistake.",
+   "Engine evaluations: Stockfish 16, fixed depth, from White's point of view. Mating evaluations are shown as 'mating'.",
+   "Game statistics describe the sampled games. They are not a promise about your next game."
+  ]
+ }
+}

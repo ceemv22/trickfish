@@ -7,12 +7,16 @@ requires-python = ">=3.11"
 [project.optional-dependencies]
 practical = ["maia2==0.11.0; python_version < '3.13'"]
 workbook = ["chess==1.10.0", "reportlab>=4.2,<5"]
+trappack = ["chess==1.10.0", "reportlab>=4.2,<6", "cairosvg>=2.7", "pillow>=10"]
 
 [project.scripts]
 trickfish = "trickfish.cli:main"
 trickfish-workbook = "trickfish.workbook_gui:main"
 trickfish-workbook-export = "trickfish.workbook:main"
 trickfish-uci = "trickfish.uci:main"
+trickfish-lichess-extract = "trickfish.lichess_db:main"
+trickfish-traps = "trickfish.trappack:main"
+trickfish-trappack-render = "trickfish.trappack_render:main"
 trickfish-practical = "trickfish.practical_cli:main"
 trickfish-practical-stability = "trickfish.practical_stability:main"
 trickfish-practical-pgn = "trickfish.practical_pgn:main"
