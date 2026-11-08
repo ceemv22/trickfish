@@ -1,0 +1,32 @@
+TRICKFISH WORKBOOK - CORRESPONDING SOURCE
+
+Workbook code is GPL-3.0-or-later. Read LICENSE-WORKBOOK.txt and
+WORKBOOK-LICENSE-SCOPE.md. Dependencies retain their own notices.
+This source snapshot intentionally excludes the unrelated Trickfish engine.
+
+Build on Windows x64 with standard Python 3.12 including Tkinter:
+
+  python -m venv .venv
+  .venv\Scripts\python.exe -m pip install -r packaging\requirements-workbook-build.txt
+  .venv\Scripts\python.exe packaging\build_workbook.py --output rebuilt-workbook
+
+The build output folder must be new. Download/install of build dependencies
+requires internet. The build also retrieves and verifies the matching chess
+source archive from PyPI, comparing its Python files with the installed copy.
+The original archive is already included under third-party-source/ in this
+snapshot, with its origin and digest in third-party-source.json. Pass
+--chess-source followed by that archive path to reuse the included source
+archive instead of downloading it again. Other build dependencies can be
+installed from their published package distributions.
+
+To run the application from this source folder after installing dependencies:
+
+  set PYTHONPATH=src
+  .venv\Scripts\python.exe -m trickfish.workbook_gui
+
+PowerShell equivalent for the environment variable: $env:PYTHONPATH='src'
+
+The build creates the application folder, source ZIP, hashes and build receipt.
+Distribute the matching source ZIP alongside the executable ZIP; retain the
+GPL terms and third-party notices. Build output is not guaranteed byte-for-byte
+reproducible. The build receipt records versions and source-file hashes.

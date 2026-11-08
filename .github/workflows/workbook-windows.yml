@@ -8,6 +8,10 @@ on:
       - 'src/trickfish/data/**'
       - 'packaging/**'
       - 'pyproject.toml'
+      - 'LICENSE-WORKBOOK.txt'
+      - 'WORKBOOK-LICENSE-SCOPE.md'
+      - 'examples/workbook*.pgn'
+      - 'docs/pgn-workbook.md'
       - '.github/workflows/workbook-windows.yml'
   pull_request:
     paths:
@@ -15,6 +19,10 @@ on:
       - 'src/trickfish/data/**'
       - 'packaging/**'
       - 'pyproject.toml'
+      - 'LICENSE-WORKBOOK.txt'
+      - 'WORKBOOK-LICENSE-SCOPE.md'
+      - 'examples/workbook*.pgn'
+      - 'docs/pgn-workbook.md'
       - '.github/workflows/workbook-windows.yml'
 
 permissions:
@@ -40,6 +48,7 @@ jobs:
           name: workbook-windows-internal-${{ github.sha }}
           path: |
             dist/workbook-windows/TrickfishWorkbook-windows-x64.zip
+            dist/workbook-windows/TrickfishWorkbook-source.zip
             dist/workbook-windows/archive.sha256
             dist/workbook-windows/build-receipt.json
             dist/workbook-windows/smoke/

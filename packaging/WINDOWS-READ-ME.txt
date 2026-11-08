@@ -1,4 +1,4 @@
-TRICKFISH PGN WORKBOOK - INTERNAL WINDOWS PROTOTYPE
+TRICKFISH PGN WORKBOOK - PREPARED WINDOWS BUILD
 
 Extract the complete ZIP into a writable folder. Double-click
 TrickfishWorkbook.exe. Keep the _internal folder beside the executable.
@@ -10,13 +10,16 @@ file separate from student copies. PGN comments and supplied continuations
 are not certified best answers. Review material before teaching with it.
 
 This is an unsigned development build. No automatic updater, payment,
-account or network service is included. No project license has been selected;
-this package is not approved for public distribution or sale.
+account or network service is included. The Workbook files listed in
+WORKBOOK-LICENSE-SCOPE.md are GPL-3.0-or-later; read LICENSE-WORKBOOK.txt.
+This package has not been publicly launched or validated as a paid product.
 
 THIRD-PARTY-NOTICES contains dependency notices collected at build time.
-In particular, the chess library uses the GPL. Collecting notices does not
-by itself complete all source/distribution obligations. Review the full
-dependency and project licensing before any public release.
+The matching application/build sources and the original chess source archive
+are included in SOURCE-CODE.zip. Build instructions and source hashes accompany
+that source snapshot. Recipients may modify and redistribute under the GPL
+terms. This scoped license does not license the rest of the Trickfish engine
+repository or its logo. Dependencies retain their respective license terms.
 
 If Windows blocks startup, report the message. Do not disable security
 protections to run the prototype. The --smoke-test command is an internal
