@@ -21,7 +21,9 @@ def source_snapshot(repo, output, versions, chess_source=None):
              "packaging/workbook_entry.py", "packaging/build_workbook.py",
              "packaging/requirements-workbook-build.txt", "packaging/WINDOWS-READ-ME.txt",
              "packaging/SOURCE-READ-ME.txt", "tests/test_workbook.py", "examples/workbook-demo.pgn",
-             "examples/workbook-edge-cases.pgn", "docs/pgn-workbook.md", ".github/workflows/workbook-windows.yml"]
+             "examples/workbook-edge-cases.pgn", "docs/pgn-workbook.md", ".github/workflows/workbook-windows.yml",
+             "docs/workbook-preview.md", "docs/workbook-preview/student.pdf", "docs/workbook-preview/coach.pdf",
+             "docs/workbook-preview/student.png", "docs/workbook-preview/coach.png"]
     for name in names:
         target = source / name
         target.parent.mkdir(parents=True, exist_ok=True)

@@ -16,6 +16,11 @@ Effective 2026-11-08, the copyright holder licenses the following original Trick
 - `examples/workbook-demo.pgn`
 - `examples/workbook-edge-cases.pgn`
 - `docs/pgn-workbook.md`
+- `docs/workbook-preview.md`
+- `docs/workbook-preview/student.pdf`
+- `docs/workbook-preview/coach.pdf`
+- `docs/workbook-preview/student.png`
+- `docs/workbook-preview/coach.png`
 - `.github/workflows/workbook-windows.yml`
 - this scope notice
 

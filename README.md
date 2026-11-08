@@ -9,6 +9,8 @@ Trickfish is a chess-engine research project with a Python reference engine and 
 
 The bounded C++ roadmap is accepted at **100.000%**; see [the acceptance record](#bounded-roadmap-acceptance). This is an implementation index, and playing strength remains unmeasured.
 
+The separate [PGN Workbook Windows preview](https://ceemv22.gumroad.com/l/trickfish-pgn-workbook) formats supplied PGN lines into student/coach PDFs. [Inspect the free input and output samples](docs/workbook-preview.md) before considering the prepared download. Workbook does not perform engine analysis; its scoped GPL license and limitations are documented separately.
+
 Practical analysis JSON v2 keeps mate results separate from centipawns. Mixed reply outcomes expose mate probability mass and fall back to objective selection instead of inventing an expected cp score. The local five-position Stockfish/Maia depth-four review completes; this is integration evidence, not a playing-strength result.
 
 Multi-depth review and stored-report comparison expose changes in selections, candidate sets and score kinds under matching recorded engine/model/rating settings. The local depth-four/depth-six comparison changed selections in three of five review positions; recommendation stability and practical usefulness remain unestablished.
