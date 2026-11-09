@@ -72,7 +72,7 @@ class Trap:
         self.sans, self.board = line_sans(record["moves"])
         replies = sorted(record["replies"], key=lambda reply: reply["games"], reverse=True)
         self.replies = replies
-        self.mistakes = [reply for reply in replies if reply["gain_cp"] >= 150]
+        self.mistakes = [reply for reply in replies if reply["gain_cp"] >= 120]
         self.top = max(self.mistakes, key=lambda reply: reply["share"])
         self.after = self.board.copy()
         self.after.push(chess.Move.from_uci(self.top["uci"]))

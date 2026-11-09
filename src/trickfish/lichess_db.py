@@ -9,6 +9,7 @@ the online Lichess opening explorer for a fixed sample of real games.
 """
 
 import argparse
+import bisect
 import gzip
 import re
 import sys
@@ -69,16 +70,17 @@ def extract(stream, output, low, high, plies, max_games=None):
 
 
 class LocalExplorer:
-    """Opening-explorer answers computed from an extracted game file."""
+    """Opening-explorer answers computed from an extracted game file.
+
+    Games under the root are kept as a sorted list of SAN tuples, so every
+    position query is a binary-searched range instead of a stored prefix tree.
+    """
 
     def __init__(self, path, prefix_sans):
         self.prefix = tuple(prefix_sans)
-        self.children = defaultdict(lambda: defaultdict(lambda: {"white": 0, "draws": 0, "black": 0}))
-        self.totals = defaultdict(lambda: {"white": 0, "draws": 0, "black": 0})
-        self.games = 0
-        self.requests = 0
         size = len(self.prefix)
-        key = {"w": "white", "d": "draws", "b": "black"}
+        intern = {}
+        games = []
         opener = gzip.open if str(path).endswith(".gz") else open
         with opener(path, "rt", encoding="utf-8") as handle:
             for line in handle:
@@ -86,13 +88,32 @@ class LocalExplorer:
                 sans = moves.split()
                 if tuple(sans[:size]) != self.prefix:
                     continue
-                self.games += 1
-                outcome = key[result]
-                for index in range(size, len(sans) + 1):
-                    path_key = tuple(sans[size:index])
-                    self.totals[path_key][outcome] += 1
-                    if index < len(sans):
-                        self.children[path_key][sans[index]][outcome] += 1
+                games.append((tuple(intern.setdefault(san, san) for san in sans[size:]), result))
+        games.sort()
+        self.keys = [game[0] for game in games]
+        self.results = [game[1] for game in games]
+        self.games = len(games)
+        self.requests = 0
+
+    def _range(self, path):
+        low = bisect.bisect_left(self.keys, path)
+        high = bisect.bisect_left(self.keys, path + ("\U0010ffff",), low)
+        return low, high
+
+    def counts(self, path):
+        empty = lambda: {"white": 0, "draws": 0, "black": 0}
+        key = {"w": "white", "d": "draws", "b": "black"}
+        low, high = self._range(path)
+        totals = empty()
+        children = defaultdict(empty)
+        depth = len(path)
+        for index in range(low, high):
+            outcome = key[self.results[index]]
+            totals[outcome] += 1
+            sans = self.keys[index]
+            if len(sans) > depth:
+                children[sans[depth]][outcome] += 1
+        return totals, children
 
     def __call__(self, board):
         self.requests += 1
@@ -104,15 +125,15 @@ class LocalExplorer:
         sans.reverse()
         if tuple(sans[:len(self.prefix)]) != self.prefix:
             raise ValueError("position is outside the extracted opening")
-        path_key = tuple(sans[len(self.prefix):])
-        node = dict(self.totals.get(path_key, {"white": 0, "draws": 0, "black": 0}))
+        totals, children = self.counts(tuple(sans[len(self.prefix):]))
+        node = dict(totals)
         moves = []
-        for san, stats in self.children.get(path_key, {}).items():
+        for san, stats in children.items():
             try:
-                uci = board.parse_san(san).uci()
+                move = board.parse_san(san)
             except ValueError:
                 continue
-            moves.append({"san": board.san(board.parse_san(san)), "uci": uci, **stats})
+            moves.append({"san": board.san(move), "uci": move.uci(), **stats})
         moves.sort(key=lambda move: move["white"] + move["draws"] + move["black"], reverse=True)
         node["moves"] = moves
         return node

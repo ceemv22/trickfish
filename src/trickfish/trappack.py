@@ -185,7 +185,7 @@ def san_line(board, ucis, limit):
 
 class TrapFinder:
     def __init__(self, explorer, evaluator, color, maia=None, min_games=200, max_ply=22,
-                 sound_cp=50, mistake_cp=150, min_error_share=0.15, min_score=0.6, our_share=0.04,
+                 sound_cp=50, mistake_cp=120, min_error_share=0.15, min_score=0.6, our_share=0.04,
                  their_share=0.08, our_branching=4, their_branching=3, log=print):
         self.explorer = explorer
         self.evaluator = evaluator
@@ -255,8 +255,7 @@ class TrapFinder:
         mistakes = [reply for reply in replies if reply.gain_cp >= self.mistake_cp]
         error_share = sum(reply.share for reply in mistakes)
         top = max(mistakes, key=lambda reply: reply.share) if mistakes else None
-        if (top and error_share >= self.min_error_share and top.gain_cp >= 200
-                and top.our_score >= self.min_score):
+        if top and error_share >= self.min_error_share and top.our_score >= self.min_score:
             self._record(board, total, best_cp, best, replies, mistakes, error_share)
         mainline = sorted((reply for reply in replies if reply.gain_cp < self.mistake_cp),
                           key=lambda reply: reply.games, reverse=True)
@@ -305,7 +304,11 @@ def main(argv=None):
     parser.add_argument("--engine", default="/usr/games/stockfish")
     parser.add_argument("--depth", type=int, default=18)
     parser.add_argument("--min-games", type=int, default=200)
-    parser.add_argument("--max-ply", type=int, default=22)
+    parser.add_argument("--max-ply", type=int, default=28)
+    parser.add_argument("--branching", type=int, default=5, help="moves followed per side at each node")
+    parser.add_argument("--follow-share", type=float, default=0.05, help="minimum share of a move to follow it")
+    parser.add_argument("--min-error-share", type=float, default=0.15)
+    parser.add_argument("--min-score", type=float, default=0.6)
     parser.add_argument("--games", help="local extract from trickfish.lichess_db instead of the online explorer")
     parser.add_argument("--band", default="1200-1599", help="rating band label for the report")
     parser.add_argument("--cache", default=".trappack-cache")
@@ -324,7 +327,10 @@ def main(argv=None):
     evaluator = Evaluator(args.engine, cache, args.depth)
     color = chess.WHITE if args.color == "white" else chess.BLACK
     try:
-        finder = TrapFinder(explorer, evaluator, color, None, args.min_games, args.max_ply)
+        finder = TrapFinder(explorer, evaluator, color, None, args.min_games, args.max_ply,
+                            min_error_share=args.min_error_share, min_score=args.min_score,
+                            our_share=args.follow_share * 0.6, their_share=args.follow_share,
+                            our_branching=args.branching, their_branching=args.branching)
         traps = finder.run(root)
     finally:
         evaluator.close()

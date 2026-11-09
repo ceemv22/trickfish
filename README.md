@@ -9,7 +9,7 @@
 Trickfish finds opening traps that real players at a given rating actually fall for. Every candidate line is checked twice:
 
 1. **Stockfish:** each of our moves gives up at most half a pawn compared to the engine's best. Nothing dubious, nothing to refute.
-2. **Real games from the open [Lichess database](https://database.lichess.org/) (CC0):** a position counts as a trap only when at least 15% of real opponents in the rating band chose a losing reply, the most common mistake gives us at least two pawns, and we really scored 60%+ in the games where it happened.
+2. **Real games from the open [Lichess database](https://database.lichess.org/) (CC0):** a position counts as a trap only when at least 15% of real opponents in the rating band chose a reply that costs them 1.2+ pawns, and we really scored 60%+ in the games after the most common mistake.
 
 ## Products
 
