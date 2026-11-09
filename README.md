@@ -13,7 +13,7 @@ Trickfish finds opening traps that real players at a given rating actually fall 
 
 ## Products
 
-- **Trap Packs**: PDF guide with diagrams, drills and an answer key, plus a PGN for any chess app. The first pack, *Italian Game Traps for White (1200-1599)*, is in preparation.
+- **Trap Packs**: PDF guide with diagrams, drills and an answer key, plus a PGN for any chess app. The first pack, *1.e4 e5 Traps for White (1200-1599)*: 23 traps from 902,003 real games.
 - **[PGN Workbook](https://ceemv22.gumroad.com/l/trickfish-pgn-workbook)** (Windows, USD 9): turns your PGN lines into student worksheets and a coach key. [Free sample output](docs/workbook-preview.md).
 
 ## Build a trap pack
@@ -24,10 +24,10 @@ pip install chess reportlab cairosvg pillow
 curl -r 0-5000000000 https://database.lichess.org/standard/lichess_db_standard_rated_2026-10.pgn.zst \
   | zstd -dc | PYTHONPATH=src python -m trickfish.lichess_db --low 1200 --high 1599 --output band.tsv.gz
 # 2. Find traps (needs a Stockfish binary)
-PYTHONPATH=src python -m trickfish.trappack --moves "e4 e5 Nf3 Nc6 Bc4" --color white \
+PYTHONPATH=src python -m trickfish.trappack --moves "e4 e5" --color white \
   --games band.tsv.gz --engine /usr/games/stockfish --output traps.json
 # 3. Render PDF, PGN and social cards
-PYTHONPATH=src python -m trickfish.trappack_render traps.json --notes packs/italian-white-1200/notes.json --output dist/pack
+PYTHONPATH=src python -m trickfish.trappack_render traps.json --notes packs/e4e5-white-1200/notes.json --output dist/pack
 ```
 
 Business plan and launch material: [docs/business](docs/business/strategy.md).

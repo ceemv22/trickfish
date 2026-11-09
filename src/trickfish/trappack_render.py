@@ -156,9 +156,9 @@ def write_cards(data, meta, traps, directory):
         title = ImageFont.truetype(bold_path, 54)
         body = ImageFont.truetype(font_path, 34)
         small = ImageFont.truetype(font_path, 28)
-        draw.text((60, 50), "%.0f%% of %s players" % (trap.top["share"] * 100, data.get("band", "")),
+        draw.text((60, 50), "%.0f%% of %s players" % (trap.record["error_share"] * 100, data.get("band", "")),
                   font=title, fill="white")
-        draw.text((60, 120), "fall for this. Do you?", font=title, fill=CORAL)
+        draw.text((60, 120), "go wrong here. Do you?", font=title, fill=CORAL)
         png = board_png(trap.board, 860, lastmove=trap.board.peek(), flipped=flipped)
         board = Image.open(io.BytesIO(png)).convert("RGB").resize((860, 860))
         card.paste(board, (110, 215))

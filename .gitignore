@@ -7,3 +7,6 @@ dist/
 build/
 *.egg-info/
 .trappack-cache/
+# paid pack content stays out of the public repository
+packs/*/traps.json
+packs/*/notes.json

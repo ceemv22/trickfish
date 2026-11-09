@@ -40,7 +40,7 @@ Ako prvi paket nakon 4 tjedna redovitog objavljivanja ima manje od 10 prodaja, m
 curl -r 0-5000000000 https://database.lichess.org/standard/lichess_db_standard_rated_2026-10.pgn.zst \
   | zstd -dc | python -m trickfish.lichess_db --low 1200 --high 1599 --output band.tsv.gz
 # 2. Pronaći zamke (Stockfish + statistika stvarnih partija)
-python -m trickfish.trappack --moves "e4 e5 Nf3 Nc6 Bc4" --color white --games band.tsv.gz --output traps.json
+python -m trickfish.trappack --moves "e4 e5" --color white --games band.tsv.gz --output traps.json
 # 3. Iscrtati PDF, PGN i kartice za X
 python -m trickfish.trappack_render traps.json --notes notes.json --output dist/pack
 ```
