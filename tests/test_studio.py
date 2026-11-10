@@ -187,6 +187,40 @@ class StudioTests(unittest.TestCase):
                 images = subprocess.run(["pdfimages", "-list", str(pdf)], capture_output=True, text=True).stdout
                 self.assertEqual(len(images.strip().splitlines()), 2)   # header only: diagrams are vector
 
+    def test_sampler_mode_keeps_original_numbers_and_adds_closing_page(self):
+        from trickfish import studio
+
+        with tempfile.TemporaryDirectory() as directory:
+            directory = pathlib.Path(directory)
+            rec = record()
+            key = " ".join(rec["moves"])
+            other = dict(rec, moves=rec["moves"][:4] + ["d8f6"])   # a second, distinct key
+            okey = " ".join(other["moves"])
+            (directory / "traps.json").write_text(json.dumps({"color": "white", "band": "1200-1599",
+                                                              "sample_games": 902003, "engine": "Stockfish 16",
+                                                              "traps": [other, rec]}))
+            (directory / "notes.json").write_text(json.dumps({
+                "_order": [okey, key],
+                "_meta": {"title": "Full", "method": ["m"], "usage": ["u"], "fineprint": ["f"]},
+                okey: {"name": "Elsewhere: left out trap"},
+                key: {"name": "Bishop's Opening: the queen on h5", "plain": "Plain text."}}))
+            (directory / "sampler.json").write_text(json.dumps({
+                "traps": [2], "_meta": {"slug": "free", "title": "Free Sampler Title", "cta": "CTA paragraph.",
+                                        "price": "USD 14", "url": "https://example.com/pack"}}))
+            studio.main([str(directory / "traps.json"), "--notes", str(directory / "notes.json"),
+                         "--sampler", str(directory / "sampler.json"),
+                         "--output", str(directory / "out"), "--only", "pdf"])
+            pdf = directory / "out" / "pdf" / "free.pdf"
+            self.assertTrue(pdf.exists())
+            if shutil.which("pdftotext"):
+                text = subprocess.run(["pdftotext", str(pdf), "-"], capture_output=True, text=True).stdout
+                for phrase in ("Free Sampler Title", "Trap 02 / 2", "The other 1", "Elsewhere: left out trap",
+                               "CTA paragraph.", "https://example.com/pack"):
+                    self.assertIn(phrase, text)
+                self.assertNotIn("The traps at a glance", text)
+            self.assertIn("Trap 2", (directory / "out" / "pdf" / "free.pgn").read_text())
+            self.assertNotIn("Trap 1\"", (directory / "out" / "pdf" / "free.pgn").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

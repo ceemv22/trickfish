@@ -48,6 +48,8 @@ LABELS = {
     "idea": "The idea",
     "punishment": "The punishment",
     "defence": "Best defence",
+    "others": "The other {n}",
+    "others_price": "Full pack",
 }
 
 
@@ -293,6 +295,7 @@ def glance_pages(data, traps, L, folio_for, per_page=12):
 
 
 def trap_page(data, trap, total, L, folio):
+    total = total or 0
     strokes, hook, plies = st.catch(trap)
     top = trap.top
     q = board_block(trap.board, 96, uid="q%d" % trap.number)
@@ -391,7 +394,36 @@ def answer_pages(traps, L, folio_for, per_page=12):
 
 # ---------------------------------------------------------------- assembly
 
-def book(data, meta, traps):
+def others_page(meta, others, L, folio):
+    """Sampler closing page: the traps that are not in this PDF, titles only."""
+    half = (len(others) + 1) // 2
+    cols = []
+    for chunk in (others[:half], others[half:]):
+        cols.append("".join(
+            '<div style="display:grid;grid-template-columns:8mm 1fr;padding:1.1mm 0;border-top:0.35mm solid #CFC9BB;'
+            'font-size:9pt;line-height:1.25"><span class="mono faded" style="font-size:7.5pt;padding-top:.4mm">%02d</span>'
+            '<span>%s</span></div>' % (t.number, html.escape(t.name.replace("'", "\u2019"))) for t in chunk))
+    url = html.escape(meta.get("url", ""))
+    body = """
+<h2 class="abs" style="left:18mm;top:24mm;width:150mm">%s</h2>
+<p class="abs" style="left:18mm;top:44mm;width:140mm;font-size:12pt;line-height:1.5">%s</p>
+<div class="abs" style="left:18mm;top:84mm;width:84mm">%s</div>
+<div class="abs" style="left:110mm;top:84mm;width:84mm">%s</div>
+<div class="abs" style="left:18mm;top:222mm;width:176mm">
+  <div class="label">%s</div>
+  <p class="serif" style="font-size:22pt;line-height:1.1;margin-top:1mm">%s</p>
+  <p class="mono" style="font-size:9pt;margin-top:2mm"><a href="%s" style="color:%s">%s</a></p>
+</div>
+<p class="abs serif" style="left:18mm;top:262mm;width:150mm;font-size:12pt;line-height:1.25">%s</p>
+""" % (html.escape(L["others"].format(n=len(others))), rich(meta.get("cta", "")), cols[0], cols[1],
+       html.escape(L["others_price"]), html.escape(meta.get("price", "")), url, st.INK, url,
+       html.escape(meta.get("tagline", "")).replace("'", "\u2019"))
+    return page(body, folio)
+
+
+def book(data, meta, traps, others=None, total=None):
+    """With `others` (the traps left out) this is the free sampler: no
+    at-a-glance table, "Trap 19 of 23" on the pages, a closing page."""
     L = labels(meta)
     title = meta.get("title", "")
     sections = []          # lists of page html; folios are filled after counting
@@ -407,12 +439,15 @@ def book(data, meta, traps):
     pages = [cover(data, meta, traps, L)]
     pages.append(prose_page(L["contents_method"], meta.get("method", []), False, folio(0)))
     pages.append(prose_page(L["contents_usage"], meta.get("usage", []), True, folio(0)))
-    pages += glance_pages(data, traps, L, folio)
+    if others is None:
+        pages += glance_pages(data, traps, L, folio)
     for trap in traps:
-        pages.append(trap_page(data, trap, len(traps), L, folio(0)))
+        pages.append(trap_page(data, trap, total or len(traps), L, folio(0)))
     pages += drill_pages(traps, L, folio, meta.get("drills_intro", ""))
     pages += answer_pages(traps, L, folio)
     pages.append(prose_page(L["about"], meta.get("fineprint", []), True, folio(0)))
+    if others:
+        pages.append(others_page(meta, others, L, folio(0)))
     return document(title or "Trickfish", pages)
 
 

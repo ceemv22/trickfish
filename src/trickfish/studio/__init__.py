@@ -937,12 +937,15 @@ def thumbnail(data, traps):
     sq = 76
     board = board_svg(trap.after, sq, catch_=catch(trap)[:2], trail=chess.Move.from_uci(trap.top["uci"]),
                       coords=True, coord_size=19, seed=19 * 7 + 3, uid="th")
+    head, sub, count = "1.e4 e5 Traps", "for White", "%d traps" % len(traps)
+    if data.get("sampler"):
+        head, sub, count = " ".join(data["sampler"]["head"]), "1.e4 e5 Traps for White", "%d of %d traps" % (len(traps), data["sampler"]["total"])
     body = f"""
 {lockup(72, 56, 48, color=PAPER)}
-<div class="abs num" style="left:62px;top:150px;font-size:148px;line-height:1;color:{PAPER};white-space:nowrap">1.e4 e5 Traps</div>
-<div class="abs serif" style="left:72px;top:318px;font-size:48px;color:{PAPER}">for White</div>
+<div class="abs num" style="left:62px;top:150px;font-size:148px;line-height:1;color:{PAPER};white-space:nowrap">{head}</div>
+<div class="abs serif" style="left:72px;top:318px;font-size:48px;color:{PAPER}">{sub}</div>
 <div class="abs txt" style="left:72px;top:984px;font-size:48px;line-height:1.15;color:{WATER_FADED}">
-{len(traps)} traps<br>{thousands(data.get('sample_games') or 0)} games</div>
+{count}<br>{thousands(data.get('sample_games') or 0)} games</div>
 <div class="abs" style="left:440px;top:420px">{plate(board, 52, 30, 50)}</div>
 """
     return page(1200, 1200, body, bg=WATER, fg=PAPER, faded=WATER_FADED)
@@ -954,6 +957,9 @@ def cover_hero(data, traps):
     sq = 78
     board = board_svg(trap.after, sq, catch_=catch(trap)[:2], trail=chess.Move.from_uci(trap.top["uci"]),
                       coords=True, coord_size=17, seed=trap.number * 7 + 3, uid="c1")
+    head, sub = "1.e4 e5<br>Traps", "for White"
+    if data.get("sampler"):
+        head, sub = "<br>".join(data["sampler"]["head"]), "from 1.e4 e5 Traps for White"
     top = trap.top
     if top["games"] < SMALL_SAMPLE:
         result = "White scored %s points from %d games" % (points(top["our_score"], top["games"]), top["games"])
@@ -968,8 +974,8 @@ def cover_hero(data, traps):
                    for v, k in specs(data, traps))
     body = f"""
 {lockup(80, 62, 44, color=PAPER)}
-<div class="abs num" style="left:72px;top:180px;font-size:150px;line-height:.92;color:{PAPER}">1.e4 e5<br>Traps</div>
-<div class="abs serif" style="left:80px;top:482px;font-size:44px;color:{PAPER}">for White</div>
+<div class="abs num" style="left:72px;top:180px;font-size:150px;line-height:.92;color:{PAPER}">{head}</div>
+<div class="abs serif" style="left:80px;top:482px;font-size:44px;color:{PAPER}">{sub}</div>
 <div class="abs mono" style="left:80px;top:620px;width:620px;font-size:17px;line-height:1.4">{rows}</div>
 <div class="abs" style="left:826px;top:0px;right:0;height:900px;background:{PAPER}"></div>
 <div class="abs" style="left:892px;top:70px">{board}{cap}</div>
@@ -1117,9 +1123,13 @@ def main(argv=None):
     parser.add_argument("--notes")
     parser.add_argument("--output", required=True)
     parser.add_argument("--only", help="comma list: cards,x,store,sheet,pdf")
+    parser.add_argument("--sampler", help="spec.json: render only the listed traps (original pack numbers) as a free sampler")
     parser.add_argument("--traps-only", help="comma list of trap numbers to render (cards only)")
     args = parser.parse_args(argv)
     data, meta, traps = load(args.traps, args.notes)
+    spec = json.loads(pathlib.Path(args.sampler).read_text(encoding="utf-8")) if args.sampler else None
+    if spec:
+        meta = dict(meta, **spec.get("_meta", {}))
     data = dict(data, title=meta.get("title", ""))
     out = pathlib.Path(args.output)
     only = set((args.only or "cards,x,store,sheet,pdf").split(","))
@@ -1129,6 +1139,13 @@ def main(argv=None):
         for trap in traps:
             note = notes.get(" ".join(trap.record["moves"]), {})
             trap.plain, trap.key = note.get("plain", ""), note.get("key", "")
+    others = total = None
+    if spec:
+        by_number = {trap.number: trap for trap in traps}
+        total = len(traps)
+        others = [trap for trap in traps if trap.number not in spec["traps"]]
+        traps = [by_number[n] for n in spec["traps"]]
+        data["sampler"] = {"total": total, "head": spec.get("head", ["5 Free", "Traps"]), "sub": spec.get("sub", "from 1.e4 e5 Traps for White")}
     jobs = []
     if "cards" in only:
         for trap in traps:
@@ -1143,15 +1160,16 @@ def main(argv=None):
     if "store" in only:
         jobs.append((thumbnail(data, traps), out / "store" / "thumbnail.png", 1200, 1200))
         jobs.append((cover_hero(data, traps), out / "store" / "cover-1.png", 1600, 900))
-        jobs.append((cover_inside(data, traps), out / "store" / "cover-2.png", 1600, 900))
-        jobs.append((cover_method(data, traps), out / "store" / "cover-3.png", 1600, 900))
+        if not spec:
+            jobs.append((cover_inside(data, traps), out / "store" / "cover-2.png", 1600, 900))
+            jobs.append((cover_method(data, traps), out / "store" / "cover-3.png", 1600, 900))
     if "pdf" in only:
         from trickfish.studio import book
         from trickfish.trappack_render import write_pgn
 
         name = book.slug(data, meta)
         (out / "pdf").mkdir(parents=True, exist_ok=True)
-        jobs.append((book.book(data, meta, traps), out / "pdf" / (name + ".pdf"), 794, 1123, True))
+        jobs.append((book.book(data, meta, traps, others, total), out / "pdf" / (name + ".pdf"), 794, 1123, True))
         write_pgn(data, traps, out / "pdf" / (name + ".pgn"), meta.get("title", "Trickfish trap pack"))
     if jobs:
         render(jobs)
