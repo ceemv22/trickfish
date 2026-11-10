@@ -1,6 +1,6 @@
 """The sound layer for the videos, synthesised from scratch with numpy: no samples, nothing
 downloaded, nothing copyrighted. Quiet, short, tactile sounds placed on the video's event
-timeline (see video.build), mixed to 48 kHz stereo and normalised to about -14 LUFS."""
+timeline (see video.build), mixed to 48 kHz stereo and set by one static gain (no compressor, no ambient bed: the gaps between events are silent)."""
 import json
 import pathlib
 import re
@@ -10,7 +10,7 @@ import wave
 import numpy as np
 
 SR = 48000
-TARGET_LUFS, TRUE_PEAK = -14.0, -1.5   # the final limiter sits at -1.9 dBFS so the AAC encode stays under -1 dBTP
+TARGET_LUFS, TRUE_PEAK = -19.0, -2.0   # static: peak -2 dBTP before the AAC encode keeps the file under -1 dBTP
 
 
 def _t(seconds):
@@ -40,7 +40,7 @@ def tock(rng, heavy=False):
     """Wooden tock: band-passed noise burst, fast exponential decay, plus a low body thump."""
     length = 0.09 if heavy else 0.06
     t = _t(length)
-    centre, tau, body_hz, gain = (1100, 0.016, 110, 1.0) if heavy else (1900, 0.010, 170, 0.62)
+    centre, tau, body_hz, gain = (1100, 0.016, 110, 1.0) if heavy else (1900, 0.010, 170, 0.8)
     click = _band_noise(length, centre * rng.uniform(0.96, 1.04), centre * 0.45, rng) * np.exp(-t / tau)
     hz = body_hz * (1 + 0.5 * np.exp(-t / 0.008))
     body = np.sin(2 * np.pi * np.cumsum(hz) / SR) * np.exp(-t / (0.026 if heavy else 0.018))
@@ -51,7 +51,7 @@ def check_tick(rng):
     t = _t(0.03)
     x = _band_noise(0.03, 3300, 900, rng) * np.exp(-t / 0.005)
     x += 0.5 * np.sin(2 * np.pi * 2600 * t) * np.exp(-t / 0.006)
-    return 0.22 * _shape(x, 0.0005, 0.008)
+    return 0.5 * _shape(x, 0.0005, 0.008)
 
 
 def blip():
@@ -59,7 +59,7 @@ def blip():
     t = _t(0.085)
     x = np.sin(2 * np.pi * 1480 * t) + 0.18 * np.sin(2 * np.pi * 2960 * t)
     x *= np.exp(-t / 0.026)
-    return 0.30 * _shape(x, 0.004, 0.02)
+    return 0.8 * _shape(x, 0.004, 0.02)
 
 
 def ratchet(seconds, rng):
@@ -74,7 +74,7 @@ def ratchet(seconds, rng):
         t = _t(0.012)
         c = _band_noise(0.012, 3800 * rng.uniform(0.9, 1.1), 1400, rng) * np.exp(-t / 0.0028)
         c += 0.5 * np.sin(2 * np.pi * 900 * t) * np.exp(-t / 0.004)
-        c = _shape(c, 0.0004, 0.004) * 0.17 * rng.uniform(0.75, 1.0)
+        c = _shape(c, 0.0004, 0.004) * 0.5 * rng.uniform(0.75, 1.0)
         pan = 0.5 + (0.12 if i % 2 else -0.12)
         s = int(at * SR)
         out[0, s:s + len(c)] += c * (1 - pan) * 1.4
@@ -94,10 +94,10 @@ def tink_thud():
     tink = np.zeros_like(t)
     for ratio, amp, tau in ((1, 1.0, 0.11), (2.76, 0.55, 0.07), (5.4, 0.3, 0.04), (8.9, 0.14, 0.02)):
         tink += amp * np.sin(2 * np.pi * 2350 * ratio * t) * np.exp(-t / tau)
-    tink *= 0.20
+    tink *= 0.3
     thud_t = t[:int(0.16 * SR)]
     thud = np.sin(2 * np.pi * np.cumsum(62 * (1 + 0.6 * np.exp(-thud_t / 0.02))) / SR) * np.exp(-thud_t / 0.05)
-    tink[:len(thud)] += 0.55 * thud
+    tink[:len(thud)] += 0.3 * thud
     return _shape(tink, 0.0008, 0.12)
 
 
@@ -111,21 +111,7 @@ def chord(seconds):
         x = (np.sin(2 * np.pi * hz * tt) + 0.25 * np.sin(2 * np.pi * 2 * hz * tt) + 0.06 * np.sin(2 * np.pi * 3 * hz * tt))
         x *= np.minimum(1, tt / 0.03) * np.exp(-tt / 0.9)
         out[d:] += x / 3
-    return 0.26 * _shape(out, 0.03, 0.25)
-
-
-def bed(seconds, rng):
-    """Very quiet low ambient bed: low-passed noise and a faint low drone, faded in and out."""
-    n = int(seconds * SR)
-    noise = np.fft.irfft(np.fft.rfft(rng.standard_normal(n)) * np.exp(-0.5 * (np.fft.rfftfreq(n, 1 / SR) / 140.0) ** 2), n)
-    noise /= np.abs(noise).max()
-    t = _t(seconds)
-    drone = 0.5 * np.sin(2 * np.pi * 55 * t) + 0.25 * np.sin(2 * np.pi * 82.4 * t + 1.0)
-    x = 0.6 * noise + 0.4 * drone
-    f = int(0.6 * SR)
-    x[:f] *= np.linspace(0, 1, f)
-    x[-f:] *= np.linspace(1, 0, f)
-    return x
+    return 0.75 * _shape(out, 0.03, 0.25)
 
 
 def _put(mix, mono, at, gain=1.0, pan=0.5):
@@ -142,8 +128,6 @@ def mix(events, seconds, seed=7):
     rng = np.random.default_rng(seed)
     n = int(seconds * SR)
     out = np.zeros((2, n))
-    bed_x = bed(seconds, rng)
-    out += 0.03 * bed_x                                   # about -30 dB against the loudest sound
     for e in events:
         k, at = e["type"], e["t"]
         if k == "tick":
@@ -151,7 +135,7 @@ def mix(events, seconds, seed=7):
         elif k == "move":
             _put(out, tock(rng), at, 0.8, 0.5 + rng.uniform(-0.04, 0.04))
         elif k == "capture":
-            _put(out, tock(rng, True), at, 0.95, 0.5)
+            _put(out, tock(rng, True), at, 0.8, 0.5)
         elif k == "check":
             _put(out, check_tick(rng), at + 0.09, 1.0, 0.56)
         elif k == "hook":
@@ -177,18 +161,19 @@ def write_wav(path, stereo):
         w.writeframes(pcm.tobytes())
 
 
-def _loudnorm(wav, extra=""):
-    base = "acompressor=threshold=0.06:ratio=4:attack=3:release=120:makeup=2,loudnorm=I=%g:TP=%g:LRA=11" % (TARGET_LUFS, TRUE_PEAK)
-    return base + extra
+def true_peak_and_lufs(wav):
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(wav), "-af", "ebur128=peak=true", "-f", "null", "-"],
+                       capture_output=True, text=True, check=True).stderr
+    summary = r[r.rindex("Summary"):]
+    return (float(re.search(r"Peak:\s+(-?[\d.]+) dBFS", summary).group(1)),
+            float(re.search(r"I:\s+(-?[\d.]+) LUFS", summary).group(1)))
 
 
 def mux(video, wav, out):
-    """Two-pass loudnorm on the audio, AAC 192k stereo 48 kHz, video stream copied."""
-    probe = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(wav), "-af", _loudnorm(wav) + ":print_format=json",
-                            "-f", "null", "-"], capture_output=True, text=True, check=True)
-    m = json.loads(re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", probe.stderr, re.S).group(0))
-    second = (_loudnorm(wav, ":measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true"
-                        % (m["input_i"], m["input_tp"], m["input_lra"], m["input_thresh"], m["target_offset"])))
+    """One static linear gain so the true peak sits at TRUE_PEAK, then AAC 192k stereo 48 kHz;
+    the video stream is copied."""
+    peak, _ = true_peak_and_lufs(wav)
+    gain = TRUE_PEAK - peak
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(video), "-i", str(wav), "-map", "0:v:0", "-map", "1:a:0",
-                    "-af", second + ",alimiter=limit=0.8:attack=3:release=60:level=disabled,aresample=48000", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+                    "-af", "volume=%.3fdB" % gain, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
                     "-ac", "2", "-movflags", "+faststart", "-shortest", str(out)], check=True)
