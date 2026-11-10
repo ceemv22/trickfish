@@ -28,7 +28,10 @@ The answer card is the same page with the line drawn in.
 
 Each card uses three sizes: **226 / 32 / 19 px**.
 - 226 is the hero number only.
-- 32 is everything that matters: the sentence (with the sample size), the opening or title, the "%" or "/n" suffix, inline moves, the plain-words note, the best defence and the source line. That is about 12 px on a phone at 400 px feed width.
+  - **Documented exception:** the hero and its "%" (or "½") are one lockup. The superscript is Young Serif at 0.42 of the hero (95 px), top-aligned to the figures' cap height, as financial print sets it.
+  - The gap is calibrated per last figure (`SUPER_KERN`): the ink gap was measured on every rendered card and is 9.5–10.5 px on all 42 heroes that carry a superscript.
+  - A legible number beats the three-size rule.
+- 32 is everything that matters: the sentence (with the sample size), the opening or title, inline moves, the plain-words note, the best defence and the source line. That is about 12 px on a phone at 400 px feed width.
 - 19 is reserved for details for people who open the image: the score sheet, the coordinates, the trap number and the footer.
 
 Weight contrast (DO 4) is a documented deviation: Young Serif has one weight, so the contrast is between the 226 px heavy serif and 400-weight 32 px grotesk, not 300 against 800.
@@ -52,14 +55,19 @@ No gradients. The one gradient in the source Merida SVGs was removed (see `studi
 
 - **Question hero:** the share of games at the position in which Black chose a reply that costs at least 1.2 pawns *and* after which White really scored at least 50% (`wrong_share()`). The sentence reads "of 2,404 games at 1200–1599 go wrong here." Example: #21 drops from 31% to 17%, because 4…Bxf2+ scored only 32% for White.
 - **Answer hero:** White's score after the revealed move, with the move's own share in the sentence ("played in 31% of 2,404 games").
-- **Small samples:** when the move has fewer than 50 games, the hero becomes points out of games ("47 /48"). This applies to #2, #4, #9, #10, #17 and #21.
-- **Plain words:** every answer card carries a one-line note naming the mistake in words, from `notes.json` `plain` (falling back to the idea's first sentence). It is set in the margin under the score sheet, with moves in mono.
+- **Small samples:** when the move has fewer than 50 games, the hero becomes White's points, with no "/n" (a half point is the same superscript as "%"). The sentence reads "White scored 19½ points / from 30 games after 7…♞h5? / (24% of 127)." This applies to #2, #4, #9, #10, #17 and #21.
+- **Plain words:** every answer card carries a short note naming the mistake in words, from `notes.json` `plain` (falling back to the idea's first sentence).
+  - It is set at 32 px in the margin under the score sheet (x 42-262; the score column stops short of the rank coordinates).
+  - At most one move per note, at its start.
+  - Only full moves (with a move number or a piece letter) go in Martian Mono 400, each as one unbreakable unit with its number. Bare squares ("f7") stay in Schibsted.
+  - Line breaks come from real measurements. A `window.__layout()` script on the page, which render.mjs runs after the fonts load, picks the most even breaks such that no line holds a single word unless that word is the move. Hyphenated words use a non-breaking hyphen.
+  - All 23 notes were checked. Three needed copy changes to meet the rule at this width; see the review-2 notes below.
 - **Tagline:** "Stockfish finds the best move. We find the one they get wrong."
 
 ## Grid (1080 x 1350 cards)
 
 - 64 px outer margins.
-- **Score column** (x 46-288). This is a mono score sheet that starts level with rank 8, with rows on a 45 px pitch (half a diagram square), so the moves keep time with the ranks beside them. The number column is 3.6ch wide, so "10." keeps its space. On answer cards the plain-words note sits at the foot of the column, level with the board's bottom edge. When the score is long, the earliest opening moves are dropped to make room.
+- **Score column** (x 46-288; the note under it runs x 42-262). This is a mono score sheet that starts level with rank 8, with rows on a 45 px pitch (half a diagram square), so the moves keep time with the ranks beside them. The number column is 3.6ch wide, so "10." keeps its space. On answer cards the plain-words note sits at the foot of the column, level with the board's bottom edge. When the score is long, the earliest opening moves are dropped to make room.
   - Question: the game score, ending in a bold `?` in Black's slot.
   - Answer: the same score with the mistake filled in (`7…♔e8?`) and the punishment in heavier weight. Earlier moves fade back.
 - **Diagram column** (x 296-1016). The board is 8 x 90 px, offset right so the page is asymmetric. Text blocks hang from the c-file line (x 476).
@@ -75,6 +83,10 @@ No gradients. The one gradient in the source Merida SVGs was removed (see `studi
 - **Which line and which hook square is an editorial decision for each trap** (`CATCH` in `studio/__init__.py`, keyed by the trap's move line). The line follows the punishing piece, and the hook goes on a piece: the one actually won, or the one the punishing move targets. It never goes on an empty square or on a piece that survives as if it were won. A test enforces this for the whole pack.
   - **Multi-stroke routes:** a discovery is drawn as two strokes. The first stroke is lighter and ends in a split-shot; the second runs into the hook. Examples: #7 Nd4→c6 then Be3→c5, #22 f4→e5 then e4→e5→f6, #23 Qd1→e2 then the e5 pawn's attack on f6.
   - **Waypoints** bend a line round a piece still on the diagram. #3's queen tour bows round g7, and its hook is on the black queen that is traded off on e8. The king is not the catch.
+  - **Drop mode:** when the final stroke ends on a waypoint, the line runs to it and then drops vertically into the hook's eye. The hook is mirrored when the drop is right of the square's centre.
+    - This is used on #3: g8→f8 along the back rank, stopping at the e8/f8 boundary, then down into the hook on the e7 queen.
+    - It reads as "the queen is met on e8" (11…Qe8 12.Qxe8+).
+    - It was checked at 300 px and in the cover-2 cell.
   - **Twins get different catch squares** where chess allows. #13 is drawn as d2-d4-d5-c6 (10.dxc6); #14 shows only the threat d2-d4-d5 into c6. #11 → e5, #12 → c6, #18 → f7.
   - A fallback rule covers packs that have no art direction yet.
 - **Hook geometry:** the hook always hangs from its eye. It is small (bend radius 0.33 sq, shank 0.48 sq) and sits inside the catch square, tied up by a short snell. The last leg of the line runs along the real direction of the move and is clipped where it meets the hook, so nothing red crosses the caught piece.
@@ -135,3 +147,11 @@ Every number comes from `traps.json` and `notes.json`:
 These are editorial notes for the posting schedule, not renderer issues:
 - #22 is the weakest trap in the pack (+1.5; the best defence is -0.1).
 - Twins should not be posted within 7 days of each other: #8/#9, #13/#14, #19/#20 and #11/#12/#18.
+
+## Review-2 notes
+
+- **Copy edits beyond the review's wording**, needed to keep every note line at two words or more in a 220 px column at 32 px:
+  - #1 "Only 7…Ke6 holds the pinned knight." ("d5" dropped; the hook marks it).
+  - #10 "8.Qd5 eyes mate on f7 and the a8 rook."
+  - #15 "7.Rxe5+ comes with check when the e4 knight moves."
+- Every claim in `plain` was verified with python-chess against `traps.json`.

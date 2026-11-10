@@ -1,5 +1,7 @@
 // Render HTML frames to PNG with Chromium. Usage: node render.mjs manifest.json
 // manifest: [{"html": "/abs/frame.html", "out": "/abs/out.png", "width": 1080, "height": 1350, "scale": 2}]
+// After the fonts load, a page may define window.__layout() for measured layout
+// (the card notes use it for line breaking); it runs before the screenshot.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
@@ -15,6 +17,7 @@ try {
     });
     await page.goto("file://" + job.html);
     await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => (window.__layout ? window.__layout() : null));
     await page.screenshot({ path: job.out, clip: { x: 0, y: 0, width: job.width, height: job.height } });
     await page.close();
   }

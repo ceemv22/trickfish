@@ -82,7 +82,8 @@ class StudioTests(unittest.TestCase):
         trap = Trap(small, "white", 1)
         markup = studio.answer({"color": "white", "band": "1200-1599"}, trap, 1)
         self.assertIn(">34<", markup)                 # 0.85 x 40 games = 34 points
-        self.assertIn("/40", markup)
+        self.assertIn("34 points<br>from 40 games", markup)
+        self.assertNotIn("/40", markup)               # n is in the sentence, not under the hero
         self.assertEqual(studio.points(0.5, 3), "1\u00bd")
 
     def test_hero_share_leaves_out_mistakes_that_did_not_pay(self):
@@ -109,7 +110,9 @@ class StudioTests(unittest.TestCase):
                 self.assertIn(family, markup)
         for path in studio.FONTS.glob("*/*.woff2"):
             self.assertTrue((path.parent / "OFL.txt").exists())
-        self.assertIn('class="mono"', studio.prose("Only 7...Ke6 holds it."))
+        note = studio.prose("Only 7...Ke6 holds the d5 knight.")
+        self.assertIn("white-space:nowrap\">7\u2026", note)  # move number kept with its move
+        self.assertEqual(note.count('class="mono"'), 1)    # the bare square d5 stays in the text face
 
     def test_answer_draws_the_line_and_hook_in_red_only(self):
         from trickfish import studio
@@ -122,6 +125,15 @@ class StudioTests(unittest.TestCase):
         board = studio.board_svg(trap.after, 90, catch_=(strokes, hook))
         self.assertIn(studio.HOOK, board)
         self.assertNotIn(studio.HOOK, studio.board_svg(trap.board, 90))
+
+    def test_hero_superscript_is_one_lockup(self):
+        from trickfish import studio
+
+        hero = studio.big_number("64%")
+        self.assertIn(">64<", hero)
+        self.assertIn("font-size:%dpx" % round(studio.L * studio.SUPER), hero)
+        self.assertIn(">\u00bd<", studio.big_number("19\u00bd"))
+        self.assertNotIn("<span class=\"num\" style=\"font-size:%dpx" % round(studio.L * studio.SUPER), studio.big_number("47"))
 
     def test_every_hook_in_the_pack_is_on_a_piece(self):
         from trickfish import studio
