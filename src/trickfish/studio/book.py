@@ -102,7 +102,8 @@ def line_html(sans, start_ply=0):
         else:
             units.append(parts[i])
             i += 1
-    return " ".join('<span class="mv">%s</span>' % st.notation(u) for u in units)
+    # pairs are joined by a mono space, never narrower than the space inside a pair
+    return '<span class="mono"> </span>'.join('<span class="mv">%s</span>' % st.notation(u) for u in units)
 
 
 def side(color):
@@ -140,6 +141,7 @@ p { text-wrap: pretty; hyphens: none; }
          font-family: 'Martian Mono'; font-size: 8pt; color: %(faded)s; }
 .fit { overflow: hidden; }
 p .mono, p .mv { font-size: .9em; }
+.label .fig { margin-right: .06em; }
 table { border-collapse: collapse; }
 """ % {"paper": st.PAPER, "ink": st.INK, "faded": st.FADED}
 
@@ -219,7 +221,7 @@ def cover(data, meta, traps, L):
        ' <span class="faded">\u00b7</span> '.join(rich(f) for f in facts), html.escape(glue(tagline)).replace("'", "\u2019"),
        board,
        L["trap"], trap.number, html.escape(trap.name.replace("'", "’")), L["after"],
-       st.notation(trap.mistake_text() + "?"))
+       st.notation(trap.mistake_text() + "?", ink=st.FADED))
     return page(body)
 
 
@@ -258,6 +260,8 @@ def glance_pages(data, traps, L, folio_for, per_page=12):
                           % (st.points(top["our_score"], top["games"]), top["games"]))
             else:
                 scored = "%s%%" % st.percent(top["our_score"])
+                if top["games"] < 100:   # voice rule 5: show n for 50-99 games
+                    scored += '<span class="mono" style="font-size:7pt;white-space:nowrap"> /%d</span>' % top["games"]
             rows.append(
                 '<tr><td class="mono" style="padding-top:1.2mm">%02d</td>'
                 '<td><div class="faded" style="font-size:8.5pt">%s</div><div>%s</div></td>'
@@ -265,7 +269,7 @@ def glance_pages(data, traps, L, folio_for, per_page=12):
                 '<td class="serif num">%s%%</td><td class="serif num">%s</td>'
                 '<td class="mono num" style="font-size:8pt;padding-top:1.4mm">%s</td></tr>'
                 % (trap.number, html.escape(st.opening_of(trap).replace("'", "’")),
-                   html.escape(st.title_of(trap).replace("'", "’")), line_html(trap.sans),
+                   html.escape(glue(st.title_of(trap).replace("'", "’"))), line_html(trap.sans),
                    st.percent(st.wrong_share(trap)), scored, st.thousands(trap.record["games"])))
         head = "".join('<th class="label" style="text-align:%s">%s</th>' % ("right" if i >= 3 else "left", html.escape(c))
                        for i, c in enumerate(cols))
@@ -334,7 +338,7 @@ def trap_page(data, trap, total, L, folio):
        "line": line_html(trap.sans), "q": q, "a": a, "mover": mover,
        "hero": hero(st.percent(st.wrong_share(trap)) + "%"),
        "went": L["went_wrong"].format(n=st.thousands(trap.record["games"])),
-       "facts": facts_html, "after": L["after"].capitalize(), "mistake": mistake,
+       "facts": facts_html, "after": L["after"].capitalize(), "mistake": st.notation(trap.mistake_text() + "?", ink=st.FADED),
        "sections": "".join(sections)}
     return page(body, folio)
 
@@ -352,7 +356,7 @@ def drill_pages(traps, L, folio_for, intro="", per_page=4):
                          '<span style="color:%s">%s %d</span> · %s · %s %s</div>'
                          '<div class="abs" style="left:%dmm;top:%dmm">%s</div>'
                          % (x - 7, y - 7, st.INK, L["drill"], trap.number, L["white_to_move"], L["after"],
-                            st.notation(trap.mistake_text()), x, y, board))
+                            st.notation(trap.mistake_text(), ink=st.FADED), x, y, board))
         heading = ""
         if start == 0:
             heading = '<h2 class="abs" style="left:18mm;top:24mm;width:150mm">%s</h2>' % html.escape(L["drills"])
@@ -373,7 +377,7 @@ def answer_pages(traps, L, folio_for, per_page=12):
                         '<td><div class="mono" style="font-size:8.5pt;line-height:1.7">%s</div>'
                         '<div style="margin-top:1mm">%s</div></td></tr>'
                         % (trap.number, line_html(trap.punish[:max(plies, 1)], trap.ply + 1),
-                           rich(st.plain_of(trap))))
+                           rich(getattr(trap, "key", "") or st.plain_of(trap))))
         heading = ('<h2 class="abs" style="left:18mm;top:24mm;width:150mm">%s</h2>' % html.escape(L["answers"])
                    if start == 0 else "")
         body = """

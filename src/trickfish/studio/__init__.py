@@ -203,6 +203,7 @@ def esc(text):
     """Escape for HTML and set typographic quotes: an opening single quote
     after a space or bracket, an apostrophe or closing quote otherwise."""
     text = re.sub(r"(^|(?<=[\s(\[]))'", "\u2018", str(text))
+    text = re.sub(r'(^|(?<=[\s(\[]))"', "\u201c", text).replace('"', "\u201d")
     return html.escape(text, quote=False).replace("'", "\u2019")
 
 
@@ -1126,7 +1127,8 @@ def main(argv=None):
     if args.notes:
         notes = json.loads(pathlib.Path(args.notes).read_text(encoding="utf-8"))
         for trap in traps:
-            trap.plain = notes.get(" ".join(trap.record["moves"]), {}).get("plain", "")
+            note = notes.get(" ".join(trap.record["moves"]), {})
+            trap.plain, trap.key = note.get("plain", ""), note.get("key", "")
     jobs = []
     if "cards" in only:
         for trap in traps:
