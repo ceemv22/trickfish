@@ -186,7 +186,8 @@ body { position: relative; background: %(bg)s; color: %(fg)s; font-family: 'Schi
 .txt { font-family: 'Schibsted Grotesk'; }
 .mono { font-family: 'Martian Mono'; font-weight: 400; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .faded { color: %(faded)s; }
-.fig { display: inline-block; width: .92em; height: .92em; vertical-align: -0.14em; margin: 0 -0.04em 0 -0.02em; }
+.fig { display: inline-block; position: relative; width: .92em; height: .92em; vertical-align: -0.14em; margin: 0 -0.04em 0 -0.02em; }
+.figtxt { position: absolute; left: 0; top: 0; color: transparent; font-size: .8em; line-height: 1; }
 svg { display: block; overflow: visible; }
 .fig svg { width: 100%%; height: 100%%; }
 """
@@ -199,8 +200,10 @@ def page(width, height, body, bg=PAPER, fg=INK, faded=FADED, extra=""):
 
 
 def esc(text):
-    """Escape for HTML and set typographic apostrophes."""
-    return html.escape(str(text), quote=False).replace("'", "’")
+    """Escape for HTML and set typographic quotes: an opening single quote
+    after a space or bracket, an apostrophe or closing quote otherwise."""
+    text = re.sub(r"(^|(?<=[\s(\[]))'", "\u2018", str(text))
+    return html.escape(text, quote=False).replace("'", "\u2019")
 
 
 def ellipsis(text):
@@ -276,14 +279,16 @@ def prose(text, weight=400):
     """Escape running text; set full moves in the mono with figurines, each as
     one unbreakable unit (move number kept with its move)."""
     text = ellipsis(text)
-    out, last = [], 0
+    out, last, run_end = [], 0, -2
     for match in _SAN.finditer(text):
-        if not _full_move(match.group(0)):
+        token = match.group(0)
+        follows = match.start() == run_end + 1 and text[run_end] == " "   # "1.e4 e5": the reply joins
+        if not (_full_move(token) or follows):
             continue
         out.append(esc(text[last:match.start()]))
         out.append('<span class="mono" style="font-weight:%d;white-space:nowrap">%s</span>'
-                   % (weight, notation(match.group(0))))
-        last = match.end()
+                   % (weight, notation(token)))
+        last = run_end = match.end()
     out.append(esc(text[last:]))
     return "".join(out)
 
@@ -314,7 +319,9 @@ def piece_svg(code, x, y, size, ink=INK, paper=PAPER, halo=0.0):
 
 def figurine(letter, ink=INK, paper=PAPER):
     inner = piece_inner("b" + letter).replace("#1f1a17", ink).replace("#fff", paper)
-    return ('<span class="fig"><svg viewBox="2 2 46 46" fill-rule="evenodd">%s</svg></span>' % inner)
+    # the transparent letter keeps the move as real text in the PDF (copy, search)
+    return ('<span class="fig"><svg viewBox="2 2 46 46" fill-rule="evenodd">%s</svg>'
+            '<span class="figtxt">%s</span></span>' % (inner, letter))
 
 
 def notation(text, ink=INK, paper=PAPER):
@@ -496,14 +503,21 @@ def board_svg(board, sq, *, catch_=None, trail=None, coords=True, coord_size=S, 
     move as an ink dotted wake that keeps clear of the red."""
     n = 8 * sq
     period = hatch or max(3.4, sq / 11.5)
+    # Hatching: one path of diagonal rules clipped to the dark squares (not an
+    # SVG <pattern>, which Chromium's PDF backend expands into thousands of tiles).
+    dark = "".join('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f"/>' % (square_xy(q, sq) + (sq, sq))
+                   for q in chess.SQUARES if (chess.square_file(q) + chess.square_rank(q)) % 2 == 0)
+    step = period * math.sqrt(2)
+    rules = []
+    c = -n
+    while c <= n:
+        rules.append("M%.2f %.2fL%.2f %.2f" % (c, 0, c + n, n))
+        c += step
     out = ['<svg width="%.2f" height="%.2f" viewBox="0 0 %.2f %.2f" xmlns="http://www.w3.org/2000/svg">' % (n, n, n, n),
-           '<defs><pattern id="h-%s" patternUnits="userSpaceOnUse" width="%.3f" height="%.3f" patternTransform="rotate(-45)">'
-           '<rect width="%.3f" height="%.3f" fill="%s"/></pattern></defs>' % (uid, period, period, period * 0.30, period, ink),
-           '<rect width="%.2f" height="%.2f" fill="%s"/>' % (n, n, paper)]
-    for square in chess.SQUARES:
-        if (chess.square_file(square) + chess.square_rank(square)) % 2 == 0:
-            x, y = square_xy(square, sq)
-            out.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="url(#h-%s)"/>' % (x, y, sq, sq, uid))
+           '<defs><clipPath id="h-%s">%s</clipPath></defs>' % (uid, dark),
+           '<rect width="%.2f" height="%.2f" fill="%s"/>' % (n, n, paper),
+           '<path clip-path="url(#h-%s)" d="%s" stroke="%s" stroke-width="%.3f" fill="none"/>'
+           % (uid, "".join(rules), ink, period * 0.30)]
     if frame:
         inner = max(1.0, sq * 0.012)
         outer = max(2.0, sq * 0.05)
@@ -1058,12 +1072,12 @@ def render(jobs):
     work = pathlib.Path(tempfile.mkdtemp(prefix="trickfish-studio-"))
     try:
         manifest = []
-        for index, (markup, out, width, height) in enumerate(jobs):
+        for index, (markup, out, width, height, *mode) in enumerate(jobs):
             path = work / ("frame-%03d.html" % index)
             path.write_text(markup, encoding="utf-8")
             pathlib.Path(out).parent.mkdir(parents=True, exist_ok=True)
             manifest.append({"html": str(path), "out": str(pathlib.Path(out).resolve()), "width": width,
-                             "height": height, "scale": 2})
+                             "height": height, "scale": 2, "pdf": bool(mode and mode[0])})
         (work / "manifest.json").write_text(json.dumps(manifest))
         subprocess.run(["node", str(HERE / "render.mjs"), str(work / "manifest.json")], check=True,
                        cwd=str(HERE))
@@ -1080,13 +1094,13 @@ def main(argv=None):
     parser.add_argument("traps")
     parser.add_argument("--notes")
     parser.add_argument("--output", required=True)
-    parser.add_argument("--only", help="comma list: cards,x,store,sheet")
+    parser.add_argument("--only", help="comma list: cards,x,store,sheet,pdf")
     parser.add_argument("--traps-only", help="comma list of trap numbers to render (cards only)")
     args = parser.parse_args(argv)
     data, meta, traps = load(args.traps, args.notes)
     data = dict(data, title=meta.get("title", ""))
     out = pathlib.Path(args.output)
-    only = set((args.only or "cards,x,store,sheet").split(","))
+    only = set((args.only or "cards,x,store,sheet,pdf").split(","))
     wanted = {int(n) for n in args.traps_only.split(",")} if args.traps_only else None
     if args.notes:
         notes = json.loads(pathlib.Path(args.notes).read_text(encoding="utf-8"))
@@ -1107,6 +1121,14 @@ def main(argv=None):
         jobs.append((cover_hero(data, traps), out / "store" / "cover-1.png", 1600, 900))
         jobs.append((cover_inside(data, traps), out / "store" / "cover-2.png", 1600, 900))
         jobs.append((cover_method(data, traps), out / "store" / "cover-3.png", 1600, 900))
+    if "pdf" in only:
+        from trickfish.studio import book
+        from trickfish.trappack_render import write_pgn
+
+        name = book.slug(data, meta)
+        (out / "pdf").mkdir(parents=True, exist_ok=True)
+        jobs.append((book.book(data, meta, traps), out / "pdf" / (name + ".pdf"), 794, 1123, True))
+        write_pgn(data, traps, out / "pdf" / (name + ".pgn"), meta.get("title", "Trickfish trap pack"))
     if jobs:
         render(jobs)
     if "sheet" in only:

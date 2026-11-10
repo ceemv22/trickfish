@@ -1,5 +1,6 @@
 // Render HTML frames to PNG with Chromium. Usage: node render.mjs manifest.json
 // manifest: [{"html": "/abs/frame.html", "out": "/abs/out.png", "width": 1080, "height": 1350, "scale": 2}]
+// "pdf": true prints the page to an A4 PDF (CSS page size, backgrounds on) instead.
 // After the fonts load, a page may define window.__layout() for measured layout
 // (the card notes use it for line breaking); it runs before the screenshot.
 import { readFileSync } from "node:fs";
@@ -15,10 +16,15 @@ try {
       viewport: { width: job.width, height: job.height },
       deviceScaleFactor: job.scale ?? 2,
     });
+    if (job.pdf) await page.emulateMedia({ media: "print" });
     await page.goto("file://" + job.html);
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => (window.__layout ? window.__layout() : null));
-    await page.screenshot({ path: job.out, clip: { x: 0, y: 0, width: job.width, height: job.height } });
+    if (job.pdf) {
+      await page.pdf({ path: job.out, preferCSSPageSize: true, printBackground: true });
+    } else {
+      await page.screenshot({ path: job.out, clip: { x: 0, y: 0, width: job.width, height: job.height } });
+    }
     await page.close();
   }
 } finally {
