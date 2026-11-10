@@ -241,6 +241,11 @@ class StudioTests(unittest.TestCase):
             self.assertEqual((stream["width"], stream["height"], stream["pix_fmt"]), (1080, 1920, "yuv420p"))
             self.assertEqual(stream["r_frame_rate"], "30/1")
             self.assertTrue(14 <= float(info["format"]["duration"]) <= 22)
+            audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries",
+                                    "stream=codec_name,sample_rate,channels", "-of", "json", str(video)],
+                                   capture_output=True, text=True, check=True)
+            tracks = json.loads(audio.stdout)["streams"]
+            self.assertEqual([(t["codec_name"], t["sample_rate"], t["channels"]) for t in tracks], [("aac", "48000", 2)])
 
 
 if __name__ == "__main__":

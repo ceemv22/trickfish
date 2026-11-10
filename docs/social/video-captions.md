@@ -178,3 +178,8 @@ Vienna Gambit, 3.f4. 3...Nc6 looks like normal development. Then 4.fxe5 Nxe5 5.d
 - **Replies.** Same rules as the X playbook: answer questions with the data, say where our numbers stop, never mock a player. Pin a comment with the answer to "what would you play?" only if people guess wrong.
 - **Link.** Set the profile link on all three platforms to the Gumroad free sampler as soon as it exists. Until then the link in bio points at the pack page, and the captions' "link in bio" still holds. Check the link works from a phone after every change.
 - **Check before posting.** Watch the first and last frames on a phone: the countdown must read, and nothing important should sit under the platform buttons (we keep 150 px at the top and 400 px at the bottom clear).
+
+## Sound
+
+- Our own sound effects are baked into every mp4: wooden piece taps (heavier on captures, a faint second tick on checks), a soft countdown blip, a reel ratchet while the red line grows, a small tink on the hook and a warm chord on the end card. All of it is synthesised from scratch by `src/trickfish/studio/sound.py`, so nothing is sampled or copyrighted. Mixed to about -14 LUFS, true peak under -1 dBTP. `--silent` makes the old silent version.
+- In each app the owner may add a trending or library sound at about 10-20% volume under ours: TikTok and Instagram Reels, the app's own licensed music; YouTube Shorts, the Shorts audio library. Never add copyrighted music outside the apps.

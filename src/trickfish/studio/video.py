@@ -1,4 +1,4 @@
-"""Short vertical videos (1080x1920, 30 fps, silent) for the trap pack.
+"""Short vertical videos (1080x1920, 30 fps, with a synthesised sound layer) for the trap pack.
 
 Chromium renders only keyframes (one batch for every video); ffmpeg turns the
 list of (frame, duration) into H.264 with the concat demuxer. The look is the
@@ -177,7 +177,19 @@ def build(data, trap, total):
     plan = Plan(trap)
     mover, games = st.side_name(trap.board.turn), trap.record["games"]
     us, top = st.side_name(trap.color), trap.top
-    frames = []
+    frames, events = [], []
+
+    def clock():
+        return sum(count for _, count in frames) / FPS
+
+    def event(kind, at=None, **extra):
+        events.append(dict(type=kind, t=round(clock() if at is None else at, 4), **extra))
+
+    def landing(board, move, at):
+        kind = "capture" if board.is_capture(move) else "move"
+        event(kind, at)
+        if board.gives_check(move):
+            event("check", at)
 
     def add(body, answer, count):
         frames.append((frame_html(trap, total, answer, body), count))
@@ -192,6 +204,7 @@ def build(data, trap, total):
 
     # 2  what would you play (4 s): 3, 2, 1
     for digit, count in ((3, sec(1.4)), (2, sec(1.3)), (1, sec(1.3))):
+        event("tick")
         add(tx("What would<br>you play?", 170, 88, "serif", width=640, lh=1.1) +
             '<div class="abs num" style="right:90px;top:150px;font-size:280px;color:%s">%d</div>' % (st.HOOK, digit) +
             tx("%s to move." % mover, 408, 52, weight=600) +
@@ -205,6 +218,7 @@ def build(data, trap, total):
     before = trap.board
     for k in range(1, MOVE_FRAMES + 1):
         add(mistake_text + plan.slide(before, plan.mistake, k / (MOVE_FRAMES + 1), None, "m%d" % k), False, TICK)
+    landing(before, plan.mistake, clock())
     add(mistake_text + plan.slide(before, plan.mistake, 1, None, "m"), False, sec(2.5))
 
     # 4  the punishment, ply by ply (0.9 s each); the red line grows with the piece
@@ -218,17 +232,27 @@ def build(data, trap, total):
     prev = [0.0] * len(plan.geo)
     for k, ((board, move), lens) in enumerate(zip(plan.played, plan.steps)):
         text = punish_text(numbered(trap.punish[:k + 1], trap.ply + 1))
+        begin = clock()
         for j in range(1, PLY_FRAMES + 1):
             t = ease(j / (PLY_FRAMES + 1))
             now = [a + (b - a) * t for a, b in zip(prev, lens)]
             add(text + plan.slide(board, move, j / (PLY_FRAMES + 1), now, "p%d_%d" % (k, j)), True, TICK)
+        landing(board, move, clock())
+        if any(b - a > 0.5 for a, b in zip(prev, lens)):
+            event("line_start", begin)
+            event("line_end", clock())
         add(text + plan.slide(board, move, 1, lens, "p%d" % k), True, PLY_HOLD)
         prev = lens
     # 4b the line runs out to the target, then the hook lands on the caught piece
     text = punish_text(full)
+    run_from = clock()
     for j in range(1, 4):
         t = ease(j / 4)
         add(text + plan.board(plan.final, "", [a + (b - a) * t for a, b in zip(prev, plan.totals)], "g%d" % j), True, TICK + 1)
+    if any(b - a > 0.5 for a, b in zip(prev, plan.totals)):
+        event("line_start", run_from)
+        event("line_end", clock())
+    event("hook")
     svg = st.board_svg(plan.final, SQ, catch_=(plan.strokes, plan.hook), trail=plan.mistake, coords=True,
                        coord_size=COORD, seed=plan.seed, uid="hk")
     add(text + board_div(svg), True, sec(2.2) if len(plan.played) < 3 else sec(1.8))
@@ -250,9 +274,10 @@ def build(data, trap, total):
              tx(mono(trap.best_text(), 96), 820, 96, lh=1.1) +
              tx("Stockfish %s" % st.esc(st.pawns(trap.record["best_cp"])), 950, 48, color=st.FADED))
     add(score, True, sec(1.6))
+    event("end_card")
     add(score + tx("@trickfishchess", 1150, 100, "serif", lh=1.1) +
         tx("%d traps · link in bio" % total, 1290, 64, weight=600), True, sec(2.2))
-    return frames
+    return frames, events
 
 
 # ---------------------------------------------------------------- rendering
@@ -278,17 +303,37 @@ def encode(sequence, out):
     return seconds
 
 
-def make(data, traps, out, numbers):
-    """Render the videos for the trap numbers into out/trap-NN.mp4 and return {number: seconds}."""
+def add_sound(silent_mp4, events, seconds, out):
+    """Synthesise the sound layer from the event timeline, normalise it and mux it into `out`."""
+    from trickfish.studio import sound
+    wav = pathlib.Path(str(out) + ".wav")
+    try:
+        sound.write_wav(wav, sound.mix(events, seconds))
+        sound.mux(silent_mp4, wav, out)
+    finally:
+        wav.unlink(missing_ok=True)
+
+
+def make(data, traps, out, numbers, silent=False, timelines=None):
+    """Render the videos for the trap numbers into out/trap-NN.mp4 and return {number: seconds}.
+    `timelines`, if given, is filled with {number: {"scenes": [...], "events": [...]}}."""
     by_number = {trap.number: trap for trap in traps}
     out = pathlib.Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     work = pathlib.Path(tempfile.mkdtemp(prefix="trickfish-video-"))
     try:
-        manifest, plans = [], {}
+        manifest, plans, plans_events = [], {}, {}
         for number in numbers:
             sequence = []
-            for index, (markup, count) in enumerate(build(data, by_number[number], len(traps))):
+            frames, events = build(data, by_number[number], len(traps))
+            if timelines is not None:
+                scenes, at = [], 0.0
+                for _, count in frames:
+                    scenes.append((round(at, 4), round(count / FPS, 4)))
+                    at += count / FPS
+                timelines[number] = {"scenes": scenes, "events": events}
+            plans_events[number] = events
+            for index, (markup, count) in enumerate(frames):
                 name = "t%02d-%03d" % (number, index)
                 (work / (name + ".html")).write_text(markup, encoding="utf-8")
                 manifest.append({"html": str(work / (name + ".html")), "out": str(work / (name + ".png")),
@@ -297,6 +342,15 @@ def make(data, traps, out, numbers):
             plans[number] = sequence
         (work / "manifest.json").write_text(json.dumps(manifest))
         subprocess.run(["node", str(st.HERE / "render.mjs"), str(work / "manifest.json")], check=True, cwd=str(st.HERE))
-        return {number: encode(sequence, out / ("trap-%02d.mp4" % number)) for number, sequence in plans.items()}
+        result = {}
+        for number, sequence in plans.items():
+            target = out / ("trap-%02d.mp4" % number)
+            if silent:
+                result[number] = encode(sequence, target)
+            else:
+                quiet = work / ("quiet-%02d.mp4" % number)
+                result[number] = encode(sequence, quiet)
+                add_sound(quiet, plans_events[number], result[number], target)
+        return result
     finally:
         shutil.rmtree(work, ignore_errors=True)
