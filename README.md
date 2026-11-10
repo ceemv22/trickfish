@@ -26,8 +26,10 @@ curl -r 0-5000000000 https://database.lichess.org/standard/lichess_db_standard_r
 # 2. Find traps (needs a Stockfish binary)
 PYTHONPATH=src python -m trickfish.trappack --moves "e4 e5" --color white \
   --games band.tsv.gz --engine /usr/games/stockfish --output traps.json
-# 3. Render PDF, PGN and social cards
+# 3. Render PDF and PGN
 PYTHONPATH=src python -m trickfish.trappack_render traps.json --notes packs/e4e5-white-1200/notes.json --output dist/pack
+# 4. Render brand assets: social cards, X profile/banner, store thumbnail and covers (uses the Inter font)
+PYTHONPATH=src python -m trickfish.brand_assets traps.json --notes packs/e4e5-white-1200/notes.json --output dist/brand
 ```
 
 Business plan and launch material: [docs/business](docs/business/strategy.md).
