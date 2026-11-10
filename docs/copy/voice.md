@@ -33,7 +33,7 @@ delve, elevate, unlock, unleash, seamless, game-changer, next level, level up, m
 
 1. **Every number comes from `packs/e4e5-white-1200/traps.json`.** If it isn't in the file, we don't say it.
 2. **"Scored", never "won".** Score is points per game (win 1, draw ½). 82% is a score, not a win rate.
-3. **Say what the percentage is of.** "65% of 2,404 games went wrong here" is a share of games reaching the position, counting every reply that costs 1.2+ pawns. The most common single mistake is a different, smaller number (7...Ke8, 31%). Don't swap them.
+3. **Say what the percentage is of.** "65% of 2,404 games went wrong here" is a share of games reaching the position, counting every reply that costs 1.2+ pawns and after which White scored at least 50%. The most common single mistake is a different, smaller number (7...Ke8, 31%). Don't swap them.
 4. **Round normally, to whole percents** (64.6 → 65). Don't round up into a nicer phrase: 64.6% isn't "two thirds".
 5. **Under 50 games, give points, not a percentage.** That's what the cards do (`SMALL_SAMPLE = 50` in the studio renderer): "White took 47 points from 48 games", not "98%". Between 50 and about 100 games, give the percentage and the game count together.
 6. **No promises about the reader's future.** No rating gains, no "win in 10 moves", no time saved. The games already happened. Yours haven't.
