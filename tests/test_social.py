@@ -108,6 +108,7 @@ class Poster(unittest.TestCase):
     def go(self, now, state=None, client=None, **kw):
         state = state if state is not None else {"posted": {}}
         client = client or FakeClient()
+        kw.setdefault("max_late_hours", 200)
         n = post.run(MINI, state, utc(now), client, dry_run=kw.pop("dry_run", False), **kw)
         return n, state, client
 
@@ -141,7 +142,7 @@ class Poster(unittest.TestCase):
         client = FakeClient(fail_on=1)
         state = {"posted": {}}
         with self.assertRaises(RuntimeError):
-            post.run(MINI, state, utc("2026-11-12T13:10:00Z"), client, dry_run=False)
+            post.run(MINI, state, utc("2026-11-12T13:10:00Z"), client, dry_run=False, max_late_hours=200)
         self.assertEqual(state["posted"], {"a": "t1"})
         self.assertEqual(state["inflight"], "b")
         with self.assertRaises(RuntimeError):  # refuses to run until resolved

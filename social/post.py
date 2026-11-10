@@ -119,6 +119,7 @@ def run(queue, state, now, client=None, dry_run=True, max_posts=3,
             "Check @trickfishchess, then fix social/state.json (add it to 'posted' or "
             "remove 'inflight') before running again.")
     count = 0
+    virtual = set()  # dry run: entries that would have been posted
     for entry in queue:
         if entry["id"] in state["posted"]:
             continue
@@ -130,7 +131,7 @@ def run(queue, state, now, client=None, dry_run=True, max_posts=3,
             log(f"skip {entry['id']}: {late:.0f}h overdue (limit {max_late_hours}h)")
             continue
         parent = entry.get("reply_to")
-        if parent and parent not in state["posted"]:
+        if parent and parent not in state["posted"] and parent not in virtual:
             log(f"skip {entry['id']}: parent {parent} was not posted")
             continue
         if count >= max_posts:
@@ -141,6 +142,7 @@ def run(queue, state, now, client=None, dry_run=True, max_posts=3,
         if dry_run:
             log(f"DRY RUN would post {entry['id']} (day {entry['day']} {entry['slot']})"
                 f"{' [poll]' if entry.get('poll') else ''}{' [image]' if entry.get('image') else ''}")
+            virtual.add(entry["id"])
             count += 1
             continue
         payload = build_payload(entry, state, client.upload_media)
