@@ -446,7 +446,7 @@ Every number was recomputed from `packs/e4e5-white-1200/traps.json` and `notes.j
 
 - Vienna Gambit 3.f4: 6,076 games, 25% (one in four) chose a reply costing 1.2+ pawns. 3...Nc6 came up in 1,087, the largest single mistake count in the data. 3...d5 (Stockfish's pick) in 635. 3...Bb4: 251 games, Stockfish +2.8 for White, White scored 55%.
 - Pack positions (23): in 13 the most common reply is Stockfish's top move, in 6 it is a mistake of 1.2+ pawns, in 4 it is neither. 7 positions have under 200 games (smallest 100, largest 6,076).
-- 38 positions passed; the 15 not in the pack range from 85 to 1,098 games; four of them are under 100 (85, 90, 92, 95); the smallest pack position has 100.
+- 38 positions passed; the 15 not in the pack range from 85 to 1,098 games; four of them are under 100 (85, 90, 92, 95); the smallest pack position has 100. Reason for the cuts (from the lead): smallest samples, and positions repeating an idea already in the pack.
 - 1.e4 e5 2.Nf3 Nc6 3.d4 d6 4.dxe5 dxe5 5.Qxd8+: 1,044 games. 5...Kxd8 579 games, White scored 61%. 5...Nxd8 465 games, White scored 61%.
 - Petrov 3.d4 d6 4.dxe5 (164 games): 4...dxe5 91 games (55%), White scored 64%, costs 1.4 pawns. 4...Nxe4 68 games (41%), Stockfish's pick.
 - Ruy Lopez 4.O-O Nxe4 5.Re1 (537 games): 5...Nd6 174 (32%), 5...Nf6 155 (29%, costs 0.3), 5...d5 108 (20%, costs 2.3, White scored 66%), 5...f5 46 (9%).
@@ -509,9 +509,9 @@ So the crowd is right a bit more than half the time.
 ```text
 38 positions passed our three tests. 23 are in the pack.
 
-The smallest position in the pack has 100 games. Four of the 15 that stayed out had fewer: 85, 90, 92 and 95.
+We cut the ones with the smallest samples. Four of the 15 had fewer than 100 games: 85, 90, 92 and 95. We also cut positions that repeated an idea already in the pack.
 
-Every page shows its game count, so you can judge the sample yourself.
+Every page shows its game count.
 ```
 
 ### Day 20 · Reminder 1 (link)

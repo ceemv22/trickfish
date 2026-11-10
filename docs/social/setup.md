@@ -45,12 +45,13 @@ If the secrets are missing, the workflow does a dry run and ends green. That is 
 ## 6. Pause and resume
 
 - Pause: **Actions → social-poster → ⋯ → Disable workflow**. Re-enable the same way. Missed entries more than 24 hours late are skipped, not posted in a burst, so resuming after a long break skips what you missed.
-- Skip one post: delete its entry from `social/queue.json` (do not delete ones that others reply to), or add its id to `social/state.json` under `posted` with any text value other than a real tweet id. A reply to a skipped post would fail, so skip both.
+- Posted one by hand before the automation was live? Record it so it isn't posted twice and replies thread under it: `python social/post.py --mark-posted d02-m --tweet-id 1234567890` (the id is the number at the end of the tweet's URL). Commit `social/state.json` afterwards.
+- Skip one entry: `python social/post.py --mark-skipped d05-m`. Replies to a skipped entry are skipped too, because their parent never posted. Both commands only edit `state.json` and never contact X.
 
 ## What the poster does and doesn't do
 
 - Posts text, images (resized to 1080x1350), polls and replies, with no AI involved. The posted tweet ids are saved in `social/state.json`, which the workflow commits back.
-- Posts at most 3 per run and stops at the first error. If a post fails after being sent with no answer back (a timeout), it marks the entry as "inflight" and refuses to run again. Check the @trickfishchess timeline, then edit `social/state.json`: if the tweet is there, add `"<id>": "<tweet id>"` to `posted`, and remove `inflight` either way. The workflow log says which entry.
+- Posts at most 3 per run and stops at the first error. If a post fails after being sent with no answer back (a timeout), it marks the entry as "inflight" and refuses to run again. Check the @trickfishchess timeline, then run `--mark-posted <id> --tweet-id <tweet id>` if the tweet is there, or `--mark-skipped <id>` if not (both clear `inflight`). The workflow log says which entry.
 - Doesn't add alt text to images (the media metadata call is not wired in), doesn't read replies, and doesn't repair the queue.
 
 ## Things I could not verify

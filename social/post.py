@@ -121,7 +121,7 @@ def run(queue, state, now, client=None, dry_run=True, max_posts=3,
     count = 0
     virtual = set()  # dry run: entries that would have been posted
     for entry in queue:
-        if entry["id"] in state["posted"]:
+        if entry["id"] in state["posted"] or entry["id"] in state.get("skipped", []):
             continue
         due = parse_time(entry["scheduled_utc"])
         if due > now:
@@ -160,11 +160,32 @@ def run(queue, state, now, client=None, dry_run=True, max_posts=3,
     return count
 
 
+def mark_posted(queue, state, entry_id, tweet_id):
+    if entry_id not in {e["id"] for e in queue}:
+        raise RuntimeError(f"unknown entry id {entry_id}")
+    state.setdefault("posted", {})[entry_id] = str(tweet_id)
+    if state.get("inflight") == entry_id:
+        state.pop("inflight")
+
+
+def mark_skipped(queue, state, entry_id):
+    if entry_id not in {e["id"] for e in queue}:
+        raise RuntimeError(f"unknown entry id {entry_id}")
+    skipped = state.setdefault("skipped", [])
+    if entry_id not in skipped:
+        skipped.append(entry_id)
+    if state.get("inflight") == entry_id:
+        state.pop("inflight")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true", help="never call the API (default without credentials)")
     ap.add_argument("--max-posts", type=int, default=3, help="cap per run (default 3)")
     ap.add_argument("--max-late-hours", type=float, default=DEFAULT_MAX_LATE_HOURS)
+    ap.add_argument("--mark-posted", metavar="ENTRY_ID", help="record an entry posted by hand (needs --tweet-id)")
+    ap.add_argument("--tweet-id", help="tweet id for --mark-posted")
+    ap.add_argument("--mark-skipped", metavar="ENTRY_ID", help="never post this entry")
     ap.add_argument("--now", help="override the clock (ISO UTC), for testing")
     ap.add_argument("--queue", default=str(QUEUE))
     ap.add_argument("--state", default=str(STATE))
@@ -173,6 +194,21 @@ def main(argv=None):
     queue = load_json(pathlib.Path(args.queue), [])
     state_path = pathlib.Path(args.state)
     state = load_json(state_path, {"posted": {}})
+    if args.mark_posted or args.mark_skipped:
+        try:
+            if args.mark_posted:
+                if not args.tweet_id:
+                    raise RuntimeError("--mark-posted needs --tweet-id")
+                mark_posted(queue, state, args.mark_posted, args.tweet_id)
+                log(f"marked {args.mark_posted} as posted (tweet {args.tweet_id})")
+            if args.mark_skipped:
+                mark_skipped(queue, state, args.mark_skipped)
+                log(f"marked {args.mark_skipped} as skipped")
+        except RuntimeError as exc:
+            log(f"ERROR: {exc}")
+            return 1
+        save_state(state_path, state)
+        return 0
     now = parse_time(args.now) if args.now else dt.datetime.now(dt.timezone.utc)
 
     creds = [os.environ.get(v, "").strip() for v in CRED_VARS]

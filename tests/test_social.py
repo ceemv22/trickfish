@@ -168,6 +168,22 @@ class Poster(unittest.TestCase):
             post.run(MINI, {"posted": {}}, utc("2026-11-11T19:05:00Z"), FakeClient(), False, 3, 24, p)
             self.assertEqual(json.loads(p.read_text())["posted"], {"a": "t1", "b": "t2"})
 
+    def test_mark_posted_and_skipped_cli(self):
+        with tempfile.TemporaryDirectory() as d:
+            q = pathlib.Path(d) / "q.json"
+            q.write_text(json.dumps(MINI))
+            st = pathlib.Path(d) / "s.json"
+            base = ["--queue", str(q), "--state", str(st)]
+            self.assertEqual(post.main(base + ["--mark-posted", "a", "--tweet-id", "999"]), 0)
+            self.assertEqual(post.main(base + ["--mark-skipped", "c"]), 0)
+            self.assertEqual(post.main(base + ["--mark-posted", "zzz", "--tweet-id", "1"]), 1)
+            self.assertEqual(post.main(base + ["--mark-posted", "b"]), 1)
+            state = json.loads(st.read_text())
+            client = FakeClient()
+            post.run(MINI, state, utc("2026-11-12T13:10:00Z"), client, False, max_late_hours=200)
+            self.assertEqual(client.sent, [{"text": "two", "reply": {"in_reply_to_tweet_id": "999"}}])
+            self.assertNotIn("c", state["posted"])
+
     def test_main_dry_runs_without_credentials(self):
         import os
         saved = {k: os.environ.pop(k, None) for k in post.CRED_VARS}

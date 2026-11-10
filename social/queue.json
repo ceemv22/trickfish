@@ -269,7 +269,7 @@
     "day": 19,
     "slot": "morning",
     "scheduled_utc": "2026-11-28T13:00:00Z",
-    "text": "38 positions passed our three tests. 23 are in the pack.\n\nThe smallest position in the pack has 100 games. Four of the 15 that stayed out had fewer: 85, 90, 92 and 95.\n\nEvery page shows its game count, so you can judge the sample yourself."
+    "text": "38 positions passed our three tests. 23 are in the pack.\n\nWe cut the ones with the smallest samples. Four of the 15 had fewer than 100 games: 85, 90, 92 and 95. We also cut positions that repeated an idea already in the pack.\n\nEvery page shows its game count."
   },
   {
     "id": "d20-m",
