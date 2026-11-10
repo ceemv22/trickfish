@@ -872,6 +872,27 @@ def profile():
     return page(size, size, body)
 
 
+def profile_hook(dy=-16.0):
+    """Avatar, owner's choice: the hook alone, upside down. The line rises from
+    the bottom edge of the circle to the eye; the bend opens at the top."""
+    size = 800
+    u = 560
+    weight = 0.13
+    ex = 400 - u * 0.33 - u * 0.012
+    ey = 400 - u * 0.48 + u * 0.015
+    glyph, _ = hook_glyph(ex, ey, u, HOOK, weight=weight, bend=0.33, shank=0.5, rise=0.27)
+    snell = ('<path d="M%.1f %.1f L%.1f %.1f" stroke="%s" stroke-width="%.1f" stroke-linecap="butt"/>'
+             % (ex, -size, ex, ey + 2, HOOK, u * weight * 0.62))
+    # rotate the whole hook 180 degrees about the canvas centre, then nudge it so
+    # the hook (not the line) sits in the optical centre of the circle
+    # after rotate(180 400 400) a point x maps to 800 - x; the translate (applied
+    # after the rotation) brings the hook's horizontal centre to 400
+    cx = ex + u * 0.33
+    body = (f'<svg class="abs" style="left:0;top:0" width="{size}" height="{size}">'
+            f'<g transform="translate({cx - 400:.1f} {dy:.1f}) rotate(180 400 400)">{snell}{glyph}</g></svg>')
+    return page(size, size, body)
+
+
 def banner(data, traps):
     trap = pick(traps, "1.e4 e5 2.Bc4 Bc5 3.Qh5")
     sq = 47
@@ -1115,6 +1136,7 @@ def main(argv=None):
             jobs.append((answer(data, trap, len(traps)), out / "cards" / ("trap-%02d-answer.png" % trap.number), CARD_W, CARD_H))
     if "x" in only:
         jobs.append((profile(), out / "x" / "profile.png", 800, 800))
+        jobs.append((profile_hook(), out / "x" / "profile-hook.png", 800, 800))
         jobs.append((banner(data, traps), out / "x" / "banner.png", 1500, 500))
     if "store" in only:
         jobs.append((thumbnail(data, traps), out / "store" / "thumbnail.png", 1200, 1200))
