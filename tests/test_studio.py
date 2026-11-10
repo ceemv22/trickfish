@@ -60,15 +60,40 @@ class StudioTests(unittest.TestCase):
         trap = Trap(record(), "white", 1)
         data = {"color": "white", "band": "1200-1599", "title": "1.e4 e5 Traps for White"}
         question = studio.question(data, trap, 1)
-        self.assertIn(">20<span", question)            # 20% of players go wrong (error_share 0.2)
-        self.assertIn("1,572 games", question)        # sample size of the position
+        self.assertIn(">10<", question)               # 157 of 1,572 games chose a losing reply that paid off for White
+        self.assertIn("1,572 games", question)        # sample size in the main sentence
+        self.assertIn("go wrong here", question)
+        self.assertNotIn("bite", question)
         self.assertNotIn("g6?", question)             # the question card never gives the answer away
         markup = studio.answer(data, trap, 1)
         self.assertIn("3\u2026g6?", markup)            # typographic ellipsis, annotated mistake
-        self.assertIn(">85<span", markup)             # White's real score after 3...g6
-        self.assertIn("+6.7", markup)                 # engine evaluation after the mistake
+        self.assertIn(">85<", markup)                 # White's real score after 3...g6
+        self.assertIn("10% of 1,572 games", markup)   # the revealed move's own share
         self.assertIn("Best defence", markup)
         self.assertIn("1200\u20131599", markup)        # source line on every card
+        self.assertIn(studio.TAGLINE.split(". ")[1], studio.banner(data, [trap]))
+
+    def test_small_samples_are_shown_as_counts(self):
+        from trickfish import studio
+        from trickfish.trappack_render import Trap
+
+        small = record()
+        small["replies"][0]["games"] = 40
+        trap = Trap(small, "white", 1)
+        markup = studio.answer({"color": "white", "band": "1200-1599"}, trap, 1)
+        self.assertIn(">34<", markup)                 # 0.85 x 40 games = 34 points
+        self.assertIn("/40", markup)
+        self.assertEqual(studio.points(0.5, 3), "1\u00bd")
+
+    def test_hero_share_leaves_out_mistakes_that_did_not_pay(self):
+        from trickfish import studio
+        from trickfish.trappack_render import Trap
+
+        rec = record()
+        rec["replies"].append({"san": "Nf6", "uci": "g8f6", "games": 300, "share": 0.19, "our_cp": 900,
+                               "gain_cp": 900, "our_score": 0.4, "maia": None})
+        trap = Trap(rec, "white", 1)
+        self.assertAlmostEqual(studio.wrong_share(trap), 157 / 1572)
 
     def test_route_typefaces_only(self):
         from trickfish import studio
@@ -84,19 +109,36 @@ class StudioTests(unittest.TestCase):
                 self.assertIn(family, markup)
         for path in studio.FONTS.glob("*/*.woff2"):
             self.assertTrue((path.parent / "OFL.txt").exists())
+        self.assertIn('class="mono"', studio.prose("Only 7...Ke6 holds it."))
 
     def test_answer_draws_the_line_and_hook_in_red_only(self):
         from trickfish import studio
         from trickfish.trappack_render import Trap
 
         trap = Trap(record(), "white", 1)
-        data = {"color": "white", "band": "1200-1599"}
-        route, hook, plies = studio.catch(trap)
-        self.assertEqual(route[0], chess.H5)        # automatic fallback: the queen's route ...
-        self.assertEqual(hook, chess.H8)            # ... ending on the rook it wins
-        board = studio.board_svg(trap.after, 90, catch_=(route, hook))
+        strokes, hook, plies = studio.catch(trap)
+        self.assertEqual(strokes[0][0][0], chess.H5)  # automatic fallback: the queen's route ...
+        self.assertEqual(hook, chess.H8)              # ... ending on the rook it wins
+        board = studio.board_svg(trap.after, 90, catch_=(strokes, hook))
         self.assertIn(studio.HOOK, board)
         self.assertNotIn(studio.HOOK, studio.board_svg(trap.board, 90))
+
+    def test_every_hook_in_the_pack_is_on_a_piece(self):
+        from trickfish import studio
+        from trickfish.trappack_render import load
+
+        root = pathlib.Path(__file__).resolve().parents[1] / "packs" / "e4e5-white-1200"
+        if not (root / "traps.json").exists():
+            self.skipTest("pack data not present")
+        data, meta, traps = load(root / "traps.json", root / "notes.json")
+        listed = 0
+        for trap in traps:
+            if trap.line_text() in studio.CATCH:
+                listed += 1
+                strokes, hook, plies = studio.catch(trap)
+                self.assertIsNotNone(trap.after.piece_at(hook), trap.name)
+                self.assertTrue(1 <= plies <= len(trap.punish), trap.name)
+        self.assertEqual(listed, len(traps))
 
 
 if __name__ == "__main__":

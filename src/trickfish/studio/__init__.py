@@ -44,49 +44,95 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 FONTS = ROOT / "assets" / "fonts"
 
-# Card type scale: exactly three sizes per card.
-L, M, S = 226, 34, 19
+# Card type scale: exactly three sizes per card. Nothing that matters is set
+# below M (32 px, about 12 px on a phone).
+L, M, S = 226, 32, 19
 
 
 # ---------------------------------------------------------------- art direction
 #
 # Which piece's path the red line follows, and where the hook lands, is an
-# editorial decision: the hook goes on the square where the opponent is
-# actually caught (the piece that is won, or the square that is attacked).
-# Keys are the trap names from notes.json. Traps not listed here fall back to the
-# automatic rule in `catch()`.
+# editorial decision: the hook goes on the piece that is actually won, or on
+# the piece the punishing move targets. Never on an empty square.
+#
+# Keys are the trap's move line (Trap.line_text()). Each value is
+# (strokes, hook square, plies of the punishment to print).
+# A stroke is a list of squares, drawn as one hand-laid line. Earlier
+# strokes are drawn lighter and end in a split-shot (used for discoveries,
+# where one piece moves out of another's way). "~sq:dx,dy" is a waypoint
+# (offset in squares) that bends a line around a piece without marking a
+# stop. When the hook square is not the last square of the last stroke, the
+# final leg is the line of attack from that square to its target.
+# Traps not listed here fall back to the automatic rule in `catch()`.
 CATCH = {
-    "Fried Liver: the pinned knight": (["c4", "d5"], "d5", 1),
-    "Fried Liver: grabbing on d5": (["f3", "d5"], "d5", 1),
-    "Traxler: the greedy knight": (["d1", "h5", "g6", "g8", "e8"], "e8", 9),
-    "Two Knights: the bishop check on f7": (["e1", "f2"], "f2", 1),
-    "Two Knights: the double attack on d5": (["d1", "d5", "e4"], "e4", 5),
-    "Giuoco Piano: the b7/f7 queen": (["d1", "b3", "b7"], "b7", 5),
-    "Scotch: the hanging bishop on c5": (["e3", "c5"], "c5", 3),
-    "Scotch: the knight on the rim": (["g2", "g4"], "h5", 1),
-    "Scotch: the knight on the rim, part two": (["g2", "g4", "h5"], "h5", 3),
-    "Scotch: the queen fork on d5": (["d4", "d5", "a8"], "a8", 3),
-    "Scotch: the wrong recapture": (["f3", "e5"], "e5", 1),
-    "Ruy Lopez: the automatic recapture": (["f3", "e5", "c6"], "c6", 7),
-    "Ruy Lopez: the pinned knight": (["d2", "d4", "d5", "c6"], "c6", 9),
-    "Ruy Lopez: the same pin again": (["d2", "d4", "d5", "c6"], "c6", 5),
-    "Ruy Lopez: the e-file": (["d2", "d3"], "e4", 1),
-    "Three Knights: the fork trick": (["d4", "g7"], "h8", 1),
-    "Petrov: the discovered check": (["e5", "c6"], "d8", 3),
-    "Petrov: the wrong recapture": (["f3", "e5"], "f7", 3),
-    "Bishop's Opening: the queen on h5": (["h5", "e5", "h8"], "h8", 3),
-    "Bishop's Opening: queen trade with a sting": (["h5", "e5"], "h8", 1),
-    "Bishop's Opening: the f7 check": (["c4", "f7"], "f7", 1),
-    "Vienna Gambit: pawns with tempo": (["f4", "e5"], "e5", 1),
-    "Vienna Gambit: the e-file pin that doesn't work": (["d1", "e2", "e4"], "e4", 7),
+    # 1  Fried Liver: 8.Bxd5 wins the pinned knight
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5 Nxd5 6.Nxf7 Kxf7 7.Qf3+": ([["c4", "d5"]], "d5", 1),
+    # 2  10.Qxd5+ wins the queen
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5 Nxd5 6.Nxf7 Kxf7 7.Qf3+ Ke6 8.Nc3 Nd4 9.Bxd5+":
+        ([["f3", "d5"]], "d5", 1),
+    # 3  Traxler: the queen tour bows round g7 (that pawn is still on g7 in the diagram); the black
+    #    queen on e7 is the piece forced to e8 and traded off by 12.Qxe8+
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 Bc5 5.Nxf7 Bxf2+ 6.Kf1 Qe7 7.Nxh8":
+        ([["d1", "h5", "g6", "~g7:-0.5,0", "g8"]], "e7", 9),
+    # 4  7.Kxf2 takes the bishop
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 Bc5 5.Bxf7+ Kf8 6.Bb3": ([["e1", "f2"]], "f2", 1),
+    # 5  6.Qd5 (f7 and e4), 8.Qxe4
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.d4 Nxe4 5.dxe5": ([["d1", "d5", "e4"]], "e4", 5),
+    # 6  9.Qb3, 11.Qxb7
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.c3 d6 5.d4 exd4 6.cxd4 Bb4+ 7.Bd2 Bxd2+ 8.Nbxd2": ([["d1", "b3", "b7"]], "b7", 5),
+    # 7  discovery: 6.Nxc6 clears d4, then 7.Bxc5
+    "1.e4 e5 2.Nf3 Nc6 3.d4 exd4 4.Nxd4 Bc5 5.Be3": ([["d4", "c6"], ["e3", "c5"]], "c5", 3),
+    # 8  7.g4 hits the knight (it survives after 7...Qh4, so this is a target, not a capture)
+    "1.e4 e5 2.Nf3 Nc6 3.d4 exd4 4.Nxd4 Nxd4 5.Qxd4 Nf6 6.e5": ([["g2", "g4"]], "h5", 2),
+    # 9  8.g4 f6 9.gxh5 wins it
+    "1.e4 e5 2.Nf3 Nc6 3.d4 exd4 4.Nxd4 Nxd4 5.Qxd4 Nf6 6.e5 Qe7 7.Be3": ([["g2", "g4", "h5"]], "h5", 3),
+    # 10 8.Qd5, 9.Qxa8
+    "1.e4 e5 2.Nf3 Nc6 3.d4 exd4 4.Nxd4 Nxd4 5.Qxd4 Nf6 6.e5 Ng8 7.Bc4": ([["d4", "d5", "a8"]], "a8", 3),
+    # 11 6.Nxe5
+    "1.e4 e5 2.Nf3 Nc6 3.d4 d6 4.dxe5 dxe5 5.Qxd8+": ([["f3", "e5"]], "e5", 1),
+    # 12 after the queen trade, 8.Nxe5 and 10.Nxc6
+    "1.e4 e5 2.Nf3 Nc6 3.Bb5 d6 4.Bxc6+ bxc6 5.d4 Nf6 6.dxe5": ([["f3", "e5", "c6"]], "c6", 7),
+    # 13 the d-pawn marches and takes the pinned knight: 10.dxc6
+    "1.e4 e5 2.Nf3 Nc6 3.Bb5 Bc5 4.O-O d6 5.c3": ([["d2", "d4", "d5", "c6"]], "c6", 9),
+    # 14 same pin, but drawn as the threat 7.d5 (a different picture from #13)
+    "1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 4.O-O Bc5 5.c3": ([["d2", "d4", "d5"]], "c6", 3),
+    # 15 6.d3 hits the e4 knight; when it moves, 7.Rxe5+ comes with check
+    "1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 4.O-O Nxe4 5.Re1": ([["d2", "d3"]], "e4", 3),
+    # 16 7.Qxg7 (the pawn actually taken; the rook is saved by 7...Qf6)
+    "1.e4 e5 2.Nf3 Nc6 3.Nc3 Bc5 4.Nxe5 Nxe5 5.d4 Bxd4 6.Qxd4": ([["d4", "g7"]], "g7", 2),
+    # 17 6.Nc6+ uncovers check and hits the queen on d8
+    "1.e4 e5 2.Nf3 Nf6 3.Nxe5 Nxe4 4.Qe2 d5 5.d3": ([["e5", "c6"]], "d8", 3),
+    # 18 after the queen trade, 6.Nxe5 and f7 is the next target
+    "1.e4 e5 2.Nf3 Nf6 3.d4 d6 4.dxe5": ([["f3", "e5"]], "f7", 3),
+    # 19 4.Qxe5+ and 5.Qxh8
+    "1.e4 e5 2.Bc4 Bc5 3.Qh5": ([["h5", "e5", "h8"]], "h8", 3),
+    # 20 5.Qxe5+ forces the queen trade a pawn up
+    "1.e4 e5 2.Bc4 Bc5 3.Qh5 Qf6 4.Nf3": ([["h5", "e5"]], "e5", 3),
+    # 21 5.Bxf7+
+    "1.e4 e5 2.Bc4 Bc5 3.Nf3 Nf6 4.Nxe5": ([["c4", "f7"]], "f7", 1),
+    # 22 4.fxe5, then the e-pawn arrives on e5 and sends the f6 knight home
+    "1.e4 e5 2.Nc3 Nf6 3.f4": ([["f4", "e5"], ["e4", "e5"]], "f6", 6),
+    # 23 5.Qe2 breaks the pin, so the e5 pawn now hits the f6 knight
+    "1.e4 e5 2.Nc3 Nf6 3.f4 exf4 4.e5": ([["d1", "e2"], ["e5", "f6"]], "f6", 2),
 }
 
 
+def _point(token):
+    if token.startswith("~"):
+        name, offset = token[1:].split(":")
+        dx, dy = (float(v) for v in offset.split(","))
+        return (chess.parse_square(name), dx, dy, False)
+    return (chess.parse_square(token), 0.0, 0.0, True)
+
+
 def catch(trap):
-    """Return (route squares, hook square, plies of the punishment to print)."""
-    if trap.name in CATCH:
-        route, hook, plies = CATCH[trap.name]
-        return [chess.parse_square(s) for s in route], chess.parse_square(hook), plies
+    """Return (strokes, hook square, plies of the punishment to print).
+
+    strokes: list of strokes; a stroke is a list of (square, dx, dy, is_stop)."""
+    key = trap.line_text()
+    if key in CATCH:
+        strokes, hook, plies = CATCH[key]
+        return [[_point(t) for t in stroke] for stroke in strokes], chess.parse_square(hook), plies
     # Fallback: follow the first punishing piece while it keeps moving, until
     # it wins material or is taken.
     values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
@@ -111,7 +157,7 @@ def catch(trap):
     if not route:
         move = trap.board.peek()
         route = [move.from_square, move.to_square]
-    return route, route[-1], plies
+    return [[(s, 0.0, 0.0, True) for s in route]], route[-1], plies
 
 
 # ---------------------------------------------------------------- type and text
@@ -133,9 +179,9 @@ html, body { width: %(w)dpx; height: %(h)dpx; overflow: hidden; }
 body { position: relative; background: %(bg)s; color: %(fg)s; font-family: 'Schibsted Grotesk';
        font-kerning: normal; text-rendering: geometricPrecision; -webkit-font-smoothing: antialiased; }
 .abs { position: absolute; }
-.num { font-family: 'Young Serif'; font-weight: 400; line-height: .9; letter-spacing: -0.035em;
-       font-feature-settings: 'kern' 1; }
-.serif { font-family: 'Young Serif'; font-weight: 400; letter-spacing: -0.01em; }
+.num { font-family: 'Young Serif'; font-weight: 400; line-height: 1; letter-spacing: -0.03em;
+       font-feature-settings: 'kern' 1, 'lnum' 1; }
+.serif { font-family: 'Young Serif'; font-weight: 400; letter-spacing: -0.01em; font-feature-settings: 'lnum' 1; }
 .txt { font-family: 'Schibsted Grotesk'; }
 .mono { font-family: 'Martian Mono'; font-weight: 400; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .faded { color: %(faded)s; }
@@ -153,7 +199,7 @@ def page(width, height, body, bg=PAPER, fg=INK, faded=FADED, extra=""):
 
 def esc(text):
     """Escape for HTML and set typographic apostrophes."""
-    return html.escape(str(text), quote=False).replace("'", "\u2019")
+    return html.escape(str(text), quote=False).replace("'", "’")
 
 
 def ellipsis(text):
@@ -185,6 +231,52 @@ def side_name(color):
     return "White" if color == chess.WHITE else "Black"
 
 
+def engine_name(data):
+    return str(data.get("engine", "Stockfish 16"))
+
+
+SMALL_SAMPLE = 50
+
+
+def wrong_share(trap):
+    """Share of games at the position in which the side to move chose a reply
+    that costs at least 1.2 pawns (Trap.mistakes) and after which we really
+    scored at least 50%. Mistakes that did not pay off in practice are left out."""
+    games = trap.record["games"] or 1
+    return sum(r["games"] for r in trap.mistakes if r["our_score"] >= 0.5) / games
+
+
+def points(score, games):
+    """Points from `games` at `score` per game, as '47' or '42½'."""
+    halves = round(score * games * 2)
+    return "%d%s" % (halves // 2, "½" if halves % 2 else "")
+
+
+def plain_of(trap):
+    """One sentence that names the mistake in plain words: notes.json 'plain',
+    or the first sentence of the idea."""
+    text = getattr(trap, "plain", "") or ""
+    if not text and trap.idea:
+        text = re.split(r"(?<=[.!])\s", trap.idea, maxsplit=1)[0]
+    return text
+
+
+_SAN = re.compile(r"(?<![\w…])(\d+(?:\.|…))?((?:[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h]x[a-h][1-8]|[a-h][1-8])"
+                  r"(?:=[QRBN])?|O-O(?:-O)?)([+#]?[?!]*)(?![\w])")
+
+
+def prose(text, weight=500):
+    """Escape running text; set every move and square in the mono with figurines."""
+    text = ellipsis(text)
+    out, last = [], 0
+    for match in _SAN.finditer(text):
+        out.append(esc(text[last:match.start()]))
+        out.append('<span class="mono" style="font-weight:%d">%s</span>' % (weight, notation(match.group(0))))
+        last = match.end()
+    out.append(esc(text[last:]))
+    return "".join(out)
+
+
 # ---------------------------------------------------------------- pieces
 
 _PIECES = {}
@@ -197,8 +289,14 @@ def piece_inner(code):
     return _PIECES[code]
 
 
-def piece_svg(code, x, y, size, ink=INK, paper=PAPER):
-    inner = piece_inner(code).replace("#1f1a17", ink).replace("#fff", paper)
+def piece_svg(code, x, y, size, ink=INK, paper=PAPER, halo=0.0):
+    """A Merida piece. `halo` (in 50-unit piece space) draws a thin paper edge
+    under black pieces, as printed diagrams do, so they hold on hatching."""
+    inner = piece_inner(code)
+    if halo:
+        inner = inner.replace('fill="#1f1a17"', 'fill="#1f1a17" stroke="#fff" stroke-width="%.2f" '
+                              'stroke-linejoin="round" paint-order="stroke"' % halo, 1)
+    inner = inner.replace("#1f1a17", ink).replace("#fff", paper)
     return ('<svg x="%.2f" y="%.2f" width="%.2f" height="%.2f" viewBox="0 0 50 50" fill-rule="evenodd" '
             'clip-rule="evenodd">%s</svg>' % (x, y, size, size, inner))
 
@@ -216,10 +314,10 @@ def notation(text, ink=INK, paper=PAPER):
 
 # ---------------------------------------------------------------- the hand-drawn line
 
-def _bezier(points, t):
-    while len(points) > 1:
-        points = [(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) for a, b in zip(points, points[1:])]
-    return points[0]
+def _bezier(points_, t):
+    while len(points_) > 1:
+        points_ = [(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) for a, b in zip(points_, points_[1:])]
+    return points_[0]
 
 
 def _line_samples(stops, sq, rng):
@@ -228,22 +326,19 @@ def _line_samples(stops, sq, rng):
     for index, (a, b) in enumerate(zip(stops, stops[1:])):
         length = math.dist(a, b)
         nx, ny = (-(b[1] - a[1]) / length, (b[0] - a[0]) / length) if length else (0, 0)
-        bow = rng.uniform(0.04, 0.08) * length * rng.choice((-1, 1))
+        bow = rng.uniform(0.03, 0.06) * length * rng.choice((-1, 1))
         mid = ((a[0] + b[0]) / 2 + nx * bow, (a[1] + b[1]) / 2 + ny * bow)
-        steps = max(10, int(length / (sq * 0.04)))
+        steps = max(10, int(length / (sq * 0.03)))
         last = index == len(stops) - 2
         for step in range(steps + (1 if last else 0)):
             samples.append(_bezier([a, mid, b], step / steps))
     return samples
 
 
-def hand_line(stops, sq, seed, color=HOOK, halo=PAPER, width=0.12, halo_width=0.05):
-    """A red line drawn as a nib would: width swells and thins, the path bows a
-    little between stops, and a paper knockout keeps it legible over hatching."""
-    rng = random.Random(seed)
-    pts = _line_samples(stops, sq, rng)
+def _stroke_svg(pts, sq, seed, color, halo, width, halo_width):
+    rng = random.Random(seed * 31 + 7)
     total = sum(math.dist(a, b) for a, b in zip(pts, pts[1:])) or 1
-    phase = [rng.uniform(0, 1) for _ in range(4)]
+    phase = [rng.uniform(0, 1) for _ in range(2)]
     run, under, over = 0.0, [], []
     for a, b in zip(pts, pts[1:]):
         t = run / total
@@ -254,42 +349,55 @@ def hand_line(stops, sq, seed, color=HOOK, halo=PAPER, width=0.12, halo_width=0.
         d = "M%.2f %.2fL%.2f %.2f" % (a[0], a[1], b[0], b[1])
         under.append('<path d="%s" stroke-width="%.2f"/>' % (d, w + 2 * sq * halo_width))
         over.append('<path d="%s" stroke-width="%.2f"/>' % (d, w))
-    return ('<g fill="none" stroke-linecap="round" stroke="%s">%s</g><g fill="none" stroke-linecap="round" stroke="%s">%s</g>'
-            % (halo, "".join(under), color, "".join(over)))
+    return ('<g fill="none" stroke-linecap="round" stroke="%s">%s</g>' % (halo, "".join(under)),
+            '<g fill="none" stroke-linecap="round" stroke="%s">%s</g>' % (color, "".join(over)))
 
 
-def hook_path(u, shank=0.95, bend=0.38, point=0.62, weight=0.12, eye=0.075):
-    """Geometry of a J-hook in local units of `u` (one diagram square): eye
-    at the origin, shank running down +y, bend opening towards +x."""
+def hand_line(stops, sq, seed, color=HOOK, halo=PAPER, width=0.11, halo_width=0.045, clip=None):
+    """A red line drawn as a nib would: width swells and thins, the path bows a
+    little between stops, and a paper knockout keeps it legible over hatching.
+    `clip` = (x0, y0, x1, y1): the line stops where it first enters that box."""
+    pts = _line_samples(stops, sq, random.Random(seed))
+    if clip:
+        x0, y0, x1, y1 = clip
+        for index, (x, y) in enumerate(pts):
+            if x0 <= x <= x1 and y0 <= y <= y1:
+                pts = pts[:index + 1]
+                break
+    under, over = _stroke_svg(pts, sq, seed, color, halo, width, halo_width)
+    return under + over, pts
+
+
+def hook_glyph(ex, ey, u, color=HOOK, halo=None, halo_width=0.0, weight=0.085, bend=0.33, shank=0.48, rise=0.26):
+    """An engraved J-hook hanging from its eye. (ex, ey) is the top of the eye;
+    u is the unit (one diagram square on a board). Shank, bend and point are
+    one stroke; the point and its barb are one filled shape, so there is no
+    seam between them. Returns (svg, centre-line points)."""
     w = u * weight
-    r = u * eye
-    by = u * shank
+    r = u * 0.05
+    by = ey + u * shank                  # centre of the bend
     br = u * bend
-    px = 2 * br
-    tip = u * point
-    ring = (0, r, r, w * 0.62)
-    body = "M0 %.2f L0 %.2f A%.2f %.2f 0 0 0 %.2f %.2f L%.2f %.2f" % (2 * r, by, br, br, px, by, px, by - u * 0.1)
-    taper = "M%.2f %.2f L%.2f %.2f L%.2f %.2f Z" % (px - w / 2, by - u * 0.1, px + w * 0.06, tip, px + w / 2, by - u * 0.1)
-    barb = "M%.2f %.2f L%.2f %.2f L%.2f %.2f Z" % (px - w * 0.1, tip + u * 0.03, px - w * 0.45, tip + u * 0.2,
-                                                   px - w * 1.35, tip + u * 0.22)
-    return ring, body, taper, barb, w
-
-
-def hook_shape(x, y, u, color=HOOK, halo=None, halo_width=0.0, transform="", **geometry):
-    """A J-hook: ring eye, straight shank, round bend, tapered point, barb.
-    (x, y) is the eye; `transform` (SVG) is applied about the eye."""
-    (cx, cy, r, ring_w), body, taper, barb, w = hook_path(u, **geometry)
+    px = ex + 2 * br
+    tip = by - u * rise
+    body = "M%.2f %.2f L%.2f %.2f A%.2f %.2f 0 0 0 %.2f %.2f" % (ex, ey + 2 * r, ex, by, br, br, px, by)
+    inner_t = (u * 0.13) / max(by - tip, 1e-6)
+    inner_x = px - w / 2 + (1 - inner_t) * 0.55 * w
+    barb = [(px + w / 2, by), (px + w * 0.05, tip), (px - w * 1.55, tip + u * 0.2), (inner_x, tip + u * 0.13),
+            (px - w / 2, by)]
+    point = "M" + " L".join("%.2f %.2f" % p for p in barb) + " Z"
 
     def draw(colour, extra):
         return ('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="none" stroke="%s" stroke-width="%.2f"/>'
-                '<path d="%s" fill="none" stroke="%s" stroke-width="%.2f" stroke-linecap="round" stroke-linejoin="round"/>'
+                '<path d="%s" fill="none" stroke="%s" stroke-width="%.2f" stroke-linecap="round"/>'
                 '<path d="%s" fill="%s" stroke="%s" stroke-width="%.2f" stroke-linejoin="round"/>'
-                '<path d="%s" fill="%s" stroke="%s" stroke-width="%.2f" stroke-linejoin="round"/>'
-                % (cx, cy, r, colour, ring_w + extra, body, colour, w + extra, taper, colour, colour, extra or 0.01,
-                   barb, colour, colour, extra or 0.01))
+                % (ex, ey + r, r, colour, w * 0.62 + extra, body, colour, w + extra, point, colour, colour,
+                   extra or 0.01))
 
-    inner = (draw(halo, 2 * halo_width) if halo else "") + draw(color, 0)
-    return '<g transform="translate(%.2f %.2f) %s">%s</g>' % (x, y, transform, inner)
+    svg = (draw(halo, 2 * halo_width) if halo else "") + draw(color, 0)
+    line = [(ex, ey + 2 * r + (by - ey - 2 * r) * k / 6) for k in range(7)]
+    line += [(ex + br - br * math.cos(math.pi * k / 10), by + br * math.sin(math.pi * k / 10)) for k in range(11)]
+    line += [(px, by - (by - tip) * k / 4) for k in range(5)]
+    return svg, line
 
 
 # ---------------------------------------------------------------- the diagram
@@ -303,10 +411,57 @@ def centre(square, sq):
     return x + sq / 2, y + sq / 2
 
 
+HOOK_GEOMETRY = dict(eye_x=0.17, eye_y=0.12, piece=0.66, piece_y=0.555)
+
+
+def draw_catch(catch_, sq, seed, color=HOOK, paper=PAPER):
+    """The red line(s) and the hook. The hook hangs inside the catch square,
+    eye on its top edge, tied up by a short snell; the caught piece sits in the
+    bend. The last leg of the line runs along the real direction of the last
+    move (or line of attack) and stops where it meets the hook, so nothing red
+    crosses the caught piece. Returns (svg, red points, caught square)."""
+    strokes, hook = catch_[0], catch_[1]
+    x0, y0 = square_xy(hook, sq)
+    hx, hy = x0 + sq / 2, y0 + sq / 2
+    clip = (x0 + sq * 0.11, y0 + sq * 0.03, x0 + sq * 0.89, y0 + sq * 0.97)
+    halos, inks, red, shots = [], [], [], []
+    for index, stroke in enumerate(strokes):
+        final = index == len(strokes) - 1
+        stops = []
+        for square, dx, dy, _ in stroke:
+            cx, cy = centre(square, sq)
+            stops.append((cx + dx * sq, cy + dy * sq))
+        if final:
+            if stroke[-1][0] == hook:
+                stops = stops[:-1]
+            stops.append((hx, hy))
+        svg, pts = hand_line(stops, sq, seed + index * 13, color, paper, width=0.11 if final else 0.085,
+                             clip=clip if final else None)
+        halos.append(svg)
+        red += pts
+        marks = stroke[1:] if final else stroke[1:]
+        for square, dx, dy, is_stop in marks:
+            if is_stop and square != hook:
+                shots.append(centre(square, sq))
+    for x, y in shots:
+        inks.append('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s"/><circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s"/>'
+                    % (x, y, sq * 0.115, paper, x, y, sq * 0.075, color))
+        red.append((x, y))
+    ex, ey = x0 + sq * HOOK_GEOMETRY["eye_x"], y0 + sq * HOOK_GEOMETRY["eye_y"]
+    hook_svg, hook_line = hook_glyph(ex, ey, sq, color, paper, sq * 0.035)
+    snell = ('<path d="M%.2f %.2f L%.2f %.2f" stroke="%s" stroke-width="%.2f" stroke-linecap="round"/>'
+             % (ex, y0 + sq * 0.035, ex, ey + 1, color, sq * 0.06))
+    snell_halo = snell.replace('stroke="%s"' % color, 'stroke="%s"' % paper).replace(
+        'stroke-width="%.2f"' % (sq * 0.06), 'stroke-width="%.2f"' % (sq * 0.13))
+    red += hook_line
+    return "".join(halos) + "".join(inks), snell_halo + snell + hook_svg, red
+
+
 def board_svg(board, sq, *, catch_=None, trail=None, coords=True, coord_size=S, seed=1, uid="d",
               ink=INK, paper=PAPER, line_color=HOOK, coord_color=FADED, frame=True, hatch=None):
-    """A printed book diagram. `catch_` = (route squares, hook square) draws the
-    red line; `trail` = chess.Move draws the opponent's move as an ink dotted wake."""
+    """A printed book diagram. `catch_` = (strokes, hook square) from catch()
+    draws the red line and the hook; `trail` = chess.Move draws the opponent's
+    move as an ink dotted wake that keeps clear of the red."""
     n = 8 * sq
     period = hatch or max(3.4, sq / 11.5)
     out = ['<svg width="%.2f" height="%.2f" viewBox="0 0 %.2f %.2f" xmlns="http://www.w3.org/2000/svg">' % (n, n, n, n),
@@ -325,14 +480,29 @@ def board_svg(board, sq, *, catch_=None, trail=None, coords=True, coord_size=S, 
                    % (-inner / 2, -inner / 2, n + inner, n + inner, ink, inner))
         out.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="none" stroke="%s" stroke-width="%.2f"/>'
                    % (-gap - outer / 2, -gap - outer / 2, n + 2 * gap + outer, n + 2 * gap + outer, ink, outer))
+    lines, hook_svg, red, caught = "", "", [], None
+    if catch_ is not None:
+        lines, hook_svg, red = draw_catch(catch_, sq, seed, line_color, paper)
+        caught = catch_[1]
     if trail is not None:
-        out.append(_trail(trail, sq, ink, paper))
+        out.append(_trail(trail, sq, ink, paper, red))
+    halo = 1.5 if sq >= 40 else 0.0
     for square, p in board.piece_map().items():
+        if square == caught:
+            continue
         x, y = square_xy(square, sq)
         code = ("w" if p.color else "b") + p.symbol().upper()
-        out.append(piece_svg(code, x, y, sq, ink, paper))
-    if catch_ is not None:
-        out.append(draw_catch(catch_, sq, seed, line_color, paper))
+        out.append(piece_svg(code, x, y, sq, ink, paper, halo if not p.color else 0.0))
+    out.append(lines)
+    if caught is not None:
+        p = board.piece_at(caught)
+        if p is not None:
+            x, y = square_xy(caught, sq)
+            size = sq * HOOK_GEOMETRY["piece"]
+            code = ("w" if p.color else "b") + p.symbol().upper()
+            out.append(piece_svg(code, x + (sq - size) / 2, y + sq * HOOK_GEOMETRY["piece_y"] - size / 2, size, ink, paper,
+                                 halo if not p.color else 0.0))
+        out.append(hook_svg)
     if coords:
         gap = sq * 0.07 + max(2.0, sq * 0.05)
         for i in range(8):
@@ -344,43 +514,33 @@ def board_svg(board, sq, *, catch_=None, trail=None, coords=True, coord_size=S, 
     return "".join(out)
 
 
-def draw_catch(catch_, sq, seed, color=HOOK, paper=PAPER):
-    """The red line through the route, tied to the eye of a hook that hangs
-    over the hook square: the caught piece sits inside the bend, like the fish
-    in the mark. The hook always hangs (a hook only reads as a hook when it
-    hangs from its eye)."""
-    route, hook = catch_
-    stops = [centre(s, sq) for s in route]
-    if route[-1] == hook:
-        stops = stops[:-1]
-    tx, ty = centre(hook, sq)
-    bend = 0.47
-    bottom = ty + sq * 0.5                         # bend bottom on the square's lower edge
-    eye_y = max(ty - sq * 0.86, sq * 0.04)         # top rank: shorter shank, stays on the board
-    shank = (bottom - sq * bend - eye_y) / sq
-    geometry = dict(shank=shank, bend=bend, point=shank - 0.38, weight=0.11, eye=0.08)
-    ex = tx - sq * bend
-    out = [hand_line(stops + [(ex, eye_y)], sq, seed, color, paper)]
-    for stop in route[1:]:
-        if stop != hook:
-            x, y = centre(stop, sq)
-            out.append('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s"/><circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s"/>'
-                       % (x, y, sq * 0.125, paper, x, y, sq * 0.08, color))
-    out.append(hook_shape(ex, eye_y, sq, color, paper, sq * 0.04, **geometry))
-    return "".join(out)
+def _clearance(point, red):
+    return min((math.dist(point, r) for r in red), default=1e9)
 
 
-def _trail(move, sq, ink, paper):
+def _trail(move, sq, ink, paper, red=()):
+    """The opponent's move as a dotted ink wake from an empty ring. Dots end
+    0.25 sq before any red; the ring keeps 0.12 sq of paper from the line."""
     (ax, ay), (bx, by) = centre(move.from_square, sq), centre(move.to_square, sq)
     length = math.dist((ax, ay), (bx, by))
     ux, uy = (bx - ax) / length, (by - ay) / length
+    red_half = sq * 0.11 / 2
     dots = []
     d = sq * 0.2
     while d < length - sq * 0.42:
-        dots.append('<circle cx="%.2f" cy="%.2f" r="%.2f"/>' % (ax + ux * d, ay + uy * d, sq * 0.032))
+        p = (ax + ux * d, ay + uy * d)
+        if _clearance(p, red) >= sq * 0.25 + red_half:
+            dots.append('<circle cx="%.2f" cy="%.2f" r="%.2f"/>' % (p[0], p[1], sq * 0.032))
         d += sq * 0.13
+    ring_r = sq * 0.11
+    need = ring_r + sq * 0.12 + red_half
+    candidates = [(ax, ay)] + [(ax + sq * 0.24 * math.cos(a), ay + sq * 0.24 * math.sin(a))
+                               for a in [k * math.pi / 4 for k in range(8)]]
+    ring_at = next((c for c in candidates if _clearance(c, red) >= need), None)
+    if ring_at is None:
+        ring_at = max(candidates, key=lambda c: _clearance(c, red))
     ring = ('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s" stroke="%s" stroke-width="%.2f"/>'
-            % (ax, ay, sq * 0.11, paper, ink, sq * 0.028))
+            % (ring_at[0], ring_at[1], ring_r, paper, ink, sq * 0.028))
     halo = "".join(dot.replace('r="%.2f"' % (sq * 0.032), 'r="%.2f"' % (sq * 0.062)) for dot in dots)
     return '<g fill="%s">%s</g><g fill="%s">%s</g>%s' % (paper, halo, ink, "".join(dots), ring)
 
@@ -412,8 +572,8 @@ def score_column(rows, size, row_height, highlight_from=None):
         strong = highlight_from is not None and index >= highlight_from
         faded = highlight_from is not None and index < highlight_from - 1
         black_html = '<span style="font-weight:700">?</span>' if black == "?" else notation(black)
-        out.append('<div class="%s" style="display:grid;grid-template-columns:3.1ch 6.9ch auto;font-weight:%d">'
-                   '<span style="text-align:right;padding-right:.4ch">%s.</span><span>%s</span><span>%s</span></div>'
+        out.append('<div class="%s" style="display:grid;grid-template-columns:3.6ch 6.6ch auto;font-weight:%d">'
+                   '<span style="text-align:right;padding-right:.5ch">%s.</span><span>%s</span><span>%s</span></div>'
                    % ("faded" if faded else "", 600 if strong else 400, num, notation(white), black_html))
     out.append("</div>")
     return "".join(out)
@@ -422,57 +582,91 @@ def score_column(rows, size, row_height, highlight_from=None):
 def lockup(x, top, size, color=INK, hook=HOOK, drop=None):
     """Wordmark lockup: a red line dropping from the top edge into a hook,
     beside the name set in Young Serif."""
-    h = size * 1.3
+    u = size * 1.05
     drop = top if drop is None else drop
+    glyph, _ = hook_glyph(u * 0.06, drop, u, hook, weight=0.1, bend=0.2, shank=0.62, rise=0.3)
     line = ('<svg class="abs" style="left:%.1fpx;top:0" width="%.1f" height="%.1f">'
             '<path d="M%.2f 0 L%.2f %.2f" stroke="%s" stroke-width="%.2f" stroke-linecap="round"/>%s</svg>'
-            % (x, h, drop + h, h * 0.1, h * 0.1, drop, hook, h * 0.055, hook_shape(h * 0.1, drop, h, hook, shank=0.62, bend=0.21, point=0.4, weight=0.11)))
+            % (x, u, drop + u, u * 0.06, u * 0.06, drop + 1, hook, u * 0.062, glyph))
     word = ('<div class="abs serif" style="left:%.1fpx;top:%.1fpx;font-size:%dpx;line-height:1;color:%s">Trickfish</div>'
-            % (x + h * 0.62, drop + h * 0.18, size, color))
+            % (x + u * 0.62, drop + u * 0.18, size, color))
     return line + word
 
 
 # ---------------------------------------------------------------- cards (1080 x 1350)
 #
-# Grid: 64 px margins. A score column (64-250) and a main column (296-1016)
-# that holds the diagram; text blocks hang from the d-file line (566).
-# Everything that matters sits inside the centred 1080 x 1080 safe zone
-# (y 135-1215).
+# Grid: 64 px margins. A score column (52-288) and a main column (296-1016)
+# that holds the diagram; the text block hangs from the c-file line (476).
+# The score sheet starts level with rank 8 on a half-square pitch. On answer
+# cards the plain-words note sits at the foot of the score column, level
+# with the board's bottom edge. Everything that matters sits inside the
+# centred 1080 x 1080 safe zone (y 135-1215) and is at least 28 px.
+# Three sizes: L (the number), M (all text), S (score sheet, coordinates,
+# trap number and footer, which are details for people who open the image).
 
 CARD_W, CARD_H = 1080, 1350
 SQ = 90
 BX, BY = 296, 372
 TEXT_X = BX + 2 * SQ
+HERO_TOP = 136          # puts the top of the lining figures at y ~150, inside the safe zone
 
 
 def card_frame(data, trap, total, answer):
     side = "Answer" if answer else "Trap"
     return (lockup(64, 58, M) +
             '<div class="abs mono faded" style="right:64px;top:%dpx;font-size:%dpx">%s %02d<span style="opacity:.6"> / %d</span></div>'
-            % (78, S, side, trap.number, total))
+            % (80, S, side, trap.number, total))
 
 
-def engine_name(data):
-    return str(data.get("engine", "Stockfish 16"))
-
-
-def big_number(value):
-    return ('<div class="abs num" style="left:50px;top:122px;font-size:%dpx">%s<span style="font-size:.6em;'
-            'letter-spacing:0;margin-left:.04em">%%</span></div>' % (L, value))
+def big_number(value, suffix="%"):
+    """The hero: lining Young Serif figures, with the suffix at text size set
+    on the baseline, tucked against the last figure so it reads as one unit."""
+    whole, half = (value[:-1], "\u00bd") if value.endswith("\u00bd") else (value, "")
+    return ('<div class="abs" style="left:52px;top:%dpx;display:flex;align-items:baseline">'
+            '<span class="num" style="font-size:%dpx">%s</span>'
+            '<span class="num" style="font-size:%dpx;margin-left:-6px;letter-spacing:0">%s%s</span></div>'
+            % (HERO_TOP, L, esc(whole), M, half, esc(suffix)))
 
 
 def head_text(first, second):
-    return ('<div class="abs" style="left:%dpx;top:166px;width:%dpx">'
-            '<div class="txt" style="font-size:%dpx;line-height:1.24">%s</div>'
-            '<div class="serif" style="font-size:%dpx;line-height:1.2;margin-top:14px">%s</div></div>'
+    return ('<div class="abs" style="left:%dpx;top:146px;width:%dpx">'
+            '<div class="txt" style="font-size:%dpx;line-height:1.25">%s</div>'
+            '<div class="serif" style="font-size:%dpx;line-height:1.2;margin-top:12px">%s</div></div>'
             % (TEXT_X, 1016 - TEXT_X, M, first, M, second))
 
 
-def score_block(rows, highlight_from=None):
+def _note_lines(text, width=200):
+    """Rough line count for the margin note at size M (moves set in the wide mono)."""
+    words, lines, used = ellipsis(text).split(), 1, 0
+    for word in words:
+        mono = bool(_SAN.search(word))
+        w = len(word) * (M * (0.66 if mono else 0.5)) + M * 0.27
+        if used + w > width and used:
+            lines, used = lines + 1, w
+        else:
+            used += w
+    return lines
+
+
+def score_block(rows, highlight_from=None, reserve=0):
+    """The score sheet, from rank 8 down. If the margin note needs the space
+    at the foot of the column, the earliest opening moves are left off."""
     pitch = SQ // 2
-    top = BY + SQ if len(rows) <= 14 else BY
-    return ('<div class="abs" style="left:52px;top:%dpx;width:236px">%s</div>'
-            % (top + 2, score_column(rows, S, pitch, highlight_from)))
+    room = (8 * SQ - reserve) // pitch
+    if len(rows) > room:
+        cut = len(rows) - room
+        rows = rows[cut:]
+        if highlight_from is not None:
+            highlight_from -= cut
+    return ('<div class="abs" style="left:46px;top:%dpx;width:242px">%s</div>'
+            % (BY + 2, score_column(rows, S, pitch, highlight_from)))
+
+
+def margin_note(text):
+    lines = _note_lines(text)
+    height = round(lines * M * 1.2)
+    return ('<div class="abs txt" style="left:52px;top:%dpx;width:200px;font-size:%dpx;line-height:1.2">%s</div>'
+            % (BY + 8 * SQ - height + 4, M, prose(text))), height + 34
 
 
 def footer(data):
@@ -484,89 +678,103 @@ def footer(data):
 
 
 def caption(lines):
-    return ('<div class="abs mono" style="left:%dpx;top:%dpx;width:%dpx;font-size:%dpx;line-height:1.42">%s</div>'
-            % (BX, BY + 8 * SQ + 58, 8 * SQ + 40, S, "<br>".join(lines)))
+    return ('<div class="abs txt" style="left:%dpx;top:%dpx;width:%dpx;font-size:%dpx;line-height:1.18">%s</div>'
+            % (BX, BY + 8 * SQ + 44, 8 * SQ + 40, M, "<br>".join(lines)))
+
+
+def source_line(data):
+    return '<span class="faded">%s · Lichess, both players %s</span>' % (esc(engine_name(data)), esc(band(data)))
+
+
+def move_html(text):
+    return '<span class="mono" style="font-weight:500;white-space:nowrap">%s</span>' % notation(text)
 
 
 def question(data, trap, total):
     mover = side_name(trap.board.turn)
     rows = score_rows(trap.sans, blank=True)
-    last = notation(trap.line_text().split()[-1])
-    body = (card_frame(data, trap, total, False) + big_number(percent(trap.record["error_share"])) +
-            head_text("of %s players<br>bite here. <span style=\"font-weight:600\">%s to move.</span>"
-                      % (esc(band(data)), mover), "%s." % esc(opening_of(trap))) +
+    body = (card_frame(data, trap, total, False) + big_number(percent(wrong_share(trap))) +
+            head_text("of %s games at %s<br>go wrong here. <span style=\"font-weight:600\">%s to move.</span>"
+                      % (thousands(trap.record["games"]), esc(band(data)), mover), "%s." % esc(opening_of(trap))) +
             '<div class="abs" style="left:%dpx;top:%dpx">%s</div>' % (BX, BY, board_svg(trap.board, SQ, uid="q")) +
             score_block(rows) +
-            caption(['<span class="faded">n = %s games reached this position.</span>' % thousands(trap.record["games"]),
-                     '<span class="faded">Lichess, both players %s. %s.</span>' % (esc(band(data)), esc(engine_name(data)))]) +
+            caption([source_line(data)]) +
             footer(data))
     return page(CARD_W, CARD_H, body)
 
 
 def answer(data, trap, total):
-    route, hook, plies = catch(trap)
+    strokes, hook, plies = catch(trap)
     mistake = trap.top
     move = chess.Move.from_uci(mistake["uci"])
     us = side_name(trap.color)
     rows = score_rows(trap.sans + [mistake["san"] + "?"] + trap.punish[:plies])
     split = len(score_rows(trap.sans + [mistake["san"]]))
-    mistake_txt = notation(trap.mistake_text() + "?")
-    body = (card_frame(data, trap, total, True) + big_number(percent(mistake["our_score"])) +
-            head_text("%s\u2019s real score<br>after <span class=\"mono\" style=\"font-size:.86em;font-weight:600;"
-                      "white-space:nowrap\">%s</span>" % (us, mistake_txt),
-                      "%s." % esc(title_of(trap))) +
+    played = move_html(trap.mistake_text() + "?")
+    share, games = percent(mistake["share"]), mistake["games"]
+    if games < SMALL_SAMPLE:
+        hero = big_number(points(mistake["our_score"], games), "/%d" % games)
+        first = ("%s’s points from those %d games<br>after %s (%s%% of %s)."
+                 % (us, games, played, share, thousands(trap.record["games"])))
+    else:
+        hero = big_number(percent(mistake["our_score"]))
+        first = ("%s’s score after %s<br>(played in %s%% of %s games)."
+                 % (us, played, share, thousands(trap.record["games"])))
+    note, reserve = margin_note(plain_of(trap))
+    body = (card_frame(data, trap, total, True) + hero +
+            head_text(first, "%s." % esc(title_of(trap))) +
             '<div class="abs" style="left:%dpx;top:%dpx">%s</div>'
-            % (BX, BY, board_svg(trap.after, SQ, catch_=(route, hook), trail=move, seed=trap.number * 7 + 3, uid="a")) +
-            score_block(rows, highlight_from=split) +
+            % (BX, BY, board_svg(trap.after, SQ, catch_=(strokes, hook), trail=move, seed=trap.number * 7 + 3, uid="a")) +
+            score_block(rows, highlight_from=split, reserve=reserve) + note +
             caption(['<span style="font-weight:600">Best defence %s</span> <span class="faded">(Stockfish %s)</span>'
-                     % (notation(trap.best_text()), esc(pawns(trap.record["best_cp"]))),
-                     '<span class="faded">After %s %s \u00b7 n = %s Lichess games, %s</span>'
-                     % (mistake_txt, esc(pawns(mistake["our_cp"])), thousands(mistake["games"]), esc(band(data)))]) +
+                     % (move_html(trap.best_text()), esc(pawns(trap.record["best_cp"]))),
+                     source_line(data)]) +
             footer(data))
     return page(CARD_W, CARD_H, body)
+
+
+TAGLINE = "Stockfish finds the best move. We find the one they get wrong."
 
 
 # ---------------------------------------------------------------- X
 
 def profile():
-    """Avatar: the board device on its own. A red line drops from the top of
-    the frame into a hook whose bend holds a knight, on water. Built to read
-    inside X's circle crop at 48 px."""
-    size, sq = 800, 430
-    tx, ty = 404, 436                       # where the caught piece sits
-    bend = 0.47
-    eye_y = 128
-    shank = (ty + sq * 0.5 - sq * bend - eye_y) / sq
-    ex = tx - sq * bend
-    knight = piece_svg("wN", tx - sq * 0.5, ty - sq * 0.5, sq, ink=WATER, paper=PAPER)
-    body = f"""<svg class="abs" style="left:0;top:0" width="{size}" height="{size}">
-{knight}
-<path d="M{ex:.1f} -20 L{ex:.1f} {eye_y + 8:.1f}" stroke="{HOOK}" stroke-width="{sq * 0.075:.1f}" stroke-linecap="round"/>
-{hook_shape(ex, eye_y, sq, HOOK, WATER, sq * 0.035, shank=shank, bend=bend, point=shank - 0.36, weight=0.135, eye=0.07)}
-</svg>"""
-    return page(size, size, body, bg=WATER, fg=PAPER)
+    """Avatar: the board device on its own, on paper. A thick red hook holds a
+    small ink knight. Paper keeps the disc edge visible on X's black theme and
+    gives the red real contrast; the hook, not the knight, carries the mark."""
+    size = 800
+    u = 560
+    weight = 0.13
+    ex = 400 - u * 0.33 - u * 0.012
+    ey = 400 - u * 0.48 + u * 0.015
+    glyph, _ = hook_glyph(ex, ey, u, HOOK, weight=weight, bend=0.33, shank=0.5, rise=0.27)
+    piece = u * 0.52
+    knight = piece_svg("bN", ex + u * 0.33 - piece / 2 + u * 0.01, ey + u * 0.5 - piece * 0.5 + u * 0.02, piece, INK, PAPER)
+    snell = ('<path d="M%.1f %.1f L%.1f %.1f" stroke="%s" stroke-width="%.1f" stroke-linecap="round"/>'
+             % (ex, ey - u * 0.13, ex, ey + 2, HOOK, u * weight * 0.62))
+    body = f"""<svg class="abs" style="left:0;top:0" width="{size}" height="{size}">{knight}{snell}{glyph}</svg>"""
+    return page(size, size, body)
 
 
 def banner(data, traps):
-    trap = pick(traps, "Bishop's Opening: the queen on h5")
-    route, hook, _ = catch(trap)
+    trap = pick(traps, "1.e4 e5 2.Bc4 Bc5 3.Qh5")
     sq = 47
-    board = board_svg(trap.after, sq, catch_=(route, hook), trail=chess.Move.from_uci(trap.top["uci"]),
+    board = board_svg(trap.after, sq, catch_=catch(trap)[:2], trail=chess.Move.from_uci(trap.top["uci"]),
                       coords=True, coord_size=16, seed=19 * 7 + 3, uid="bn")
+    first, second = TAGLINE.split(". ", 1)
     body = f"""
 {lockup(64, 46, 30)}
-<div class="abs serif" style="left:60px;top:132px;font-size:62px;line-height:1.08;letter-spacing:-0.02em">Stockfish finds the best move.<br>We find the one they miss.</div>
-<div class="abs mono faded" style="left:340px;top:380px;font-size:16px;line-height:1.65;white-space:nowrap">Opening traps that real {esc(band(data))} players fall for,<br>found in {thousands(data.get('sample_games') or 0)} Lichess games, checked by {esc(engine_name(data))}.</div>
-<div class="abs" style="left:1052px;top:52px">{board}</div>
+<div class="abs serif" style="left:60px;top:140px;font-size:62px;line-height:1.08;letter-spacing:-0.02em">{esc(first)}.<br>{esc(second)}</div>
+<div class="abs" style="left:1060px;top:44px">{board}</div>
 """
     return page(1500, 500, body)
 
 
 # ---------------------------------------------------------------- store
 
-def pick(traps, name):
+def pick(traps, line):
     for trap in traps:
-        if trap.name == name:
+        if trap.line_text() == line:
             return trap
     return traps[0]
 
@@ -585,41 +793,44 @@ def specs(data, traps):
 
 
 def thumbnail(data, traps):
-    trap = pick(traps, "Bishop's Opening: the queen on h5")
-    route, hook, _ = catch(trap)
-    sq = 62
-    board = board_svg(trap.after, sq, catch_=(route, hook), trail=chess.Move.from_uci(trap.top["uci"]),
-                      coords=True, coord_size=19, coord_color=FADED, seed=19 * 7 + 3, uid="th")
-    lines = ["%d traps" % len(traps), "%s Lichess games" % thousands(data.get("sample_games") or 0),
-             "Both players %s" % band(data), "Checked by %s" % engine_name(data), "PDF, drills, PGN"]
-    rows = "".join('<div style="padding:13px 0;border-top:1px solid %s">%s</div>' % (WATER_FADED, esc(t)) for t in lines)
+    """Gumroad tile: the title across the top, one plate filling the lower
+    right, two facts. Built to read at 250, 160 and 100 px."""
+    trap = pick(traps, "1.e4 e5 2.Bc4 Bc5 3.Qh5")
+    sq = 76
+    board = board_svg(trap.after, sq, catch_=catch(trap)[:2], trail=chess.Move.from_uci(trap.top["uci"]),
+                      coords=True, coord_size=19, seed=19 * 7 + 3, uid="th")
     body = f"""
-{lockup(72, 58, 48, color=PAPER)}
-<div class="abs num" style="left:62px;top:178px;font-size:172px;line-height:.9;color:{PAPER};letter-spacing:-0.03em">1.e4 e5<br>Traps</div>
-<div class="abs serif" style="left:72px;top:500px;font-size:48px;color:{PAPER}">for White</div>
-<div class="abs mono" style="left:72px;top:660px;width:330px;white-space:nowrap;font-size:19px;line-height:1.35;color:{PAPER}">{rows}</div>
-<div class="abs" style="left:512px;top:534px">{plate(board, 60, 36, 58)}</div>
+{lockup(72, 56, 48, color=PAPER)}
+<div class="abs num" style="left:62px;top:150px;font-size:148px;line-height:1;color:{PAPER};white-space:nowrap">1.e4 e5 Traps</div>
+<div class="abs serif" style="left:72px;top:318px;font-size:48px;color:{PAPER}">for White</div>
+<div class="abs txt" style="left:72px;top:984px;font-size:48px;line-height:1.15;color:{WATER_FADED}">
+{len(traps)} traps<br>{thousands(data.get('sample_games') or 0)} games</div>
+<div class="abs" style="left:440px;top:420px">{plate(board, 52, 30, 50)}</div>
 """
     return page(1200, 1200, body, bg=WATER, fg=PAPER, faded=WATER_FADED)
 
 
 def cover_hero(data, traps):
-    """Plate I: the pack as a catalogue plate, on water."""
-    trap = pick(traps, "Traxler: the greedy knight")
-    route, hook, _ = catch(trap)
+    """Plate 17: the pack as a catalogue plate, on water."""
+    trap = pick(traps, "1.e4 e5 2.Nf3 Nf6 3.Nxe5 Nxe4 4.Qe2 d5 5.d3")
     sq = 78
-    board = board_svg(trap.after, sq, catch_=(route, hook), trail=chess.Move.from_uci(trap.top["uci"]),
-                      coords=True, coord_size=17, seed=3 * 7 + 3, uid="c1")
+    board = board_svg(trap.after, sq, catch_=catch(trap)[:2], trail=chess.Move.from_uci(trap.top["uci"]),
+                      coords=True, coord_size=17, seed=trap.number * 7 + 3, uid="c1")
+    top = trap.top
+    if top["games"] < SMALL_SAMPLE:
+        result = "White scored %s of %d points" % (points(top["our_score"], top["games"]), top["games"])
+    else:
+        result = "White scored %s%% in %s games" % (percent(top["our_score"]), thousands(top["games"]))
     cap = ('<div class="mono" style="font-size:17px;line-height:1.5;margin-top:58px;color:%s">'
-           'Plate %d. %s, after %s<br><span style="color:%s">White scores %s%% in %s games. Best defence %s.</span></div>'
-           % (INK, trap.number, esc(trap.name), notation(trap.mistake_text() + "?"), FADED,
-              percent(trap.top["our_score"]), thousands(trap.top["games"]), notation(trap.best_text())))
+           'Plate %d. %s, after %s<br><span style="color:%s">%s. Best defence %s.</span></div>'
+           % (INK, trap.number, esc(trap.name), notation(trap.mistake_text() + "?"), FADED, result,
+              notation(trap.best_text())))
     rows = "".join('<div style="display:grid;grid-template-columns:150px auto;padding:9px 0"><span style="color:%s">%s</span>'
                    '<span style="color:%s">%s</span></div>' % (PAPER, esc(v), WATER_FADED, esc(k))
                    for v, k in specs(data, traps))
     body = f"""
 {lockup(80, 62, 44, color=PAPER)}
-<div class="abs num" style="left:72px;top:188px;font-size:150px;line-height:.92;color:{PAPER};letter-spacing:-0.03em">1.e4 e5<br>Traps</div>
+<div class="abs num" style="left:72px;top:180px;font-size:150px;line-height:.92;color:{PAPER}">1.e4 e5<br>Traps</div>
 <div class="abs serif" style="left:80px;top:482px;font-size:44px;color:{PAPER}">for White</div>
 <div class="abs mono" style="left:80px;top:620px;width:620px;font-size:17px;line-height:1.4">{rows}</div>
 <div class="abs" style="left:826px;top:0px;right:0;height:900px;background:{PAPER}"></div>
@@ -633,18 +844,17 @@ def cover_inside(data, traps):
     sq = 20
     cells = []
     for trap in traps:
-        route, hook, _ = catch(trap)
-        board = board_svg(trap.after, sq, catch_=(route, hook), coords=False, seed=trap.number * 7 + 3,
+        board = board_svg(trap.after, sq, catch_=catch(trap)[:2], coords=False, seed=trap.number * 7 + 3,
                           uid="ci%d" % trap.number, hatch=3.3)
         cells.append('<div><div style="padding:3px">%s</div>'
                      '<div class="mono" style="font-size:13px;line-height:1.4;margin-top:13px;white-space:nowrap;letter-spacing:-0.02em">'
-                     '<span style="font-weight:600">%02d</span>&nbsp;%s<br><span class="faded">%s%% bite</span></div></div>'
-                     % (board, trap.number, esc(opening_of(trap)), percent(trap.record["error_share"])))
+                     '<span style="font-weight:600">%02d</span>&nbsp;%s<br><span class="faded">%s%% go wrong</span></div></div>'
+                     % (board, trap.number, esc(opening_of(trap).split(",")[-1].strip()), percent(wrong_share(trap))))
     cells.append('<div class="txt" style="font-size:13px;line-height:1.45;padding-top:4px">Each board shows the position '
-                 'after the most common mistake. The red line is the punishment. The hook marks what it catches.</div>')
+                 'after the most common mistake. The red line is the punishment. The hook marks the target.</div>')
     body = f"""
 {lockup(64, 44, 32)}
-<div class="abs serif" style="left:437px;top:54px;font-size:32px;line-height:1">{len(traps)} traps that {esc(band(data))} players really fall for</div>
+<div class="abs serif" style="left:437px;top:54px;font-size:32px;line-height:1">{len(traps)} traps that {esc(band(data))} players fall for</div>
 <div class="abs mono faded" style="right:64px;top:64px;font-size:13px">Contents</div>
 <div class="abs" style="left:64px;top:144px;width:1472px;display:grid;grid-template-columns:repeat(8, 166px);justify-content:space-between;row-gap:30px">{"".join(cells)}</div>
 """
@@ -653,35 +863,42 @@ def cover_inside(data, traps):
 
 def cover_method(data, traps):
     """Anatomy of a trap: one plate with a numbered key, as in a field guide."""
-    trap = pick(traps, "Bishop's Opening: the queen on h5")
-    route, hook, plies = catch(trap)
+    trap = pick(traps, "1.e4 e5 2.Bc4 Bc5 3.Qh5")
+    strokes, hook, plies = catch(trap)
     sq = 86
     bx, by = 112, 92
     last = trap.board.peek()
     mistake = chess.Move.from_uci(trap.top["uci"])
     best = trap.board.parse_san(trap.record["best_reply_san"]) if trap.record["best_reply_san"] else None
     punish = " ".join(trap.punish_text().split()[:plies])
+    engine = engine_name(data).split()[0]
     notes = [
-        (last.to_square, "The bait", "%s. Every move White plays in the pack stays within half a pawn of %s's best."
-         % (notation(trap.line_text().split()[-1]), esc(engine_name(data).split()[0]))),
-        (mistake.to_square, "The bite", "%s, played in %s%% of %s games. In all, %s%% of players went wrong here."
+        (last.to_square, "The bait", "%s. Every move White plays in the pack stays within half a pawn of %s’s best."
+         % (notation(trap.line_text().split()[-1]), esc(engine))),
+        (mistake.to_square, "The bite", "%s was played in %s%% of %s games. In all, %s%% of games went wrong here."
          % (notation(trap.mistake_text() + "?"), percent(trap.top["share"]), thousands(trap.record["games"]),
-            percent(trap.record["error_share"]))),
+            percent(wrong_share(trap)))),
         (hook, "The hook", "%s. White then scored %s%% in %s real games."
          % (notation(punish), percent(trap.top["our_score"]), thousands(trap.top["games"]))),
     ]
     if best is not None:
         notes.append((best.to_square, "The escape", "%s holds the balance (%s %s)."
-                      % (notation(trap.best_text()), esc(engine_name(data).split()[0]), esc(pawns(trap.record["best_cp"])))))
+                      % (notation(trap.best_text()), esc(engine), esc(pawns(trap.record["best_cp"])))))
+    red = draw_catch((strokes, hook), sq, 19 * 7 + 3)[2]
     keys, blocks = [], []
     for index, (square, label, text) in enumerate(notes):
         x, y = square_xy(square, sq)
-        kx, ky = x + sq * 0.17, y + sq * 0.17
-        if square == hook:   # the hook fills its square: key it from outside the frame
-            file = chess.square_file(square)
+        file = chess.square_file(square)
+        if trap.after.piece_at(square) is None and square != hook:
+            kx, ky = x + sq * 0.5, y + sq * 0.5          # empty square: key it in the middle
+        elif square == hook or file in (0, 7):
+            # the hook fills its square, and edge pieces have no free corner: key from outside the frame
             kx = 8 * sq + sq * 0.42 if file >= 4 else -sq * 0.62
             ky = y + sq * 0.5
-        keys.append('<circle cx="%.1f" cy="%.1f" r="15" fill="%s" stroke="%s" stroke-width="3"/>'
+        else:   # the free corner furthest from any red
+            corners = [(x + sq * a, y + sq * b) for a in (0.11, 0.89) for b in (0.11, 0.89)]
+            kx, ky = max(corners, key=lambda c: _clearance(c, red))
+        keys.append('<circle cx="%.1f" cy="%.1f" r="14" fill="%s" stroke="%s" stroke-width="3"/>'
                     '<text x="%.1f" y="%.1f" font-family="Martian Mono" font-weight="600" font-size="17" fill="%s" '
                     'text-anchor="middle">%d</text>' % (kx, ky, INK, PAPER, kx, ky + 6, PAPER, index + 1))
         blocks.append('<div style="display:grid;grid-template-columns:52px auto;margin-bottom:34px">'
@@ -689,7 +906,7 @@ def cover_method(data, traps):
                       '<div class="serif" style="font-size:32px;line-height:1">%s</div>'
                       '<div class="mono" style="font-size:17px;line-height:1.55;margin-top:12px">%s</div></div></div>'
                       % (index + 1, label, text))
-    board = board_svg(trap.after, sq, catch_=(route, hook), trail=mistake, coords=True, coord_size=17,
+    board = board_svg(trap.after, sq, catch_=(strokes, hook), trail=mistake, coords=True, coord_size=17,
                       seed=19 * 7 + 3, uid="c3")
     board = board[:-len("</svg>")] + "".join(keys) + "</svg>"
     body = f"""
@@ -768,11 +985,15 @@ def main(argv=None):
     data = dict(data, title=meta.get("title", ""))
     out = pathlib.Path(args.output)
     only = set((args.only or "cards,x,store,sheet").split(","))
-    pick = {int(n) for n in args.traps_only.split(",")} if args.traps_only else None
+    wanted = {int(n) for n in args.traps_only.split(",")} if args.traps_only else None
+    if args.notes:
+        notes = json.loads(pathlib.Path(args.notes).read_text(encoding="utf-8"))
+        for trap in traps:
+            trap.plain = notes.get(" ".join(trap.record["moves"]), {}).get("plain", "")
     jobs = []
     if "cards" in only:
         for trap in traps:
-            if pick and trap.number not in pick:
+            if wanted and trap.number not in wanted:
                 continue
             jobs.append((question(data, trap, len(traps)), out / "cards" / ("trap-%02d.png" % trap.number), CARD_W, CARD_H))
             jobs.append((answer(data, trap, len(traps)), out / "cards" / ("trap-%02d-answer.png" % trap.number), CARD_W, CARD_H))
