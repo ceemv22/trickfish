@@ -13,7 +13,7 @@ Trickfish finds opening traps that real players at a given rating actually fall 
 
 ## Products
 
-- **Trap Packs**: PDF guide with diagrams, drills and an answer key, plus a PGN for any chess app. First pack: **[1.e4 e5 Traps for White (1200-1599)](https://ceemv22.gumroad.com/l/e4e5-traps-white)**, USD 14. It has 23 traps from 902,003 real games.
+- **Trap Packs**: PDF guide with diagrams, drills and an answer key, plus a PGN for any chess app. First pack: **[1.e4 e5 Traps for White (1200-1599)](https://ceemv22.gumroad.com/l/e4e5-traps-white)**, USD 14. It has 23 traps from 902,003 real games. Try five of them free first: **[5 Free Traps](https://ceemv22.gumroad.com/l/5-free-traps)**.
 - **[PGN Workbook](https://ceemv22.gumroad.com/l/trickfish-pgn-workbook)** (Windows, USD 9): turns your PGN lines into student worksheets and a coach key. [Free sample output](docs/workbook-preview.md).
 
 ## Build a trap pack

@@ -1,5 +1,7 @@
 # Gumroad listing: 5 Free Traps
 
+Live since 2026-11-11: https://ceemv22.gumroad.com/l/5-free-traps
+
 ## Name
 5 Free Traps
 
