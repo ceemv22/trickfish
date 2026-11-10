@@ -1,5 +1,7 @@
 # Gumroad listing: 1.e4 e5 Traps for White (1200–1599)
 
+Live since 2026-11-10: https://ceemv22.gumroad.com/l/e4e5-traps-white
+
 Owner steps (~5 minutes): Gumroad → New product → Digital product. Paste the fields below, upload the PDF and PGN from `dist/e4e5-white-1200/`, publish, and send Claude the URL.
 
 **Name:** 1.e4 e5 Traps for White: what 1200–1599 players really fall for

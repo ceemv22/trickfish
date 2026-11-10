@@ -1,6 +1,6 @@
 # X posts: first two weeks (1.e4 e5 Traps for White)
 
-Every number below comes from the pack data: 902,003 Lichess games (October 2026) in which both players were rated 1200–1599. Images are the cards in `dist/e4e5-white-1200/cards/`. `trap-NN.png` is the question, `trap-NN-answer.png` is the answer. Replace `[LINK]` with the Gumroad URL.
+Every number below comes from the pack data: 902,003 Lichess games (October 2026) in which both players were rated 1200–1599. Images are the cards in `dist/e4e5-white-1200/cards/`. `trap-NN.png` is the question, `trap-NN-answer.png` is the answer. Replace `https://ceemv22.gumroad.com/l/e4e5-traps-white` with the Gumroad URL.
 
 Ten of the 23 traps are shown publicly. The other 13, plus the drills and the PGN, are only in the pack.
 
@@ -23,7 +23,7 @@ Ten of the 23 traps are shown publicly. The other 13, plus the drills and the PG
 **Post 3**
 > All 23 traps in one pack: each with real-game stats, the punishment, the best defence, drills and a PGN for your Lichess study.
 >
-> 1.e4 e5 Traps for White (1200–1599), $14: [LINK]
+> 1.e4 e5 Traps for White (1200–1599), $14: https://ceemv22.gumroad.com/l/e4e5-traps-white
 
 ---
 
