@@ -26,7 +26,7 @@ Wikipedia's editors and Pangram both make the same point: one tell proves nothin
 - [ ] No em dashes. Pangram measured them at 17 per 10,000 words in AI text against 2 in human text. The engagement study found em dashes didn't hurt performance, but readers still name them first as an AI sign, so we use a period, colon or comma. En dashes in number ranges (1200–1599) are fine.
 - [ ] No emoji bullets, no rocket, fire or brain emojis, no 🧵 thread emoji, no ✅. NCC Group calls emoji bullets a "straightforward" LLM sign. One deliberate emoji a month at most.
 - [ ] Hashtags: zero. One only if a chess event is trending and we really belong in it.
-- [ ] In posts, no Markdown-style bold and no bullet lists. Pangram has Markdown at about 12x and bullet lists at about 9x in AI text. On the Gumroad page, bullets are fine for the file list only.
+- [ ] In posts, no Markdown-style bold and no bullet lists. Pangram has Markdown at about 12x and bullet lists at about 9x in AI text. The ban applies to posts only: on the Gumroad page, short bullets help phone readers scan the tests, examples and file list.
 - [ ] No Title Case Headlines In Running Copy. Use sentence case.
 
 **Claims**

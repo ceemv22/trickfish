@@ -6,7 +6,7 @@ We're the friend at the club who went through 902,003 Lichess games and came bac
 
 **Tagline:** Stockfish finds the best move. We find the one they get wrong.
 
-We're keeping it. It names the tool every reader already uses, puts the opponent ("they") in the frame, and states the product in nine words. The alternatives we tried were either cleverer and vaguer, or turned into a three-part slogan.
+We're keeping it. It names the tool every reader already uses, puts the opponent ("they") in the frame, and states the product in twelve words. The alternatives we tried were either cleverer and vaguer, or turned into a three-part slogan. It's a parallel, and it's the only one the brand gets. Don't put another "X does this. We do that." line next to it.
 
 ## Who we talk to
 
@@ -35,7 +35,8 @@ delve, elevate, unlock, unleash, seamless, game-changer, next level, level up, m
 2. **"Scored", never "won".** Score is points per game (win 1, draw ½). 82% is a score, not a win rate.
 3. **Say what the percentage is of.** "65% of 2,404 games went wrong here" is a share of games reaching the position, counting every reply that costs 1.2+ pawns. The most common single mistake is a different, smaller number (7...Ke8, 31%). Don't swap them.
 4. **Round normally, to whole percents** (64.6 → 65). Don't round up into a nicer phrase: 64.6% isn't "two thirds".
-5. **Name the sample when it's small.** If the mistake happened in fewer than about 100 games, say how many (Trap 2: 98%, 48 games).
+5. **Under 50 games, give points, not a percentage.** That's what the cards do (`SMALL_SAMPLE = 50` in the studio renderer): "White took 47 points from 48 games", not "98%". Between 50 and about 100 games, give the percentage and the game count together.
 6. **No promises about the reader's future.** No rating gains, no "win in 10 moves", no time saved. The games already happened. Yours haven't.
 7. **The traps are sound, not unbeatable.** When someone finds the best defence you're fine, not winning. Say so.
-8. **Don't use the word "every" carelessly.** The positions behind the pack range from 100 to 6,076 games each. "Backed by thousands of games" is true of the pack, not of each trap.
+8. **38 positions passed the tests. 23 are in the pack.** Never imply that everything which passed went in.
+9. **Don't use the word "every" carelessly.** The positions behind the pack range from 100 to 6,076 games each. "Backed by thousands of games" is true of the pack, not of each trap.
