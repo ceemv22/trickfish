@@ -58,11 +58,45 @@ class StudioTests(unittest.TestCase):
         from trickfish.trappack_render import Trap
 
         trap = Trap(record(), "white", 1)
-        data = {"color": "white", "band": "1200-1599"}
-        self.assertIn("20<span", studio.question(data, trap, 1))
+        data = {"color": "white", "band": "1200-1599", "title": "1.e4 e5 Traps for White"}
+        question = studio.question(data, trap, 1)
+        self.assertIn(">20<span", question)            # 20% of players go wrong (error_share 0.2)
+        self.assertIn("1,572 games", question)        # sample size of the position
+        self.assertNotIn("g6?", question)             # the question card never gives the answer away
         markup = studio.answer(data, trap, 1)
-        self.assertIn("3…g6", markup)
-        self.assertIn("85%", markup)
+        self.assertIn("3\u2026g6?", markup)            # typographic ellipsis, annotated mistake
+        self.assertIn(">85<span", markup)             # White's real score after 3...g6
+        self.assertIn("+6.7", markup)                 # engine evaluation after the mistake
+        self.assertIn("Best defence", markup)
+        self.assertIn("1200\u20131599", markup)        # source line on every card
+
+    def test_route_typefaces_only(self):
+        from trickfish import studio
+        from trickfish.trappack_render import Trap
+
+        trap = Trap(record(), "white", 1)
+        data = {"color": "white", "band": "1200-1599"}
+        for markup in (studio.question(data, trap, 1), studio.answer(data, trap, 1), studio.profile()):
+            self.assertNotIn("Inter", markup)
+            self.assertNotIn("gradient", markup.lower())
+            self.assertNotIn("box-shadow", markup)
+            for family in ("young-serif", "schibsted-grotesk", "martian-mono"):
+                self.assertIn(family, markup)
+        for path in studio.FONTS.glob("*/*.woff2"):
+            self.assertTrue((path.parent / "OFL.txt").exists())
+
+    def test_answer_draws_the_line_and_hook_in_red_only(self):
+        from trickfish import studio
+        from trickfish.trappack_render import Trap
+
+        trap = Trap(record(), "white", 1)
+        data = {"color": "white", "band": "1200-1599"}
+        route, hook, plies = studio.catch(trap)
+        self.assertEqual(route[0], chess.H5)        # automatic fallback: the queen's route ...
+        self.assertEqual(hook, chess.H8)            # ... ending on the rook it wins
+        board = studio.board_svg(trap.after, 90, catch_=(route, hook))
+        self.assertIn(studio.HOOK, board)
+        self.assertNotIn(studio.HOOK, studio.board_svg(trap.board, 90))
 
 
 if __name__ == "__main__":
