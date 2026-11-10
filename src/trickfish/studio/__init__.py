@@ -1124,6 +1124,7 @@ def main(argv=None):
     parser.add_argument("--output", required=True)
     parser.add_argument("--only", help="comma list: cards,x,store,sheet,pdf")
     parser.add_argument("--sampler", help="spec.json: render only the listed traps (original pack numbers) as a free sampler")
+    parser.add_argument("--video-traps", help="comma list of trap numbers for --only video (1080x1920 mp4, silent)")
     parser.add_argument("--traps-only", help="comma list of trap numbers to render (cards only)")
     args = parser.parse_args(argv)
     data, meta, traps = load(args.traps, args.notes)
@@ -1173,6 +1174,12 @@ def main(argv=None):
         write_pgn(data, traps, out / "pdf" / (name + ".pgn"), meta.get("title", "Trickfish trap pack"))
     if jobs:
         render(jobs)
+    if "video" in only:
+        from trickfish.studio import video
+
+        numbers = [int(n) for n in args.video_traps.split(",")] if args.video_traps else [trap.number for trap in traps]
+        for number, seconds in video.make(data, traps, out / "video", numbers).items():
+            print("video trap-%02d.mp4: %.1f s" % (number, seconds))
     if "sheet" in only:
         render([(contact_sheet(out), out / "contact-sheet.png", 1980, 1740)])
     print("rendered %d frames into %s" % (len(jobs), out))
