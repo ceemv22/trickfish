@@ -10,3 +10,4 @@ build/
 # paid pack content stays out of the public repository
 packs/*/traps.json
 packs/*/notes.json
+packs/*/sampler.json
