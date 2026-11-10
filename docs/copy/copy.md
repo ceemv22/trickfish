@@ -435,3 +435,193 @@ Chess diagram after 1.e4 e5 2.Nf3 Nf6 3.Nxe5 Nxe4 4.Qe2 d5 5.d3 Nf6, with a red 
 
 First pack: **[1.e4 e5 Traps for White](https://ceemv22.gumroad.com/l/e4e5-traps-white)**. 23 traps from 902,003 Lichess games between players rated 1200–1599, as a PDF with drills and a PGN. $14.
 ```
+
+---
+
+## 6. Days 15–30 (text only, no new trap cards)
+
+Same slots as section 2 (morning and evening, UTC times in `social/queue.json`). Days 15–30 use no cards. Polls are text-only, so the position is written out in the post. A poll's answer goes out in the evening as a reply to it, with no link: posts that contain a URL cost far more to publish, so the only links in this section are the two reminders (Days 20 and 28).
+
+Every number was recomputed from `packs/e4e5-white-1200/traps.json` and `notes.json` with `trappack_render.load`. Facts used:
+
+- Vienna Gambit 3.f4: 6,076 games, 25% (one in four) chose a reply costing 1.2+ pawns. 3...Nc6 came up in 1,087, the largest single mistake count in the data. 3...d5 (Stockfish's pick) in 635. 3...Bb4: 251 games, Stockfish +2.8 for White, White scored 55%.
+- Pack positions (23): in 13 the most common reply is Stockfish's top move, in 6 it is a mistake of 1.2+ pawns, in 4 it is neither. 7 positions have under 200 games (smallest 100, largest 6,076).
+- 38 positions passed; the 15 not in the pack range from 85 to 1,098 games; four of them are under 100 (85, 90, 92, 95); the smallest pack position has 100.
+- 1.e4 e5 2.Nf3 Nc6 3.d4 d6 4.dxe5 dxe5 5.Qxd8+: 1,044 games. 5...Kxd8 579 games, White scored 61%. 5...Nxd8 465 games, White scored 61%.
+- Petrov 3.d4 d6 4.dxe5 (164 games): 4...dxe5 91 games (55%), White scored 64%, costs 1.4 pawns. 4...Nxe4 68 games (41%), Stockfish's pick.
+- Ruy Lopez 4.O-O Nxe4 5.Re1 (537 games): 5...Nd6 174 (32%), 5...Nf6 155 (29%, costs 0.3), 5...d5 108 (20%, costs 2.3, White scored 66%), 5...f5 46 (9%).
+- Fried Liver 7.Qf3+ (2,404 games): 7...Kg8 came up 228 times and White scored 228 points. 7...Ke8: 756 games, White scored 82%.
+- Pack by move 2: 18 after 2.Nf3, 3 after 2.Bc4, 2 after 2.Nc3. By page title: Scotch 5, Ruy Lopez 4, Bishop's Opening 3.
+
+### Day 15 · Stat: the busiest position
+
+**Morning**
+```text
+The busiest position in the pack is the Vienna Gambit after 3.f4. 6,076 games reached it, and in about one in four Black chose a reply that costs 1.2+ pawns.
+
+The most common, 3...Nc6, came up 1,087 times. That's more than any other mistake in the data.
+```
+
+### Day 16 · Poll: Petrov, 3.d4
+
+**Morning (poll)**
+```text
+1.e4 e5 2.Nf3 Nf6 3.d4 d6 4.dxe5
+
+Black to move. Which would you play?
+```
+Poll options (300 minutes): 4...Nxe4 | 4...dxe5 | Something else
+
+**Evening reply** (answers the poll)
+```text
+4...Nxe4. Taking the pawn back first was the move. 41% of the 164 games found it.
+
+4...dxe5 was more popular (55%). 5.Qxd8+ Kxd8 6.Nxe5 and White is a pawn up. White scored 64% after it.
+```
+
+### Day 17 · Myth vs data: a pawn up
+
+**Morning**
+```text
+Myth: win a pawn and the points follow.
+
+1.e4 e5 2.Nf3 Nc6 3.d4 d6 4.dxe5 dxe5 5.Qxd8+. After 5...Nxd8? 6.Nxe5, White is a clean pawn up and scored 61%. After the correct 5...Kxd8, White also scored 61%.
+
+1,044 games. The extra pawn changed nothing in the score.
+```
+
+### Day 18 · Stat: the popular move
+
+**Morning**
+```text
+Is the move most people play the right one? Across the pack's 23 positions:
+
+13 times it's Stockfish's top move.
+6 times it's a mistake costing 1.2+ pawns.
+4 times it's neither.
+
+So the crowd is right a bit more than half the time.
+```
+
+### Day 19 · What we left out
+
+**Morning**
+```text
+38 positions passed our three tests. 23 are in the pack.
+
+The smallest position in the pack has 100 games. Four of the 15 that stayed out had fewer: 85, 90, 92 and 95.
+
+Every page shows its game count, so you can judge the sample yourself.
+```
+
+### Day 20 · Reminder 1 (link)
+
+**Morning**
+```text
+For anyone who just found us: 23 traps from 902,003 Lichess games at 1200–1599. A 37-page PDF with drills and an answer key, plus a PGN. $14.
+
+https://ceemv22.gumroad.com/l/e4e5-traps-white
+
+Trap 1 is free in the pinned thread.
+```
+
+### Day 21 · Poll: Ruy Lopez, 5.Re1
+
+**Morning (poll)**
+```text
+1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 4.O-O Nxe4 5.Re1
+
+Black to move. Which would you play?
+```
+Poll options (300 minutes): 5...Nd6 | 5...Nf6 | 5...d5 | 5...f5
+
+**Evening reply** (answers the poll)
+```text
+5...Nd6 is Stockfish's pick (32% of 537 games). 5...Nf6 is close, a third of a pawn worse (29%).
+
+5...d5 came up in 20% and costs 2.3 pawns. 6.d3 kicks the knight and White wins material in the centre. White scored 66%.
+```
+
+### Day 22 · Behind the method: who we counted
+
+**Morning**
+```text
+We only counted games where both players were rated 1200–1599, and we left out bullet.
+
+A 1500 beating a 1900 says less about 1500s than a 1500 playing a 1500. Blitz, rapid and classical only.
+```
+
+### Day 23 · Myth vs data: the engine's verdict
+
+**Morning**
+```text
+Myth: if Stockfish says White is winning, White wins.
+
+Vienna Gambit, 3.f4 Bb4. Stockfish has White +2.8 after it. In 251 games White scored 55%.
+
+That's why our third test looks at White's score, not just the eval.
+```
+
+### Day 24 · Where our numbers get thin
+
+**Morning**
+```text
+7 of the 23 positions in the pack rest on fewer than 200 games. The smallest has 100. The biggest has 6,076.
+
+Every page shows its count. A percentage from 100 games is a hint, not a law.
+```
+
+### Day 25 · Poll: what next
+
+**Morning (poll)**
+```text
+If we run the numbers on another opening, which one?
+
+No promises. Just counting votes.
+```
+Poll options (1440 minutes): 1.e4 c5, as White | 1.d4 d5, as White | 1.e4 e5, as Black | 1.d4, as Black
+
+### Day 26 · Behind the method: "scored"
+
+**Morning**
+```text
+When we say White scored 82%, we mean points per game. A win is 1, a draw is ½.
+
+It isn't a win rate. After 7...Ke8 in the Fried Liver, White scored 82% across 756 games.
+```
+
+### Day 27 · Stat: the clean sheet
+
+**Morning**
+```text
+Fried Liver, 7.Qf3+. Black played 7...Kg8 in 228 games.
+
+White took 228 points from those 228 games. No draws, no losses.
+```
+
+### Day 28 · Reminder 2 (link)
+
+**Morning**
+```text
+Trap 1 is in the pinned thread. The other 22 are in the pack: a 37-page PDF with a drill for each trap, plus a PGN for your Lichess study. $14, and a refund within 30 days if it's not for you.
+
+https://ceemv22.gumroad.com/l/e4e5-traps-white
+```
+
+### Day 29 · Stat: where the traps start
+
+**Morning**
+```text
+Where the 23 traps start: 18 come after 1.e4 e5 2.Nf3, three after 2.Bc4 and two after 2.Nc3.
+
+By page title, Scotch has the most with five. Ruy Lopez has four.
+```
+
+### Day 30 · What the pack doesn't do
+
+**Morning**
+```text
+The pack covers White after 1.e4 e5, and only 1200–1599 games. Expect stronger players to fall for these less often.
+
+It won't promise rating points. The games already happened. Yours haven't.
+```

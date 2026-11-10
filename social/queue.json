@@ -1,0 +1,377 @@
+[
+  {
+    "id": "d02-m",
+    "day": 2,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-11T13:00:00Z",
+    "text": "Your coach calls 3.Qh5 a beginner move. Stockfish has Black only 0.2 better after it.\n\nYou're Black. Pick your move before you read the replies.",
+    "image": "social/images/trap-19.png"
+  },
+  {
+    "id": "d02-e",
+    "day": 2,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-11T19:00:00Z",
+    "text": "3...g6 kicks the queen and feels right. The queen takes e5 with check instead, and the h8 rook is next.\n\n3...Nf6?? allows 4.Qxf7# at once. That came up 33 times, and White scored 29½ points, so not everyone found mate in one.\n\nTrap 19 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-19-answer.png",
+    "reply_to": "d02-m"
+  },
+  {
+    "id": "d03-m",
+    "day": 3,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-12T13:00:00Z",
+    "text": "The Petrov is supposed to be the dull one.\n\n5.d3 kicks the knight on e4. Where does it go?",
+    "image": "social/images/trap-17.png"
+  },
+  {
+    "id": "d03-e",
+    "day": 3,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-12T19:00:00Z",
+    "text": "Nowhere yet. Once it leaves e4, White's e5 knight can move with discovered check, and 6.Nc6+ also hits the queen on d8.\n\n5...Qe7 first, then worry about the knight. A quarter of games went that way.\n\nTrap 17 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-17-answer.png",
+    "reply_to": "d03-m"
+  },
+  {
+    "id": "d04-m",
+    "day": 4,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-13T13:00:00Z",
+    "text": "Ruy Lopez, White just took on e5. Black to move.\n\nOnly 100 games reached this one, so it's a small sample. Most of them went the same way.",
+    "image": "social/images/trap-12.png"
+  },
+  {
+    "id": "d04-e",
+    "day": 4,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-13T19:00:00Z",
+    "text": "6...dxe5 is the recapture your hand makes on its own. It loses a pawn: 7.Qxd8+ Kxd8 8.Nxe5, and c6 is loose too.\n\n6...Nxe4 takes a pawn back first and Black is fine. 30 of the 100 found it.\n\nTrap 12 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-12-answer.png",
+    "reply_to": "d04-m"
+  },
+  {
+    "id": "d05-m",
+    "day": 5,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-14T13:00:00Z",
+    "text": "Vienna Gambit, 3.f4. Stockfish's top answer for Black turns up in about one game in ten. What's yours?",
+    "image": "social/images/trap-22.png"
+  },
+  {
+    "id": "d05-e",
+    "day": 5,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-14T19:00:00Z",
+    "text": "Stockfish wants 3...d5, hitting back in the centre. Only 10% of games went that way.\n\n3...Nc6 looks like normal development. Then 4.fxe5 Nxe5 5.d4 Ng6 6.e5, and the f6 knight is back on g8 by move 6.\n\nTrap 22 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-22-answer.png",
+    "reply_to": "d05-m"
+  },
+  {
+    "id": "d06-m",
+    "day": 6,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-15T13:00:00Z",
+    "text": "Three Knights, after the fork trick. White's queen is sitting on d4.\n\nBlack to move.",
+    "image": "social/images/trap-16.png"
+  },
+  {
+    "id": "d06-e",
+    "day": 6,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-15T19:00:00Z",
+    "text": "6...Nc6 hits the queen and gives up g7. 7.Qxg7 hits the h8 rook, and the rook has no squares.\n\n6...d6 is dull and correct (45% of games). Even then Stockfish has White +1.8.\n\nTrap 16 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-16-answer.png",
+    "reply_to": "d06-m"
+  },
+  {
+    "id": "d07-m",
+    "day": 7,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-16T13:00:00Z",
+    "text": "Traxler players, this one's yours.\n\nWhite has taken your rook. You have a bishop on f2 and a lot of confidence. Black to move.",
+    "image": "social/images/trap-03.png"
+  },
+  {
+    "id": "d07-e",
+    "day": 7,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-16T19:00:00Z",
+    "text": "7...Nxe4 is the Traxler player's reflex, and half of them played it. 8.Qh5+! g6 9.Nxg6 frees the stuck knight with tempo, and the queens come off soon after.\n\n7...d5 was the other popular try. White scored 40% after that one.\n\nTrap 3 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-03-answer.png",
+    "reply_to": "d07-m"
+  },
+  {
+    "id": "d08-m",
+    "day": 8,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-17T13:00:00Z",
+    "text": "Scotch, 5.Be3. One of Black's most natural developing moves loses a piece here.\n\nBlack to move.",
+    "image": "social/images/trap-07.png"
+  },
+  {
+    "id": "d08-e",
+    "day": 8,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-17T19:00:00Z",
+    "text": "5...Nf6. After 6.Nxc6 bxc6 7.Bxc5, White has taken a bishop nobody was guarding.\n\nThe most popular reply, 5...Qf6, is also the right one. White scored 47% against it.\n\nTrap 7 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-07-answer.png",
+    "reply_to": "d08-m"
+  },
+  {
+    "id": "d09-m",
+    "day": 9,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-18T13:00:00Z",
+    "text": "Ruy Lopez, 5.c3. Of Black's four most-played moves here, two lose material.\n\nBlack to move.",
+    "image": "social/images/trap-13.png"
+  },
+  {
+    "id": "d09-e",
+    "day": 9,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-18T19:00:00Z",
+    "text": "5...Bg4 pins the f3 knight and forgets its own pin. 6.d4 Bxf3 7.gxf3 Bb6 8.d5, and the c6 knight can't move.\n\n5...Nf6 is worse still by Stockfish's count. 5...a6, asking the bishop first, solves it. A quarter of games went that way.\n\nTrap 13 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-13-answer.png",
+    "reply_to": "d09-m"
+  },
+  {
+    "id": "d10-m",
+    "day": 10,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-19T13:00:00Z",
+    "text": "Back to 3.Qh5. The most common answer, 3...Qf6, holds everything.\n\nThen 4.Nf3. Black would like that queen gone from h5. Black to move.",
+    "image": "social/images/trap-20.png"
+  },
+  {
+    "id": "d10-e",
+    "day": 10,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-19T19:00:00Z",
+    "text": "4...g6 chases the queen and leaves e5 hanging. 5.Qxe5+ forces the queens off, and the knight lands on e5 aiming at f7.\n\n4...d6 protects e5, and it was the most popular reply. As White, you set this one with 4.Nf3.\n\nTrap 20 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-20-answer.png",
+    "reply_to": "d10-m"
+  },
+  {
+    "id": "d11-m",
+    "day": 11,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-20T13:00:00Z",
+    "text": "Scotch, 6.e5. The knight on f6 is attacked. What do you play?",
+    "image": "social/images/trap-08.png"
+  },
+  {
+    "id": "d11-e",
+    "day": 11,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-20T19:00:00Z",
+    "text": "If you went 6...Nh5, 7.g4 leaves the knight no squares. Black can save it with 7...Qh4 and some contortions, but White scored 71% after 6...Nh5.\n\n6...c5 (Stockfish's pick) or 6...Ng8 avoids all of it.\n\nTrap 8 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-08-answer.png",
+    "reply_to": "d11-m"
+  },
+  {
+    "id": "d12-m",
+    "day": 12,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-21T13:00:00Z",
+    "text": "Vienna Gambit accepted, 4.e5. The knight on f6 is attacked, and Black has a clever-looking way to avoid retreating it.\n\nBlack to move.",
+    "image": "social/images/trap-23.png"
+  },
+  {
+    "id": "d12-e",
+    "day": 12,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-21T19:00:00Z",
+    "text": "4...Qe7 pins e5 so the knight can stay. 5.Qe2 breaks the pin, the knight goes to g8 anyway, and Black's queen now blocks its own bishop.\n\n4...Ng8 straight away was the most common move, and the best.\n\nTrap 23 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-23-answer.png",
+    "reply_to": "d12-m"
+  },
+  {
+    "id": "d13-m",
+    "day": 13,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-22T13:00:00Z",
+    "text": "Giuoco Piano, after the bishop trade on d2. Black's most popular move here is a mistake.\n\nBlack to move.",
+    "image": "social/images/trap-06.png"
+  },
+  {
+    "id": "d13-e",
+    "day": 13,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-22T19:00:00Z",
+    "text": "The tempting one is 8...Bg4, pinning the knight. Then 9.Qb3 hits b7 and lines up with the c4 bishop against f7.\n\n8...Nf6 was the move. 19% of games went that way.\n\nTrap 6 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-06-answer.png",
+    "reply_to": "d13-m"
+  },
+  {
+    "id": "d14-m",
+    "day": 14,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-23T13:00:00Z",
+    "text": "Ruy Lopez again, by a different road. Black to move after 5.c3.",
+    "image": "social/images/trap-14.png"
+  },
+  {
+    "id": "d14-e",
+    "day": 14,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-23T19:00:00Z",
+    "text": "5...d6 opens the diagonal and pins its own c6 knight. 6.d4 Bb6 7.d5 wins it for a pawn. 5...O-O keeps the knight free.\n\nSame position as Day 9 after 5...Nf6.\n\n14 traps in 14 days. The pack has all 23, with drills and a PGN.\n\nTrap 14 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white",
+    "image": "social/images/trap-14-answer.png",
+    "reply_to": "d14-m"
+  },
+  {
+    "id": "d15-m",
+    "day": 15,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-24T13:00:00Z",
+    "text": "The busiest position in the pack is the Vienna Gambit after 3.f4. 6,076 games reached it, and in about one in four Black chose a reply that costs 1.2+ pawns.\n\nThe most common, 3...Nc6, came up 1,087 times. That's more than any other mistake in the data."
+  },
+  {
+    "id": "d16-m",
+    "day": 16,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-25T13:00:00Z",
+    "text": "1.e4 e5 2.Nf3 Nf6 3.d4 d6 4.dxe5\n\nBlack to move. Which would you play?",
+    "poll": {
+      "options": [
+        "4...Nxe4",
+        "4...dxe5",
+        "Something else"
+      ],
+      "duration_minutes": 300
+    }
+  },
+  {
+    "id": "d16-e",
+    "day": 16,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-25T19:00:00Z",
+    "text": "4...Nxe4. Taking the pawn back first was the move. 41% of the 164 games found it.\n\n4...dxe5 was more popular (55%). 5.Qxd8+ Kxd8 6.Nxe5 and White is a pawn up. White scored 64% after it.",
+    "reply_to": "d16-m"
+  },
+  {
+    "id": "d17-m",
+    "day": 17,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-26T13:00:00Z",
+    "text": "Myth: win a pawn and the points follow.\n\n1.e4 e5 2.Nf3 Nc6 3.d4 d6 4.dxe5 dxe5 5.Qxd8+. After 5...Nxd8? 6.Nxe5, White is a clean pawn up and scored 61%. After the correct 5...Kxd8, White also scored 61%.\n\n1,044 games. The extra pawn changed nothing in the score."
+  },
+  {
+    "id": "d18-m",
+    "day": 18,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-27T13:00:00Z",
+    "text": "Is the move most people play the right one? Across the pack's 23 positions:\n\n13 times it's Stockfish's top move.\n6 times it's a mistake costing 1.2+ pawns.\n4 times it's neither.\n\nSo the crowd is right a bit more than half the time."
+  },
+  {
+    "id": "d19-m",
+    "day": 19,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-28T13:00:00Z",
+    "text": "38 positions passed our three tests. 23 are in the pack.\n\nThe smallest position in the pack has 100 games. Four of the 15 that stayed out had fewer: 85, 90, 92 and 95.\n\nEvery page shows its game count, so you can judge the sample yourself."
+  },
+  {
+    "id": "d20-m",
+    "day": 20,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-29T13:00:00Z",
+    "text": "For anyone who just found us: 23 traps from 902,003 Lichess games at 1200–1599. A 37-page PDF with drills and an answer key, plus a PGN. $14.\n\nhttps://ceemv22.gumroad.com/l/e4e5-traps-white\n\nTrap 1 is free in the pinned thread."
+  },
+  {
+    "id": "d21-m",
+    "day": 21,
+    "slot": "morning",
+    "scheduled_utc": "2026-11-30T13:00:00Z",
+    "text": "1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 4.O-O Nxe4 5.Re1\n\nBlack to move. Which would you play?",
+    "poll": {
+      "options": [
+        "5...Nd6",
+        "5...Nf6",
+        "5...d5",
+        "5...f5"
+      ],
+      "duration_minutes": 300
+    }
+  },
+  {
+    "id": "d21-e",
+    "day": 21,
+    "slot": "evening",
+    "scheduled_utc": "2026-11-30T19:00:00Z",
+    "text": "5...Nd6 is Stockfish's pick (32% of 537 games). 5...Nf6 is close, a third of a pawn worse (29%).\n\n5...d5 came up in 20% and costs 2.3 pawns. 6.d3 kicks the knight and White wins material in the centre. White scored 66%.",
+    "reply_to": "d21-m"
+  },
+  {
+    "id": "d22-m",
+    "day": 22,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-01T13:00:00Z",
+    "text": "We only counted games where both players were rated 1200–1599, and we left out bullet.\n\nA 1500 beating a 1900 says less about 1500s than a 1500 playing a 1500. Blitz, rapid and classical only."
+  },
+  {
+    "id": "d23-m",
+    "day": 23,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-02T13:00:00Z",
+    "text": "Myth: if Stockfish says White is winning, White wins.\n\nVienna Gambit, 3.f4 Bb4. Stockfish has White +2.8 after it. In 251 games White scored 55%.\n\nThat's why our third test looks at White's score, not just the eval."
+  },
+  {
+    "id": "d24-m",
+    "day": 24,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-03T13:00:00Z",
+    "text": "7 of the 23 positions in the pack rest on fewer than 200 games. The smallest has 100. The biggest has 6,076.\n\nEvery page shows its count. A percentage from 100 games is a hint, not a law."
+  },
+  {
+    "id": "d25-m",
+    "day": 25,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-04T13:00:00Z",
+    "text": "If we run the numbers on another opening, which one?\n\nNo promises. Just counting votes.",
+    "poll": {
+      "options": [
+        "1.e4 c5, as White",
+        "1.d4 d5, as White",
+        "1.e4 e5, as Black",
+        "1.d4, as Black"
+      ],
+      "duration_minutes": 1440
+    }
+  },
+  {
+    "id": "d26-m",
+    "day": 26,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-05T13:00:00Z",
+    "text": "When we say White scored 82%, we mean points per game. A win is 1, a draw is ½.\n\nIt isn't a win rate. After 7...Ke8 in the Fried Liver, White scored 82% across 756 games."
+  },
+  {
+    "id": "d27-m",
+    "day": 27,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-06T13:00:00Z",
+    "text": "Fried Liver, 7.Qf3+. Black played 7...Kg8 in 228 games.\n\nWhite took 228 points from those 228 games. No draws, no losses."
+  },
+  {
+    "id": "d28-m",
+    "day": 28,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-07T13:00:00Z",
+    "text": "Trap 1 is in the pinned thread. The other 22 are in the pack: a 37-page PDF with a drill for each trap, plus a PGN for your Lichess study. $14, and a refund within 30 days if it's not for you.\n\nhttps://ceemv22.gumroad.com/l/e4e5-traps-white"
+  },
+  {
+    "id": "d29-m",
+    "day": 29,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-08T13:00:00Z",
+    "text": "Where the 23 traps start: 18 come after 1.e4 e5 2.Nf3, three after 2.Bc4 and two after 2.Nc3.\n\nBy page title, Scotch has the most with five. Ruy Lopez has four."
+  },
+  {
+    "id": "d30-m",
+    "day": 30,
+    "slot": "morning",
+    "scheduled_utc": "2026-12-09T13:00:00Z",
+    "text": "The pack covers White after 1.e4 e5, and only 1200–1599 games. Expect stronger players to fall for these less often.\n\nIt won't promise rating points. The games already happened. Yours haven't."
+  }
+]
