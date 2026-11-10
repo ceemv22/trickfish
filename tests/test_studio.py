@@ -221,6 +221,27 @@ class StudioTests(unittest.TestCase):
             self.assertIn("Trap 2", (directory / "out" / "pdf" / "free.pgn").read_text())
             self.assertNotIn("Trap 1\"", (directory / "out" / "pdf" / "free.pgn").read_text())
 
+    @unittest.skipIf(shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, "needs ffmpeg")
+    def test_video_mode_writes_a_vertical_mp4(self):
+        from trickfish import studio
+
+        with tempfile.TemporaryDirectory() as directory:
+            directory = pathlib.Path(directory)
+            source = directory / "traps.json"
+            source.write_text(json.dumps({"color": "white", "band": "1200-1599", "sample_games": 902003,
+                                          "traps": [record()]}))
+            studio.main([str(source), "--output", str(directory / "out"), "--only", "video", "--video-traps", "1"])
+            video = directory / "out" / "video" / "trap-01.mp4"
+            self.assertTrue(video.exists())
+            probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                                    "stream=width,height,pix_fmt,r_frame_rate:format=duration", "-of", "json", str(video)],
+                                   capture_output=True, text=True, check=True)
+            info = json.loads(probe.stdout)
+            stream = info["streams"][0]
+            self.assertEqual((stream["width"], stream["height"], stream["pix_fmt"]), (1080, 1920, "yuv420p"))
+            self.assertEqual(stream["r_frame_rate"], "30/1")
+            self.assertTrue(14 <= float(info["format"]["duration"]) <= 22)
+
 
 if __name__ == "__main__":
     unittest.main()
