@@ -30,6 +30,7 @@ LABELS = {
     "glance": "The traps at a glance",
     "glance_cols": ["#", "Opening and title", "Line", "Went wrong", "White scored", "n"],
     "drills": "Drills",
+    "facts": ["{n} traps", "{n} Lichess games", "{band} both players"],
     "drill": "Drill",
     "white_to_move": "White to move",
     "black_to_move": "Black to move",
@@ -69,7 +70,9 @@ def rich(text):
         if _ALLOWED.fullmatch(part):
             out.append(part)
         else:
-            out.append(st.prose(re.sub(r"(?<=\d)-(?=\d)", "\u2013", part)))
+            text = st.prose(re.sub(r"(?<=\d)-(?=\d)", "\u2013", part))
+            # number ranges ("1200\u20131599") never break at the dash
+            out.append(re.sub(r"(?<![\w>])(\d[\d,]*\u2013\d[\d,]*)", r'<span style="white-space:nowrap">\1</span>', text))
     return "".join(out)
 
 
@@ -126,7 +129,7 @@ body { font-family: 'Schibsted Grotesk'; font-size: 11pt; line-height: 1.42; fon
 .fig { display: inline-block; position: relative; width: .92em; height: .92em; vertical-align: -0.14em;
        margin: 0 -0.04em 0 -0.02em; }
 .fig svg { width: 100%%; height: 100%%; display: block; }
-.figtxt { position: absolute; left: 0; top: 0; color: transparent; font-size: .8em; line-height: 1; }
+.figtxt { position: absolute; left: 0; right: 0; top: 0; text-align: center; color: transparent; font-size: 1.1em; line-height: .9; letter-spacing: -0.05em; }
 svg { overflow: visible; }
 h1, h2 { font-family: 'Young Serif'; font-weight: 400; font-feature-settings: 'lnum' 1; text-wrap: balance;
          letter-spacing: -0.01em; }
@@ -199,19 +202,22 @@ def cover(data, meta, traps, L):
     trap = st.pick(traps, "1.e4 e5 2.Nf3 Nf6 3.Nxe5 Nxe4 4.Qe2 d5 5.d3")
     board = board_block(trap.after, 118, catch_=st.catch(trap)[:2], trail=chess.Move.from_uci(trap.top["uci"]),
                         seed=trap.number * 7 + 3, uid="cv")
-    facts = [str(len(traps)) + " " + L["trap"].lower() + ("s" if len(traps) != 1 else ""),
-             st.thousands(data.get("sample_games") or 0) + " Lichess games",
-             st.band(data), st.engine_name(data)]
+    facts = [L["facts"][0].format(n=len(traps)),
+             L["facts"][1].format(n=st.thousands(data.get("sample_games") or 0)),
+             L["facts"][2].format(band=st.band(data))]
+    tagline = meta.get("tagline", "")
     body = """
 <div class="abs" style="left:18mm;top:0;width:120mm;height:30mm">%s</div>
 <h1 class="abs" style="left:18mm;top:44mm;width:150mm;font-size:56pt;line-height:1">%s</h1>
 <p class="abs" style="left:18mm;top:108mm;width:118mm;font-size:13pt;line-height:1.35">%s</p>
-<div class="abs mono faded" style="left:18mm;top:136mm;width:60mm;font-size:8pt;line-height:1.9">%s</div>
+<div class="abs mono" style="left:18mm;top:132mm;width:176mm;font-size:8pt;line-height:1.9">%s</div>
+<p class="abs serif" style="left:18mm;top:152mm;width:57mm;font-size:16pt;line-height:1.2;text-wrap:balance">%s</p>
 <div class="abs" style="left:80mm;top:150mm">%s</div>
 <div class="abs label" style="left:80mm;top:276mm;width:118mm">%s %02d. %s, %s %s</div>
 """ % (st.lockup(0, 60, 26),
        html.escape(glue(meta.get("title", ""))), rich(meta.get("subtitle", "")),
-       "<br>".join(html.escape(f) for f in facts), board,
+       ' <span class="faded">\u00b7</span> '.join(rich(f) for f in facts), html.escape(glue(tagline)).replace("'", "\u2019"),
+       board,
        L["trap"], trap.number, html.escape(trap.name.replace("'", "’")), L["after"],
        st.notation(trap.mistake_text() + "?"))
     return page(body)
@@ -307,8 +313,7 @@ def trap_page(data, trap, total, L, folio):
         sections.append('<div class="label">%s</div><p style="margin-bottom:3.5mm">%s</p>' % (L["idea"], rich(trap.idea)))
     sections.append('<div class="label">%s</div><p style="margin-bottom:3.5mm">%s</p>'
                     % (L["punishment"], line_html(trap.punish, trap.ply + 1)))
-    sections.append('<div class="label">%s</div><p>%s</p>%s'
-                    % (L["defence"], best, ('<p style="margin-top:1.2mm">%s</p>' % rich(defence)) if defence else ""))
+    sections.append('<div class="label">%s</div><p>%s</p>' % (L["defence"], rich(defence) if defence else best))
     body = """
 <div class="abs label" style="left:18mm;top:15mm">%(trap)s %(num)02d / %(total)d · %(opening)s</div>
 <h2 class="abs" style="left:18mm;top:21mm;width:176mm;font-size:24pt">%(title)s</h2>
@@ -334,7 +339,7 @@ def trap_page(data, trap, total, L, folio):
     return page(body, folio)
 
 
-def drill_pages(traps, L, folio_for, per_page=4):
+def drill_pages(traps, L, folio_for, intro="", per_page=4):
     pages = []
     size = 80
     for start in range(0, len(traps), per_page):
@@ -348,8 +353,12 @@ def drill_pages(traps, L, folio_for, per_page=4):
                          '<div class="abs" style="left:%dmm;top:%dmm">%s</div>'
                          % (x - 7, y - 7, st.INK, L["drill"], trap.number, L["white_to_move"], L["after"],
                             st.notation(trap.mistake_text()), x, y, board))
-        heading = ('<h2 class="abs" style="left:18mm;top:24mm;width:150mm">%s</h2>' % html.escape(L["drills"])
-                   if start == 0 else "")
+        heading = ""
+        if start == 0:
+            heading = '<h2 class="abs" style="left:18mm;top:24mm;width:150mm">%s</h2>' % html.escape(L["drills"])
+            if intro:
+                heading += ('<p class="abs" style="left:94mm;top:25mm;width:100mm;font-size:10pt;line-height:1.4">%s</p>'
+                            % rich(intro))
         pages.append(page(heading + "".join(cells), folio_for(len(pages))))
     return pages
 
@@ -397,7 +406,7 @@ def book(data, meta, traps):
     pages += glance_pages(data, traps, L, folio)
     for trap in traps:
         pages.append(trap_page(data, trap, len(traps), L, folio(0)))
-    pages += drill_pages(traps, L, folio)
+    pages += drill_pages(traps, L, folio, meta.get("drills_intro", ""))
     pages += answer_pages(traps, L, folio)
     pages.append(prose_page(L["about"], meta.get("fineprint", []), True, folio(0)))
     return document(title or "Trickfish", pages)

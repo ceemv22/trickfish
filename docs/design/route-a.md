@@ -155,3 +155,28 @@ These are editorial notes for the posting schedule, not renderer issues:
   - #10 "8.Qd5 eyes mate on f7 and the a8 rook."
   - #15 "7.Rxe5+ comes with check when the e4 knight moves."
 - Every claim in `plain` was verified with python-chess against `traps.json`.
+
+## The PDF (studio/book.py)
+
+- **Build:** `python -m trickfish.studio <traps> --notes <notes> --output <dir> --only pdf` writes `<dir>/pdf/<slug>.pdf` and `<slug>.pgn`. The PGN uses `trappack_render.write_pgn` with the current trap names.
+- **Rendering:**
+  - A4 pages are laid out in HTML/CSS, one fixed 210 x 297 mm page each, so every page is designed rather than flowed.
+  - They are printed by Chromium `page.pdf()` (the `"pdf": true` job in render.mjs).
+  - Text is real and selectable. The fonts are embedded subsets of Young Serif, Schibsted Grotesk and Martian Mono.
+  - Figurines carry a hidden letter, so a move extracts as "2. Nf3" and stays searchable.
+  - Diagrams are vector with no raster images.
+- **Hatching** is one clipped path of diagonal rules rather than an SVG `<pattern>`, which Chromium's PDF backend expanded into tiles (56 MB, now about 3 MB). It renders identically on the cards.
+- **Contents, all prose from notes.json:**
+  - cover (title, subtitle, three facts, `_meta.tagline`, the #17 plate);
+  - how this pack was made (`method`);
+  - how to use it (`usage`);
+  - the traps at a glance (#, opening and title, line, went wrong, White scored with points under 50 games, n);
+  - one page per trap: the question diagram, the stats block with the card hero lockup, the answer diagram with line and hook, and then the plain line, idea, punishment and best defence;
+  - drills, introduced by `drills_intro`: positions after the mistake, White to move, 4 per page at 80 mm;
+  - answer key;
+  - about the numbers (`fineprint`).
+- **Labels:** structural labels live in `book.LABELS` and can be overridden by `_meta.labels`.
+- **Type:** titles get no widows (last two words bound, `text-wrap: balance`). Moves are unbreakable units; a white move and Black's reply stay together. Number ranges never break at the dash. Quotes are typographic.
+- **Copy safety:** `.fit` boxes shrink to a floor of 8.5 pt if future copy overflows. On the current copy, nothing shrinks or overflows (checked in the browser).
+- **Phone legibility:** trap diagrams are 96 mm wide (12 mm squares), drills 80 mm. They were checked at 1170 px page width.
+- **Print:** the paper colour is a full-bleed page background (`print-color-adjust: exact`). Home printers will print it as a light tint, or leave a white margin if they cannot print to the edge. The ink colour and hatching work on white paper too.

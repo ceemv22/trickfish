@@ -122,15 +122,24 @@ def write_pgn(data, traps, path, event):
             node = game
             for uci in trap.record["moves"]:
                 node = node.add_variation(chess.Move.from_uci(uci))
-            node.comment = ("Opponent to move. %d games at %s on Lichess: %.0f%% went wrong here."
-                            % (trap.record["games"], data.get("band", ""), trap.record["error_share"] * 100))
+            games = trap.record["games"]
+            wrong = sum(r["games"] for r in trap.mistakes if r["our_score"] >= 0.5) / (games or 1)
+            side = "White" if trap.color == chess.WHITE else "Black"
+            mover = "Black" if trap.color == chess.WHITE else "White"
+            node.comment = ("%s to move. Reached in %s Lichess games between %s players; %.0f%% went wrong here."
+                            % (mover, format(games, ","), data.get("band", "").replace("-", "–"), wrong * 100))
             mistake = node.add_main_variation(chess.Move.from_uci(trap.top["uci"]))
             mistake.nags.add(chess.pgn.NAG_MISTAKE)
-            mistake.comment = "Played in %.0f%% of games. Your score afterwards: %.0f%%." % (
-                trap.top["share"] * 100, trap.top["our_score"] * 100)
+            if trap.top["games"] < 50:
+                halves = round(trap.top["our_score"] * trap.top["games"] * 2)
+                score = "%s scored %d%s points from %d games afterwards." % (
+                    side, halves // 2, "½" if halves % 2 else "", trap.top["games"])
+            else:
+                score = "%s scored %.0f%% afterwards." % (side, trap.top["our_score"] * 100)
+            mistake.comment = "Played in %.0f%% of games. %s" % (trap.top["share"] * 100, score)
             if trap.record["best_reply_san"]:
                 best = node.add_variation(node.board().parse_san(trap.record["best_reply_san"]))
-                best.comment = "Best defence (Stockfish)."
+                best.comment = "Best defence (Stockfish %s)." % pawns(trap.record["best_cp"])
             cursor = mistake
             for uci in trap.punish_uci:
                 move = chess.Move.from_uci(uci)

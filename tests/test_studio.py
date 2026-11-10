@@ -153,5 +153,40 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(listed, len(traps))
 
 
+    def test_pdf_mode_writes_a_text_pdf_and_pgn_from_notes(self):
+        from trickfish import studio
+
+        with tempfile.TemporaryDirectory() as directory:
+            directory = pathlib.Path(directory)
+            rec = record()
+            key = " ".join(rec["moves"])
+            (directory / "traps.json").write_text(json.dumps({"color": "white", "band": "1200-1599",
+                                                              "sample_games": 902003, "engine": "Stockfish 16",
+                                                              "traps": [rec]}))
+            (directory / "notes.json").write_text(json.dumps({
+                "_order": [key],
+                "_meta": {"slug": "test-pack", "title": "Test Pack Title", "subtitle": "A subtitle from notes",
+                          "tagline": "A tagline from notes", "method": ["Method paragraph from notes."],
+                          "usage": ["Usage step from notes."], "fineprint": ["Fine print from notes."],
+                          "drills_intro": "Drills intro from notes."},
+                key: {"name": "Bishop's Opening: the queen on h5", "idea": "Idea text from notes.",
+                      "defence": "Defence text from notes.", "plain": "4.Qxe5+ forks the king and the rook."}}))
+            studio.main([str(directory / "traps.json"), "--notes", str(directory / "notes.json"),
+                         "--output", str(directory / "out"), "--only", "pdf"])
+            pdf = directory / "out" / "pdf" / "test-pack.pdf"
+            self.assertTrue(pdf.exists())
+            self.assertTrue(pdf.read_bytes().startswith(b"%PDF"))
+            self.assertIn("Test Pack Title", (directory / "out" / "pdf" / "test-pack.pgn").read_text())
+            if shutil.which("pdftotext"):
+                text = subprocess.run(["pdftotext", str(pdf), "-"], capture_output=True, text=True).stdout
+                for phrase in ("Test Pack Title", "Method paragraph from notes.", "Usage step from notes.",
+                               "Fine print from notes.", "Drills intro from notes.", "Idea text from notes.",
+                               "Defence text from notes.", "A tagline from notes", "1,572"):
+                    self.assertIn(phrase, text)
+            if shutil.which("pdfimages"):
+                images = subprocess.run(["pdfimages", "-list", str(pdf)], capture_output=True, text=True).stdout
+                self.assertEqual(len(images.strip().splitlines()), 2)   # header only: diagrams are vector
+
+
 if __name__ == "__main__":
     unittest.main()

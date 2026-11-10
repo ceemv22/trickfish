@@ -187,7 +187,7 @@ body { position: relative; background: %(bg)s; color: %(fg)s; font-family: 'Schi
 .mono { font-family: 'Martian Mono'; font-weight: 400; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .faded { color: %(faded)s; }
 .fig { display: inline-block; position: relative; width: .92em; height: .92em; vertical-align: -0.14em; margin: 0 -0.04em 0 -0.02em; }
-.figtxt { position: absolute; left: 0; top: 0; color: transparent; font-size: .8em; line-height: 1; }
+.figtxt { position: absolute; left: 0; right: 0; top: 0; text-align: center; color: transparent; font-size: 1.1em; line-height: .9; letter-spacing: -0.05em; }
 svg { display: block; overflow: visible; }
 .fig svg { width: 100%%; height: 100%%; }
 """
