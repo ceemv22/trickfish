@@ -56,7 +56,7 @@ Every White move stays within half a pawn of Stockfish 16's best. At least 15% o
 
 **Post 4**
 ```text
-All 23 are in a 32-page PDF, one page per trap, with drills and an answer key at the back. A PGN for your Lichess study comes with it. $14.
+All 23 are in a 37-page PDF, one page per trap, with drills and an answer key at the back. A PGN for your Lichess study comes with it. $14.
 
 https://ceemv22.gumroad.com/l/e4e5-traps-white
 
@@ -320,7 +320,7 @@ Trap 14 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white
 
 **Summary** (the line beside the button)
 ```text
-23 sound traps from 902,003 real Lichess games at 1200–1599. A 32-page PDF with drills, plus a PGN.
+23 sound traps from 902,003 real Lichess games at 1200–1599. A 37-page PDF with drills, plus a PGN.
 ```
 
 **Additional details**
@@ -328,7 +328,7 @@ Trap 14 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white
 | Row | Value |
 | --- | --- |
 | Traps | 23 |
-| PDF | 32 pages: one page per trap, 23 drills, answer key |
+| PDF | 37 pages: one page per trap, 23 drills, answer key |
 | PGN | All 23 lines with stats in the comments |
 | Games | 902,003 rated Lichess games, October 2026 |
 | Rating band | Both players 1200–1599 |
@@ -337,7 +337,6 @@ Trap 14 of 23: https://ceemv22.gumroad.com/l/e4e5-traps-white
 | You play | White, after 1.e4 e5 |
 | Refunds | 30 days, no questions |
 
-(If the rebuilt PDF changes length, update "32 pages" here, in the summary and in pinned Post 4.)
 
 **Description**
 
@@ -360,7 +359,7 @@ A few of them:
 - One where White took 47 points from 48 games. Small sample, so don't get too excited, but it's in here.
 
 What you get
-- A 32-page PDF. One page per trap: the diagram, the moves, how many games got there, how often Black went wrong, White's score, the punishment line and the best defence.
+- A 37-page PDF. One page per trap: the diagram, the moves, how many games got there, how often Black went wrong, White's score, the punishment line and the best defence.
 - 23 drills, each set right after the mistake with White to move, plus an answer key.
 - A PGN of all 23 with the numbers in the comments. Import it into a Lichess study, Chess.com or ChessBase.
 

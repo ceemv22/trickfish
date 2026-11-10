@@ -27,7 +27,7 @@ Owner steps (~5 minutes): Gumroad → New product → Digital product. Paste the
 >
 > **You get:**
 > - 23 traps across the Italian, Two Knights and Fried Liver, Scotch, Ruy Lopez, Petrov, Three Knights, Bishop's Opening and Vienna
-> - a 32-page PDF guide with diagrams, drills and an answer key
+> - a 37-page PDF guide with diagrams, drills and an answer key
 > - a PGN file to import into a Lichess study, Chess.com or ChessBase
 >
 > **Why these traps are different:** White never plays a dubious move to set them. Every White move is within half a pawn of Stockfish's best, so you lose nothing when the opponent defends well.
