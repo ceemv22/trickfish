@@ -14,7 +14,7 @@ Numbers are the ones on the cards (share of games that went wrong, White's score
 
 **TikTok**
 ```text
-65% of 2,404 games at 1200–1599 go wrong here. Black has just played 7.Qf3+ in the Fried Liver. Where does the king go? 7...Ke8 is the most common answer, and White scored 82% after it. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+65% of 2,404 games at 1200–1599 go wrong here. White has just played 7.Qf3+ in the Fried Liver. Where does the king go? 7...Ke8 is the most common answer, and White scored 82% after it. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
 ```
 
 **YouTube Shorts title** (84/100)
