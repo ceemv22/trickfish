@@ -17,7 +17,7 @@ trickfish-uci = "trickfish.uci:main"
 trickfish-lichess-extract = "trickfish.lichess_db:main"
 trickfish-traps = "trickfish.trappack:main"
 trickfish-trappack-render = "trickfish.trappack_render:main"
-trickfish-brand = "trickfish.brand_assets:main"
+trickfish-studio = "trickfish.studio:main"
 trickfish-practical = "trickfish.practical_cli:main"
 trickfish-practical-stability = "trickfish.practical_stability:main"
 trickfish-practical-pgn = "trickfish.practical_pgn:main"
@@ -29,4 +29,4 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.setuptools.package-data]
-trickfish = ["data/*.pgn"]
+trickfish = ["data/*.pgn", "studio/render.mjs"]

@@ -5,8 +5,8 @@
 1. Create the account while logged out of @Ceemv22 (use a separate email, e.g. a `+trickfish` alias).
 2. **Handle:** `@trickfishchess` (fallbacks: `@trickfish_chess`, `@trickfishhq`).
 3. **Display name:** `Trickfish`
-4. **Profile picture:** `dist/brand/x/profile.png`
-5. **Banner:** `dist/brand/x/banner.png`
+4. **Profile picture:** `dist/studio/x/profile.png`
+5. **Banner:** `dist/studio/x/banner.png`
 6. **Bio:**
    > Stockfish finds the best move. We find the one your opponent will get wrong. Chess traps measured on real Lichess games, verified by Stockfish.
 7. **Link:** the Gumroad trap-pack URL once it is live (until then, the GitHub repo).

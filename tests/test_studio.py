@@ -1,14 +1,22 @@
 import json
 import pathlib
+import shutil
+import subprocess
 import tempfile
 import unittest
 
 try:
-    import cairosvg  # noqa: F401
     import chess
     from PIL import Image
 except ImportError:  # optional dependencies
     chess = None
+
+
+def playwright_available():
+    if shutil.which("node") is None:
+        return False
+    return subprocess.run(["node", "-e", "require('playwright')"], capture_output=True).returncode == 0
+
 
 
 def record():
@@ -28,10 +36,10 @@ def record():
                        "our_cp": 672}}
 
 
-@unittest.skipIf(chess is None, "brand dependencies not installed")
-class BrandAssetTests(unittest.TestCase):
-    def test_cards_and_store_images_render_at_expected_sizes(self):
-        from trickfish import brand_assets
+@unittest.skipIf(chess is None or not playwright_available(), "studio needs python-chess, node and playwright")
+class StudioTests(unittest.TestCase):
+    def test_question_and_answer_frames_render_at_2x(self):
+        from trickfish import studio
         from trickfish.trappack_render import load
 
         with tempfile.TemporaryDirectory() as directory:
@@ -40,14 +48,21 @@ class BrandAssetTests(unittest.TestCase):
             source.write_text(json.dumps({"color": "white", "band": "1200-1599", "sample_games": 902003,
                                           "traps": [record()]}))
             data, meta, traps = load(source)
-            brand_assets.question_card(data, traps[0], directory / "q.png")
-            brand_assets.answer_card(data, traps[0], directory / "a.png")
-            brand_assets.thumbnail(data, meta, traps, directory / "t.png")
-            brand_assets.profile(directory / "p.png")
-            self.assertEqual(Image.open(directory / "q.png").size, (1080, 1350))
-            self.assertEqual(Image.open(directory / "a.png").size, (1080, 1350))
-            self.assertEqual(Image.open(directory / "t.png").size, (1200, 1200))
-            self.assertEqual(Image.open(directory / "p.png").size, (800, 800))
+            studio.render([(studio.question(data, traps[0], 1), directory / "q.png", 1080, 1350),
+                           (studio.answer(data, traps[0], 1), directory / "a.png", 1080, 1350)])
+            self.assertEqual(Image.open(directory / "q.png").size, (2160, 2700))
+            self.assertEqual(Image.open(directory / "a.png").size, (2160, 2700))
+
+    def test_markup_uses_typographic_ellipsis_and_real_numbers(self):
+        from trickfish import studio
+        from trickfish.trappack_render import Trap
+
+        trap = Trap(record(), "white", 1)
+        data = {"color": "white", "band": "1200-1599"}
+        self.assertIn("20<span", studio.question(data, trap, 1))
+        markup = studio.answer(data, trap, 1)
+        self.assertIn("3…g6", markup)
+        self.assertIn("85%", markup)
 
 
 if __name__ == "__main__":
