@@ -13,5 +13,6 @@ Claude runs Trickfish as CEO/CTO for the owner (@Ceemv22) and delegates speciali
 | Ivan | QA | `docs/design/pdf-qa.md` |
 | Sam | Social media manager (runs on a cheaper model) | `docs/social/`, `social/queue.json`, `social/post.py` |
 | Leo | Sound designer (runs on a cheaper model) | `src/trickfish/studio/sound.py`, the video sound layer |
+| Ana | Analyst, weekly scheduled task (Sundays 19:23 Croatian time) | `social/stats.py`, `social/stats.csv`, `docs/reports/` |
 
 Cost rules: routine work runs on a cheaper model; content is produced in monthly batches; daily posting runs without AI (GitHub Actions + X API).
