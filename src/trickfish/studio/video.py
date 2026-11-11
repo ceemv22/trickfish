@@ -172,7 +172,56 @@ class Plan:
         return self.board(rest, piece_at(piece, ax + (bx - ax) * e, ay + (by - ay) * e), lens, uid)
 
 
-def build(data, trap, total):
+HOOK_SQ = 120                         # hook v2: board 960 px wide
+HOOK_BX = (W - 8 * HOOK_SQ) // 2
+FRACTIONS = ((1, 2), (1, 3), (2, 3), (1, 4), (1, 5), (1, 6))
+
+
+def stat_line(share):
+    """'1 in 5 get this wrong' when the share is within 2 points of a simple fraction, else '65% get this wrong'."""
+    near = min(FRACTIONS, key=lambda f: abs(share - f[0] / f[1]))
+    if abs(share - near[0] / near[1]) <= 0.02:
+        return "%d in %d get this wrong" % near
+    return "%s%% get this wrong" % st.percent(share)
+
+
+def hook_v2(trap, total, mover, add, event, clock):
+    """0 to 2.5 s: the board is the hero; White's last move slides in (0 to 0.5 s) and lands with its tock."""
+    prev = trap.board.copy()
+    last = prev.pop() if prev.move_stack else None
+    by = (150 + (H - 400)) // 2 - 4 * HOOK_SQ     # centred in the safe area
+    text = (tx(st.esc(mover) + " to move.", 150, 80, "serif", lh=1.1) +
+            tx(st.esc(stat_line(st.wrong_share(trap))), 248, 60, "serif", lh=1.1, color=st.HOOK))
+
+    def board(pos, extra, uid):
+        svg = st.board_svg(pos, HOOK_SQ, coords=True, coord_size=34, seed=trap.number * 7 + 3, uid=uid)
+        return '<div class="abs" style="left:%dpx;top:%dpx">%s</div>' % (HOOK_BX, by, overlay(svg, extra))
+
+    if last is None:
+        add(text + board(trap.board, "", "h"), False, sec(2.5))
+        return
+    piece = prev.piece_at(last.from_square)
+    rest = prev.copy()
+    rest.remove_piece_at(last.from_square)
+    (ax, ay), (bx, byy) = st.square_xy(last.from_square, HOOK_SQ), st.square_xy(last.to_square, HOOK_SQ)
+    code = ("w" if piece.color else "b") + piece.symbol().upper()
+
+    def sliding(t, uid):
+        e = ease(t)
+        glyph = st.piece_svg(code, ax + (bx - ax) * e, ay + (byy - ay) * e, HOOK_SQ, st.INK, st.PAPER, 1.5 if not piece.color else 0.0)
+        return text + board(rest, glyph, uid)
+
+    add(sliding(0, "h0"), False, 3)
+    for k in range(1, 7):
+        add(sliding(k / 7, "h%d" % k), False, TICK)
+    kind = "capture" if prev.is_capture(last) else "move"
+    event(kind)
+    if prev.gives_check(last):
+        event("check")
+    add(text + board(trap.board, "", "h"), False, sec(2.5) - 15)
+
+
+def build(data, trap, total, hook="v2"):
     """Return the list of (html, frames) for one video."""
     plan = Plan(trap)
     mover, games = st.side_name(trap.board.turn), trap.record["games"]
@@ -194,16 +243,21 @@ def build(data, trap, total):
     def add(body, answer, count):
         frames.append((frame_html(trap, total, answer, body), count))
 
-    # 1  the hook (3 s)
-    share = st.percent(st.wrong_share(trap)) + "%"
-    add(hero(share) +
-        tx("of %s games at %s<br>go wrong here. <span style=\"font-weight:600\">%s to move.</span>"
-           % (st.thousands(games), st.esc(st.band(data)), mover), 385, 52) +
-        tx(st.esc(st.opening_of(trap)) + ".", 522, 60, "serif") +
-        plan.board(trap.board), False, sec(3))
+    if hook == "v1":
+        # 1  the hook (3 s)
+        share = st.percent(st.wrong_share(trap)) + "%"
+        add(hero(share) +
+            tx("of %s games at %s<br>go wrong here. <span style=\"font-weight:600\">%s to move.</span>"
+               % (st.thousands(games), st.esc(st.band(data)), mover), 385, 52) +
+            tx(st.esc(st.opening_of(trap)) + ".", 522, 60, "serif") +
+            plan.board(trap.board), False, sec(3))
+        countdown = ((3, sec(1.4)), (2, sec(1.3)), (1, sec(1.3)))      # 4 s
+    else:
+        hook_v2(trap, total, mover, add, event, clock)
+        countdown = ((2, sec(1.0)), (1, sec(1.0)))                     # 2 s
 
-    # 2  what would you play (4 s): 3, 2, 1
-    for digit, count in ((3, sec(1.4)), (2, sec(1.3)), (1, sec(1.3))):
+    # 2  what would you play: 3-2-1 (v1) or 2-1 (v2)
+    for digit, count in countdown:
         event("tick")
         add(tx("What would<br>you play?", 170, 88, "serif", width=640, lh=1.1) +
             '<div class="abs num" style="right:90px;top:150px;font-size:280px;color:%s">%d</div>' % (st.HOOK, digit) +
@@ -277,12 +331,15 @@ def build(data, trap, total):
     event("end_card")
     add(score + tx("@trickfishchess", 1150, 100, "serif", lh=1.1) +
         tx("%d traps · link in bio" % total, 1290, 64, weight=600), True, sec(2.2))
+    if hook != "v1" and clock() > 20.0:            # keep every v2 video within 20 s: the end card gives the time
+        html, count = frames[-1]
+        frames[-1] = (html, count - int(math.ceil((clock() - 20.0) * FPS)))
     return frames, events
 
 
 # ---------------------------------------------------------------- rendering
 
-def encode(sequence, out):
+def encode(sequence, out, fade_in=0.2):
     """sequence: [(png path, frames)] -> silent H.264 mp4. Returns the duration in seconds."""
     total = sum(n for _, n in sequence)
     seconds = total / FPS
@@ -292,7 +349,7 @@ def encode(sequence, out):
     lines.append("file '%s'" % sequence[-1][0])
     listing = pathlib.Path(str(out) + ".txt")
     listing.write_text("\n".join(lines) + "\n")
-    fade = "fade=t=in:st=0:d=0.2:color=%s,fade=t=out:st=%.3f:d=0.4:color=%s" % (st.PAPER, seconds - 0.4, st.PAPER)
+    fade = ("fade=t=in:st=0:d=%.2f:color=%s," % (fade_in, st.PAPER) if fade_in else "") + "fade=t=out:st=%.3f:d=0.4:color=%s" % (seconds - 0.4, st.PAPER)
     try:
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(listing),
                         "-vf", "fps=%d,%s,format=yuv420p" % (FPS, fade), "-t", "%.3f" % seconds,
@@ -314,7 +371,7 @@ def add_sound(silent_mp4, events, seconds, out):
         wav.unlink(missing_ok=True)
 
 
-def make(data, traps, out, numbers, silent=False, timelines=None):
+def make(data, traps, out, numbers, silent=False, timelines=None, hook="v2"):
     """Render the videos for the trap numbers into out/trap-NN.mp4 and return {number: seconds}.
     `timelines`, if given, is filled with {number: {"scenes": [...], "events": [...]}}."""
     by_number = {trap.number: trap for trap in traps}
@@ -325,7 +382,7 @@ def make(data, traps, out, numbers, silent=False, timelines=None):
         manifest, plans, plans_events = [], {}, {}
         for number in numbers:
             sequence = []
-            frames, events = build(data, by_number[number], len(traps))
+            frames, events = build(data, by_number[number], len(traps), hook)
             if timelines is not None:
                 scenes, at = [], 0.0
                 for _, count in frames:
@@ -346,10 +403,10 @@ def make(data, traps, out, numbers, silent=False, timelines=None):
         for number, sequence in plans.items():
             target = out / ("trap-%02d.mp4" % number)
             if silent:
-                result[number] = encode(sequence, target)
+                result[number] = encode(sequence, target, 0.2 if hook == "v1" else 0)
             else:
                 quiet = work / ("quiet-%02d.mp4" % number)
-                result[number] = encode(sequence, quiet)
+                result[number] = encode(sequence, quiet, 0.2 if hook == "v1" else 0)
                 add_sound(quiet, plans_events[number], result[number], target)
         return result
     finally:
