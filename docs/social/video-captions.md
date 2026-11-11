@@ -1,9 +1,9 @@
 # Short video captions (@trickfishchess)
 
-Five vertical videos, 1080x1920, silent, 16 to 21 seconds. Render them with:
+Fourteen vertical videos, 1080x1920, silent, 16 to 21 seconds. Render them with:
 
 ```
-python -m trickfish.studio packs/e4e5-white-1200/traps.json --notes packs/e4e5-white-1200/notes.json --output dist --only video --video-traps 1,19,17,12,22
+python -m trickfish.studio packs/e4e5-white-1200/traps.json --notes packs/e4e5-white-1200/notes.json --output dist --only video --video-traps 1,19,17,12,22,16,3,7,13,20,8,23,6,14
 ```
 
 Numbers are the ones on the cards (share of games that went wrong, White's score after the most common mistake). Hashtags are at the end, three at most. The pack link is in the profile, not in the caption.
@@ -162,6 +162,294 @@ Vienna Gambit, 3.f4. 25% of 6,076 real games at 1200–1599 went wrong here. 3..
 **Instagram caption**
 ```text
 Vienna Gambit, 3.f4. 3...Nc6 looks like normal development. Then 4.fxe5 Nxe5 5.d4 Ng6 6.e5 and the f6 knight goes home. White scored 61% after 3...Nc6, played in 18% of 6,076 games. Stockfish wants 3...d5.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-16.mp4 · Three Knights, 6.Qxd4
+
+**TikTok**
+```text
+Three Knights, White has just played 6.Qxd4. 44% of 573 games at 1200–1599 go wrong here. 6...Nc6 hits the queen and feels forced, and White scored 81% after it: 7.Qxg7 attacks the h8 rook, which has no squares. 6...d6 is dull and correct. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (58/100)
+```text
+6...Nc6 hits the queen and drops g7: Three Knights, 6.Qxd4
+```
+
+**YouTube Shorts description**
+```text
+Three Knights, White has just played 6.Qxd4. 44% of 573 real games at 1200–1599 went wrong here. 6...Nc6 hits the queen but leaves g7 undefended: 7.Qxg7 attacks the h8 rook, which has no squares, and White scored 81% after it (played in 25% of games). Stockfish 16 has White +5.3 there. The best defence is 6...d6, and even then White is +1.8.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Three Knights, White's queen is on d4. 6...Nc6 hits it and gives up g7: 7.Qxg7 attacks the h8 rook, and White scored 81% after it (25% of 573 games at 1200–1599). 6...d6 is dull and correct.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-03.mp4 · Traxler, 7.Nxh8
+
+**TikTok**
+```text
+Traxler players, this one is yours. White has just played 7.Nxh8 and taken your rook. 50% of 272 games at 1200–1599 go wrong here. 7...Nxe4 is the reflex, and White scored 79% after it: 8.Qh5+ g6 9.Nxg6 frees the knight with tempo. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (54/100)
+```text
+Traxler: 7...Nxe4 is the reflex, and 8.Qh5+ answers it
+```
+
+**YouTube Shorts description**
+```text
+Two Knights, Traxler Counterattack. White has just played 7.Nxh8. 50% of 272 real games at 1200–1599 went wrong here. 7...Nxe4 looks natural and was played in 50% of games, but 8.Qh5+ g6 9.Nxg6 gets the stuck knight out with tempo, and the queens come off soon after. White scored 79% after it. 7...Bb6 is the best defence, and White is still clearly better (Stockfish 16 +1.4).
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Traxler, White has just taken the h8 rook. 7...Nxe4 is the reflex and White scored 79% after it: 8.Qh5+ g6 9.Nxg6 and the knight is out. Half of 272 games at 1200–1599 went wrong here. 7...Bb6 is the best defence.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-07.mp4 · Scotch, 5.Be3
+
+**TikTok**
+```text
+Scotch, White has just played 5.Be3. One natural developing move loses a piece. 24% of 2,108 games at 1200–1599 go wrong here. After 5...Nf6, 6.Nxc6 bxc6 7.Bxc5 and the bishop was not guarded. White scored 69% after it. 5...Qf6 is the fix. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (53/100)
+```text
+Scotch 5.Be3: the natural 5...Nf6 loses the c5 bishop
+```
+
+**YouTube Shorts description**
+```text
+Scotch, White has just played 5.Be3. 24% of 2,108 real games at 1200–1599 went wrong here. 5...Nf6 leaves the c5 bishop with no defender: 6.Nxc6 bxc6 7.Bxc5 wins a piece, and White scored 69% after it (played in 12% of games). 5...Qf6 defends everything and was the most popular reply, in 32% of games. White scored 47% against it.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Scotch, White has just played 5.Be3. 5...Nf6 looks like development and loses a piece: 6.Nxc6 bxc6 7.Bxc5. White scored 69% after it, in 12% of 2,108 games at 1200–1599. 5...Qf6 is the fix.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-13.mp4 · Ruy Lopez, 5.c3
+
+**TikTok**
+```text
+Ruy Lopez, White has just played 5.c3. Of Black's four most-played moves, two lose material. 35% of 315 games at 1200–1599 go wrong here. 5...Bg4 pins the f3 knight and forgets its own pin: 6.d4 Bxf3 7.gxf3 Bb6 8.d5 and the c6 knight is lost. White scored 65% after it. 5...a6 solves it. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (57/100)
+```text
+Ruy Lopez 5.c3: 5...Bg4 pins a knight and forgets its own
+```
+
+**YouTube Shorts description**
+```text
+Ruy Lopez, White has just played 5.c3. 35% of 315 real games at 1200–1599 went wrong here. With ...d6 played, the c6 knight is pinned to the king. 5...Bg4 6.d4 Bxf3 7.gxf3 Bb6 8.d5 and the knight is lost: White scored 65% after it (64 games). 5...Nf6 is worse still: White took 32 points from 46 games, a small sample. 5...a6 puts the question to the bishop first.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Ruy Lopez, White has just played 5.c3. 5...Bg4 pins the f3 knight and forgets its own pin: 6.d4 Bxf3 7.gxf3 Bb6 8.d5, and the c6 knight can not move. White scored 65% after it (64 games, 35% of 315 went wrong). 5...a6 solves it.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-20.mp4 · Bishop's Opening, 4.Nf3
+
+**TikTok**
+```text
+Bishop's Opening, 3.Qh5 Qf6, and White has just played 4.Nf3. 32% of 719 games at 1200–1599 go wrong here. 4...g6 chases the queen and drops e5: 5.Qxe5+ forces the queens off and the knight lands on e5 aiming at f7. White scored 65% after it. 4...d6 protects e5. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (60/100)
+```text
+Bishop's Opening 4.Nf3: 4...g6 chases the queen and drops e5
+```
+
+**YouTube Shorts description**
+```text
+Bishop's Opening, 3.Qh5 Qf6 4.Nf3. 32% of 719 real games at 1200–1599 went wrong here. 4...g6 chases the queen but drops the e5 pawn: 5.Qxe5+ forces a queen trade, and the knight lands on e5 aiming at f7 together with the c4 bishop. White scored 65% after it (played in 28% of games). 4...d6 keeps everything protected and was the most popular reply, in 41% of games.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Bishop's Opening, White has just played 4.Nf3. 4...g6 chases the queen and drops e5: 5.Qxe5+ and the knight aims at f7. White scored 65% after it, in 28% of 719 games at 1200–1599. 4...d6 holds.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-08.mp4 · Scotch, 6.e5
+
+**TikTok**
+```text
+Scotch, White has just played 6.e5 and the f6 knight is attacked. 18% of 1,411 games at 1200–1599 go wrong here. 6...Nh5 puts the knight on the rim, and 7.g4 leaves it no squares. White scored 71% after it. 6...c5 or 6...Ng8 avoids it. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (55/100)
+```text
+Scotch 6.e5: 6...Nh5 7.g4 and the knight has no squares
+```
+
+**YouTube Shorts description**
+```text
+Scotch, White has just played 6.e5 and the f6 knight is attacked. 18% of 1,411 real games at 1200–1599 went wrong here. 6...Nh5 puts the knight on the rim and 7.g4 hits it at once: f4, f6 and g3 are all covered. Black can save it with 7...Qh4 8.Be3 c5 9.Qe4 g6 10.Nc3 Ng7, but White scored 71% after 6...Nh5 (played in 18% of games). 6...c5 is Stockfish 16's choice.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Scotch, White has just played 6.e5. 6...Nh5 7.g4 and the knight has no squares. Black can save it with 7...Qh4 and some contortions, but White scored 71% after 6...Nh5, in 18% of 1,411 games at 1200–1599. 6...c5 or 6...Ng8 avoids it.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-23.mp4 · Vienna Gambit, 4.e5
+
+**TikTok**
+```text
+Vienna Gambit accepted, White has just played 4.e5. 35% of 2,005 games at 1200–1599 go wrong here. 4...Qe7 pins e5 so the knight can stay. 5.Qe2 breaks the pin, the knight goes to g8 anyway, and Black's queen blocks its own bishop. White scored 70% after it. 4...Ng8 straight away is best. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (53/100)
+```text
+Vienna Gambit 4.e5: the e-file pin that does not work
+```
+
+**YouTube Shorts description**
+```text
+Vienna Gambit, White has just played 4.e5 and the f6 knight is attacked. 35% of 2,005 real games at 1200–1599 went wrong here. 4...Qe7 tries to pin the e5 pawn, but 5.Qe2 breaks the pin and the knight still goes back to g8, with Black's queen in the way of its own bishop. White scored 70% after it (played in 30% of games). 4...Ng8 at once is best, and the most common reply, in 60% of games.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Vienna Gambit, White has just played 4.e5. 4...Qe7 pins e5 so the knight can stay. 5.Qe2 breaks the pin and the knight goes to g8 anyway. White scored 70% after it, in 30% of 2,005 games at 1200–1599. 4...Ng8 is best.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-06.mp4 · Giuoco Piano, 8.Nbxd2
+
+**TikTok**
+```text
+Giuoco Piano, White has just played 8.Nbxd2 after the bishop trade on d2. 61% of 147 games at 1200–1599 go wrong here. 8...Bg4 is the most popular move and the tempting one. 9.Qb3 attacks b7 and lines up with the c4 bishop against f7. White scored 64% after it. 8...Nf6 is the move. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (54/100)
+```text
+Giuoco Piano 8.Nbxd2: the tempting 8...Bg4 meets 9.Qb3
+```
+
+**YouTube Shorts description**
+```text
+Giuoco Piano, White has just played 8.Nbxd2 after the bishop trade on d2. 61% of 147 real games at 1200–1599 went wrong here. 8...Bg4 looks active and is the most popular move, but 9.Qb3 attacks b7 and lines up with the c4 bishop against f7, and Black loses at least a pawn. White scored 64% after it (90 games). 8...Nf6 meets the plan (Stockfish 16 +0.6).
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Giuoco Piano, White has just played 8.Nbxd2. 8...Bg4 is the most popular move and the tempting one: 9.Qb3 hits b7 and lines up against f7. White scored 64% after it (90 of 147 games at 1200–1599). 8...Nf6 is the move.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-14.mp4 · Ruy Lopez, 5.c3 (again)
+
+**TikTok**
+```text
+Ruy Lopez again, by a different road. White has just played 5.c3. 25% of 392 games at 1200–1599 go wrong here. 5...d6 opens the diagonal and pins Black's own c6 knight: 6.d4 Bb6 7.d5 wins it for a pawn. White scored 68% after it (98 games). 5...O-O keeps the knight free. 23 traps in the pack, link in bio. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (57/100)
+```text
+Ruy Lopez 5.c3: 5...d6 pins your own knight, 6.d4 wins it
+```
+
+**YouTube Shorts description**
+```text
+Ruy Lopez, White has just played 5.c3 after ...Nf6. 25% of 392 real games at 1200–1599 went wrong here. 5...d6 opens the diagonal and pins Black's own c6 knight: 6.d4 Bb6 7.d5 wins it for a pawn, and White scored 68% after it (98 games). 5...O-O keeps the knight free (Stockfish 16 +0.5). It is the same position as the 5...Nf6 line after 5.c3 in the other Ruy Lopez trap.
+
+23 traps in the pack, link in bio.
+
+#chess #chesstraps #chesstok
+```
+
+**Instagram caption**
+```text
+Ruy Lopez, White has just played 5.c3. 5...d6 opens the diagonal and pins Black's own knight: 6.d4 Bb6 7.d5 wins it for a pawn. White scored 68% after it (98 games, 25% of 392 went wrong). 5...O-O keeps the knight free.
 
 23 traps in the pack, link in bio.
 

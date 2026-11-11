@@ -1,6 +1,6 @@
 """Render social/queue.json as a phone-friendly Markdown calendar for manual posting.
 
-    python social/calendar.py  ->  docs/social/calendar.md
+    python social/posting_calendar.py  ->  docs/social/calendar.md
 """
 import datetime
 import json
