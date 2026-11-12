@@ -330,7 +330,8 @@ def build(data, trap, total, hook="v2"):
     add(score, True, sec(1.6))
     event("end_card")
     add(score + tx("@trickfishchess", 1150, 100, "serif", lh=1.1) +
-        tx("%d traps · link in bio" % total, 1290, 64, weight=600), True, sec(2.2))
+        (tx("%d traps · link in bio" % total, 1290, 64, weight=600) if hook == "v1"
+         else tx("5 traps free · link on our profile", 1290, 56, weight=600)), True, sec(2.2))
     if hook != "v1" and clock() > 20.0:            # keep every v2 video within 20 s: the end card gives the time
         html, count = frames[-1]
         frames[-1] = (html, count - int(math.ceil((clock() - 20.0) * FPS)))
