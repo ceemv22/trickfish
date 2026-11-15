@@ -471,3 +471,214 @@ Ruy Lopez, White has just played 5.c3. 5...d6 opens the diagonal and pins Black'
 
 - Our own sound effects are baked into every mp4: wooden piece taps (heavier on captures, a faint second tick on checks), a soft countdown blip, a reel ratchet while the red line grows, a small tink on the hook and a warm chord on the end card. All of it is synthesised from scratch by `src/trickfish/studio/sound.py`, so nothing is sampled or copyrighted. No ambient bed: silence between events. One static gain, about -16 to -19 LUFS integrated, true peak under -1 dBTP. `--silent` makes the old silent version.
 - In each app the owner may add a trending or library sound at about 10-20% volume under ours: TikTok and Instagram Reels, the app's own licensed music; YouTube Shorts, the Shorts audio library. Never add copyrighted music outside the apps.
+
+---
+
+# Days 15–23 (rendered 2026-11-15, hook v2)
+
+---
+
+## trap-02.mp4 · Fried Liver, 9.Bxd5+
+
+**TikTok**
+```text
+Fried Liver, White has just played 9.Bxd5+. 39% of 239 games at 1200–1599 go wrong here. 9...Qxd5 looks like it wins a bishop, but 10.Qxd5+ takes the queen and the c3 knight stops the king from recapturing. White scored 47 points from 48 games after it. 9...Kd6 is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (78/100)
+```text
+White scored 47 points from 48 games after this one move. Fried Liver, 9.Bxd5+
+```
+
+**YouTube Shorts description**
+```text
+Fried Liver, Black to move after 9.Bxd5+. 39% of 239 real Lichess games at 1200–1599 went wrong here. 9...Qxd5 takes the bishop, but 10.Qxd5+ takes the queen back and the king can't recapture because the c3 knight guards d5. White scored 47 points from 48 games after it. 9...Ke7 is worse and gets mated. Only 9...Kd6 holds (Stockfish 16 +1.9).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-04.mp4 · Traxler, 6.Bb3
+
+**TikTok**
+```text
+Traxler, White has just played 5.Bxf7+ Kf8 6.Bb3. 46% of 156 games at 1200–1599 go wrong here. 6...Bxf2+ throws a second piece at the king, but 7.Kxf2 and Black has nothing. White scored 28 points from 38 games after it. 6...Qe7 is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (54/100)
+```text
+46% of 1200–1599 players go wrong here: Traxler, 6.Bb3
+```
+
+**YouTube Shorts description**
+```text
+Traxler, Black to move after 5.Bxf7+ Kf8 6.Bb3. 46% of 156 real Lichess games at 1200–1599 went wrong here. 6...Bxf2+ gives a bishop away: 7.Kxf2 and the attack is over. 6...h6 fails too, to 7.Nf7, hitting the queen and the h8 rook. White scored 28 points from 38 games after 6...Bxf2+. 6...Qe7 is the move (Stockfish 16 +1.5).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-05.mp4 · Two Knights, 5.dxe5
+
+**TikTok**
+```text
+Two Knights, 4.d4 Nxe4 5.dxe5. 52% of 155 games at 1200–1599 go wrong here, and they all play the same move: 5...Bc5. 6.Qd5 threatens mate on f7 and hits the e4 knight. Black can't stop both. White scored 62% after it. 5...Nc5 is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (75/100)
+```text
+Half of 1200–1599 players play the same natural move here. It loses a piece
+```
+
+**YouTube Shorts description**
+```text
+Two Knights, Black to move after 4.d4 Nxe4 5.dxe5. 52% of 155 real Lichess games at 1200–1599 went wrong here, all with 5...Bc5. It develops naturally but allows 6.Qd5, threatening mate on f7 and attacking the knight on e4 at once. Black can't meet both. White scored 62% after it. 5...Nc5 is the move (Stockfish 16 +1.2).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-09.mp4 · Scotch, 7.Be3
+
+**TikTok**
+```text
+Scotch, White has just played 7.Be3. 43% of 127 games at 1200–1599 go wrong here. 7...Nh5 runs the knight to the edge, and 8.g4 traps it: 8...f6 9.gxh5. White scored 19½ points from 30 games after it. 7...Ng8 is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (57/100)
+```text
+The knight goes to h5 and never comes back. Scotch, 7.Be3
+```
+
+**YouTube Shorts description**
+```text
+Scotch, Black to move after 7.Be3. 43% of 127 real Lichess games at 1200–1599 went wrong here. 7...Nh5 puts the knight on the edge, and 8.g4 traps it: 8...f6 9.gxh5 and the knight is lost. White scored 19½ points from 30 games after it. 7...Ng8 is the move (Stockfish 16 +2.4).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-10.mp4 · Scotch, 7.Bc4
+
+**TikTok**
+```text
+Scotch, White has just played 7.Bc4. 7...b6 looks like a quiet developing move. 8.Qd5 threatens mate on f7 and the rook on a8 at the same time. White scored 17 points from 20 games after it (122 games at 1200–1599). 7...d6 is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (73/100)
+```text
+White scored 17 points from 20 games after this quiet move. Scotch, 7.Bc4
+```
+
+**YouTube Shorts description**
+```text
+Scotch, Black to move after 7.Bc4. 16% of 122 real Lichess games at 1200–1599 went wrong here, almost all with 7...b6. It weakens the long diagonal, and 8.Qd5 threatens Qxf7# and Qxa8 at the same time. White scored 17 points from 20 games after it. 7...d6 is the move (Stockfish 16 +1.5).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-11.mp4 · Philidor, 5.Qxd8+
+
+**TikTok**
+```text
+Philidor, White has just traded queens with 5.Qxd8+. 45% of 1,044 games at 1200–1599 take back with the knight. 5...Nxd8 drops the e5 pawn: 6.Nxe5, a clean pawn up. 5...Kxd8 is the move. Fun fact: at this level White scored 61% either way. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (64/100)
+```text
+45% of 1200–1599 players take back wrong here: Philidor, 5.Qxd8+
+```
+
+**YouTube Shorts description**
+```text
+Philidor, Black to move after 5.Qxd8+. 45% of 1,044 real Lichess games at 1200–1599 recaptured 5...Nxd8, which gives up the e5 pawn: 6.Nxe5 and White is a clean pawn up. 5...Kxd8 is correct (Stockfish 16 +0.4). Honest note: White scored 61% after both moves in these games, so at this level the extra pawn hasn't turned into points yet.
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-15.mp4 · Berlin, 5.Re1
+
+**TikTok**
+```text
+Berlin, White has just played 5.Re1. 34% of 537 games at 1200–1599 go wrong here. 5...d5 defends the knight but keeps the king in the centre. 6.d3 kicks the knight and White wins material. After 6...Nxf2 it even comes with check: 7.Rxe5+. White scored 66% after 5...d5. 5...Nd6 is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (64/100)
+```text
+34% of 1200–1599 players go wrong here: Ruy Lopez, Berlin, 5.Re1
+```
+
+**YouTube Shorts description**
+```text
+Ruy Lopez, Berlin, Black to move after 4.O-O Nxe4 5.Re1. 34% of 537 real Lichess games at 1200–1599 went wrong here. 5...d5 defends the e4 knight but leaves the king in the centre. 6.d3 kicks the knight, and wherever it goes White wins material. After 6...Nxf2 it comes with check: 7.Rxe5+ Be7 8.Kxf2. White scored 66% after 5...d5. 5...Nd6 is the move (Stockfish 16 +0.2).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-18.mp4 · Petrov, 4.dxe5
+
+**TikTok**
+```text
+Petrov, 3.d4 d6 4.dxe5. 55% of 164 games at 1200–1599 take back with the pawn. 4...dxe5 lets White trade queens and take e5: 5.Qxd8+ Kxd8 6.Nxe5, a pawn up and the king can't castle. White scored 64% after it. 4...Nxe4 is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (73/100)
+```text
+55% of 1200–1599 players play the obvious recapture here. It loses a pawn
+```
+
+**YouTube Shorts description**
+```text
+Petrov, Black to move after 3.d4 d6 4.dxe5. 55% of 164 real Lichess games at 1200–1599 went wrong here with 4...dxe5. White trades queens and grabs the pawn: 5.Qxd8+ Kxd8 6.Nxe5, a clean pawn up with Black's king displaced. White scored 64% after it. 4...Nxe4 is the move (Stockfish 16 +0.5).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
+
+---
+
+## trap-21.mp4 · Bishop's Opening, 4.Nxe5
+
+**TikTok**
+```text
+Bishop's Opening, White has just taken on e5. 4...Nxe4 copies White, and it's a mistake: 5.Bxf7+ Kf8 6.d4 hits the c5 bishop and the king can't castle anymore. White scored 22 points from 35 games after it (202 games at 1200–1599). 4...O-O is the move. 5 traps free as a PDF: link on our profile. #chess #chesstraps #chesstok
+```
+
+**YouTube Shorts title** (63/100)
+```text
+Copying White's move costs Black here. Bishop's Opening, 4.Nxe5
+```
+
+**YouTube Shorts description**
+```text
+Bishop's Opening, Black to move after 4.Nxe5. 17% of 202 real Lichess games at 1200–1599 went wrong here, mostly with 4...Nxe4. It copies White, but 5.Bxf7+ Kf8 6.d4 hits the c5 bishop and Black's king can no longer castle. White scored 22 points from 35 games after it. 4...O-O is the move (Stockfish 16 +1.3).
+
+5 traps free as a PDF: link on our profile.
+
+#chess #chesstraps #chesstok
+```
