@@ -211,7 +211,7 @@ Traxler players, this one is yours. White has just played 7.Nxh8 and taken your 
 
 **YouTube Shorts title** (54/100)
 ```text
-Traxler: 7...Nxe4 is the reflex, and 8.Qh5+ answers it
+Half of 1200–1599 players grab 7...Nxe4 here. 8.Qh5+ punishes it: Traxler
 ```
 
 **YouTube Shorts description**
@@ -243,7 +243,7 @@ Scotch, White has just played 5.Be3. One natural developing move loses a piece. 
 
 **YouTube Shorts title** (53/100)
 ```text
-Scotch 5.Be3: the natural 5...Nf6 loses the c5 bishop
+24% of 1200–1599 players go wrong here and lose a bishop: Scotch, 5.Be3
 ```
 
 **YouTube Shorts description**
@@ -275,7 +275,7 @@ Ruy Lopez, White has just played 5.c3. Of Black's four most-played moves, two lo
 
 **YouTube Shorts title** (57/100)
 ```text
-Ruy Lopez 5.c3: 5...Bg4 pins a knight and forgets its own
+35% of 1200–1599 players go wrong here: Ruy Lopez, 5.c3
 ```
 
 **YouTube Shorts description**
@@ -307,7 +307,7 @@ Bishop's Opening, 3.Qh5 Qf6, and White has just played 4.Nf3. 32% of 719 games a
 
 **YouTube Shorts title** (60/100)
 ```text
-Bishop's Opening 4.Nf3: 4...g6 chases the queen and drops e5
+32% of 1200–1599 players go wrong here: Bishop's Opening, 4.Nf3
 ```
 
 **YouTube Shorts description**
@@ -339,7 +339,7 @@ Scotch, White has just played 6.e5 and the f6 knight is attacked. 18% of 1,411 g
 
 **YouTube Shorts title** (55/100)
 ```text
-Scotch 6.e5: 6...Nh5 7.g4 and the knight has no squares
+18% of 1200–1599 players put the knight on the rim here: Scotch, 6.e5
 ```
 
 **YouTube Shorts description**
@@ -371,7 +371,7 @@ Vienna Gambit accepted, White has just played 4.e5. 35% of 2,005 games at 1200�
 
 **YouTube Shorts title** (53/100)
 ```text
-Vienna Gambit 4.e5: the e-file pin that does not work
+35% of 1200–1599 players go wrong here: Vienna Gambit, 4.e5
 ```
 
 **YouTube Shorts description**
@@ -403,7 +403,7 @@ Giuoco Piano, White has just played 8.Nbxd2 after the bishop trade on d2. 61% of
 
 **YouTube Shorts title** (54/100)
 ```text
-Giuoco Piano 8.Nbxd2: the tempting 8...Bg4 meets 9.Qb3
+The most popular move here loses a pawn. 61% of 1200–1599 players play it
 ```
 
 **YouTube Shorts description**
@@ -435,7 +435,7 @@ Ruy Lopez again, by a different road. White has just played 5.c3. 25% of 392 gam
 
 **YouTube Shorts title** (57/100)
 ```text
-Ruy Lopez 5.c3: 5...d6 pins your own knight, 6.d4 wins it
+25% of 1200–1599 players pin their own knight here: Ruy Lopez, 5.c3
 ```
 
 **YouTube Shorts description**
