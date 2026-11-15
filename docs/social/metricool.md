@@ -9,10 +9,12 @@ Per post:
 
 X is not connected to Metricool; the owner schedules X questions on x.com and posts the evening replies by hand.
 
-Scheduled so far: Days 7–13 (16–22 Nov 2026), traps 3, 7, 13, 20, 8, 23, 6, on both networks.
+Scheduled so far: Days 7–13 (16–22 Nov 2026), traps 3, 7, 13, 20, 8, 23, 6; Days 14–20 (23–29 Nov), traps 14, 5, 2, 18, 11, 9, 15, on both networks. Trap 18's video runs the day after the X question on it, so it doesn't give the answer away.
+
+Still unscheduled videos: traps 4, 10, 21 (plus re-runs of the best performers).
 
 ## X through Typefully
 
 Since 2026-11-15, X is scheduled by Claude through the Typefully connector (social set 365434, @trickfishchess). Images are uploaded with `create_media_upload` and a plain `curl -T` PUT of `social/images/trap-NN.png` / `trap-NN-answer.png` to the presigned URL. Each day: the question from `social/queue.json` at 14:00 with the question card, and the answer at 20:00 as a standalone post starting "Answer:" with the answer card (a reply needs the question's URL, which only exists after it is published). Answers must stay within 280 weighted characters (links count 23).
 
-Scheduled so far on X: Days 7–13 (16–22 Nov 2026), questions at 14:00 and answers at 20:00.
+Scheduled so far on X: Days 7–13 (16–22 Nov 2026), questions at 14:00 and answers at 20:00; Days 14–20 (23–29 Nov) from `social/queue.json`. Changes from the queue: Day 16's poll became a plain question (Typefully has no X polls), answers start with "Answer:", and Day 20 links the free 5-trap sampler instead of the old pinned thread.
